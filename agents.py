@@ -79,8 +79,13 @@ class RunRiskAnalysisTool(BaseTool):
                 "1. The bank's current CRISIL rating.\n"
                 "2. Recent news (last few months) about the bank's financial health or FD schemes.\n"
                 "Provide a concise summary of the risk level based on the findings."
+                "3. **IMPORTANT**: You must conclude with a single-word safety status: 'Safe', 'Neutral', or 'Not safe'."
             ),
-            expected_output="A summary of the bank's CRISIL rating and recent news affecting its stability.",
+            expected_output="The Report should start with a section titled '### CRISIL Rating' followed by the rating, where the rating itself is bolded. "
+                            "A summary of the bank's CRISIL rating and recent news affecting its stability."
+                            "A report where the **CRISIL Rating** is bolded. "
+                            "The report must end with a section titled '### Safety Status' "
+                            "followed by exactly one of these labels: **Safe**, **Neutral**, or **Not safe**.",
             agent=risk_analysis_agent
         )
         
@@ -95,8 +100,6 @@ class RunRiskAnalysisTool(BaseTool):
         return result.raw
 
 risk_trigger_tool = RunRiskAnalysisTool()
-
-# --- AGENTS ---
 
 data_scraper_agent = Agent(
     role="Financial Data Scraper",
@@ -117,12 +120,13 @@ risk_analysis_agent = Agent(
     goal="Analyze the stability and recent news of a specific bank using search tools to find CRISIL ratings and recent events.",
     backstory=(
         "You are a financial expert specializing in banking risk. "
-        "When given a specific bank name, you search for their CRISIL ratings and any significant recent news. "
+        "When given a specific bank name, you search for their CRISIL ratings and any significant recent news about that Bank. "
         "You summarize the findings clearly for the user."
     ),
     tools=[ddg_search_tool],
     verbose=True,
     llm=lammavl,
+    max_iter=3,
     allow_delegation=False
 )
 
