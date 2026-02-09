@@ -5,8 +5,11 @@ from crewai.tools import BaseTool
 from typing import Type
 from pydantic import BaseModel, Field
 import requests
-from config import llm, lammavl
-from langchain_community.tools import DuckDuckGoSearchRun
+from config import llm, llm_2
+from langchain_community.tools import DuckDuckGoSearchRun, DuckDuckGoSearchResults
+from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+
+wrapper = DuckDuckGoSearchAPIWrapper(time="y", max_results=5)
 
 class BankBazaarScraperInput(BaseModel):
     url: str = Field(description="The URL of the BankBazaar FD rates page")
@@ -58,7 +61,9 @@ class DDGSearchTool(BaseTool):
     description: str = "Search the internet for current information, CRISIL ratings, and recent news about banks."
     
     def _run(self, query: str) -> str:
-        search = DuckDuckGoSearchRun()
+        search = DuckDuckGoSearchResults(
+            api_wrapper=wrapper,
+        ) #DuckDuckGoSearchRun() 
         return search.run(query)
 
 ddg_search_tool = DDGSearchTool()
@@ -78,14 +83,11 @@ class RunRiskAnalysisTool(BaseTool):
                 "Use the search tool to find:\n"
                 "1. The bank's current CRISIL rating.\n"
                 "2. Recent news (last few months) about the bank's financial health or FD schemes.\n"
+                "Provide the sources of your information."
                 "Provide a concise summary of the risk level based on the findings."
                 "3. **IMPORTANT**: You must conclude with a single-word safety status: 'Safe', 'Neutral', or 'Not safe'."
             ),
-            expected_output="The Report should start with a section titled '### CRISIL Rating' followed by the rating, where the rating itself is bolded. "
-                            "A summary of the bank's CRISIL rating and recent news affecting its stability."
-                            "A report where the **CRISIL Rating** is bolded. "
-                            "The report must end with a section titled '### Safety Status' "
-                            "followed by exactly one of these labels: **Safe**, **Neutral**, or **Not safe**.",
+            expected_output="A brief summary of the bank's CRISIL rating and recent news affecting its stability and cite the Sources in the End.",
             agent=risk_analysis_agent
         )
         
@@ -112,7 +114,8 @@ data_scraper_agent = Agent(
     tools=[bankbazaar_scraper_tool], 
     verbose=True,
     llm=llm,
-    allow_delegation=False
+    allow_delegation=False,
+    #max_iter=2
 )
 
 risk_analysis_agent = Agent(
@@ -125,8 +128,8 @@ risk_analysis_agent = Agent(
     ),
     tools=[ddg_search_tool],
     verbose=True,
-    llm=lammavl,
-    max_iter=3,
+    llm=llm_2,
+    #max_iter=3,
     allow_delegation=False
 )
 
@@ -138,9 +141,10 @@ intent_agent = Agent(
         "1. If the user asks for 'rates', 'FD', 'interest', or specific tenures, you MUST use the 'Trigger FD Scraper' tool.\n"
         "2. If the user asks for 'risk', 'safety', 'CRISIL', 'rating', 'news', or 'stability' for a bank, you MUST use the 'Trigger Risk Analysis' tool.\n"
         "Do not make up data; rely on the tools."
+        "CRITITCAL: if triggering 'Trigger Risk Analysis' tool, make sure you show the Exact Output from the tool to the user"
     ),
     tools=[scraper_trigger_tool, risk_trigger_tool],
     verbose=True,
-    llm=lammavl,
+    llm=llm,
     allow_delegation=False
 )

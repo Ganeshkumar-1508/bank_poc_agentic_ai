@@ -15,5 +15,4 @@ class FdCrew:
             verbose=True
         )
 
-# Instantiate the crew for use in the app
 my_crew = FdCrew().crew()

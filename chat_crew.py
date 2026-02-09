@@ -1,5 +1,4 @@
 from crewai import Crew, Process, Task
-from langchain_community.tools import DuckDuckGoSearchRun
 class ChatCrew:
     def __init__(self):
         self.agents = []

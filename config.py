@@ -11,13 +11,12 @@ def get_llm():
         max_completion_tokens=1100
     )
 
-def get_llm_lamma_vl():
+def get_llm_2():
     return ChatNVIDIA(
-        model="nvidia_nim/qwen/qwen3-next-80b-a3b-instruct", 
+        model="nvidia_nim/qwen/qwen3-235b-a22b", 
         temperature=0,
-        max_completion_tokens=1100
     )
 
 
 llm = get_llm()
-lammavl = get_llm_lamma_vl()
+llm_2 = get_llm_2()

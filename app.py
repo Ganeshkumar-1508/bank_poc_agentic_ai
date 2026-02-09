@@ -7,13 +7,11 @@ from chat_crew import ChatCrew
 st.set_page_config(page_title="FD Rate Chatbot", layout="wide")
 st.title("Bank FD Rate Assistant")
 
-# Initialize session state
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'df_data' not in st.session_state:
     st.session_state.df_data = None
 
-# --- Helper Functions ---
 def clean_rate_column(series):
     clean_display = []
     plot_values = []
@@ -75,7 +73,6 @@ def display_grouped_tables(df):
             cols_to_show = [c for c in cols_to_show if c in subset.columns]
             st.dataframe(subset[cols_to_show], use_container_width=True)
 
-# Chat Interface
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
@@ -94,7 +91,6 @@ if prompt := st.chat_input("Ask about FD rates or Bank Risk (e.g., 'Is HDFC safe
                 st.markdown(response_text)
                 st.session_state.messages.append({"role": "assistant", "content": response_text})
 
-                # Check if response contains CSV data to update the chart/table UI
                 new_df = parse_csv_from_response(response_text)
                 if new_df is not None:
                     st.session_state.df_data = new_df
@@ -104,7 +100,6 @@ if prompt := st.chat_input("Ask about FD rates or Bank Risk (e.g., 'Is HDFC safe
                 st.error(f"An error occurred: {e}")
                 st.session_state.messages.append({"role": "assistant", "content": f"Error: {e}"})
 
-# --- Data Visualization Section ---
 if st.session_state.df_data is not None:
     st.markdown("---")
     st.subheader("Interest Rate Comparison")
