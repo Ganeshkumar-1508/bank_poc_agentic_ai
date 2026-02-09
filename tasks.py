@@ -1,6 +1,7 @@
 from crewai import Task
 from agents import data_scraper_agent, bankbazaar_scraper_tool
 
+
 scraping_task = Task(
     description=(
         "Use the 'BankBazaar Table Scraper' tool to get data from 'https://www.bankbazaar.com/fixed-deposit-rate.html'. "
@@ -18,3 +19,4 @@ scraping_task = Task(
     expected_output="A raw CSV string starting with headers. No markdown code blocks.",
     agent=data_scraper_agent,
     tools=[bankbazaar_scraper_tool]
+)

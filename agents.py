@@ -1,11 +1,12 @@
 import pandas as pd
-from crewai import Agent
+from crewai import Agent, Crew, Task, Process
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
 from crewai.tools import BaseTool
 from typing import Type
 from pydantic import BaseModel, Field
 import requests
-from config import llm,lammavl
+from config import llm, lammavl
+from langchain_community.tools import DuckDuckGoSearchRun
 
 class BankBazaarScraperInput(BaseModel):
     url: str = Field(description="The URL of the BankBazaar FD rates page")
@@ -52,6 +53,51 @@ class RunScraperCrewTool(BaseTool):
 
 scraper_trigger_tool = RunScraperCrewTool()
 
+class DDGSearchTool(BaseTool):
+    name: str = "Internet Search"
+    description: str = "Search the internet for current information, CRISIL ratings, and recent news about banks."
+    
+    def _run(self, query: str) -> str:
+        search = DuckDuckGoSearchRun()
+        return search.run(query)
+
+ddg_search_tool = DDGSearchTool()
+
+class RiskAnalysisInput(BaseModel):
+    query: str = Field(description="The user's specific query about a bank's risk or rating")
+
+class RunRiskAnalysisTool(BaseTool):
+    name: str = "Trigger Risk Analysis"
+    description: str = "Executes the risk analysis agent to search for CRISIL ratings and recent news for a specific bank. Use this when the user asks about 'risk', 'safety', 'CRISIL rating', 'stability', or 'news' for a specific bank."
+    args_schema: Type[BaseModel] = RiskAnalysisInput
+
+    def _run(self, query: str) -> str:
+        task = Task(
+            description=(
+                f"Analyze the following user query regarding a specific bank: '{query}'.\n"
+                "Use the search tool to find:\n"
+                "1. The bank's current CRISIL rating.\n"
+                "2. Recent news (last few months) about the bank's financial health or FD schemes.\n"
+                "Provide a concise summary of the risk level based on the findings."
+            ),
+            expected_output="A summary of the bank's CRISIL rating and recent news affecting its stability.",
+            agent=risk_analysis_agent
+        )
+        
+        crew = Crew(
+            agents=[risk_analysis_agent],
+            tasks=[task],
+            process=Process.sequential,
+            verbose=True
+        )
+        
+        result = crew.kickoff()
+        return result.raw
+
+risk_trigger_tool = RunRiskAnalysisTool()
+
+# --- AGENTS ---
+
 data_scraper_agent = Agent(
     role="Financial Data Scraper",
     goal="Parse the extracted HTML tables and format them into a clean CSV for FD rates.",
@@ -65,16 +111,31 @@ data_scraper_agent = Agent(
     llm=llm,
     allow_delegation=False
 )
+
+risk_analysis_agent = Agent(
+    role="Financial Risk Analyst",
+    goal="Analyze the stability and recent news of a specific bank using search tools to find CRISIL ratings and recent events.",
+    backstory=(
+        "You are a financial expert specializing in banking risk. "
+        "When given a specific bank name, you search for their CRISIL ratings and any significant recent news. "
+        "You summarize the findings clearly for the user."
+    ),
+    tools=[ddg_search_tool],
+    verbose=True,
+    llm=lammavl,
+    allow_delegation=False
+)
+
 intent_agent = Agent(
     role="Banking Intent Orchestrator",
-    goal="Identify the user's intention. If they want FD rates, trigger the scraper tool and present the data.",
+    goal="Identify the user's intention and route the request to the correct tool.",
     backstory=(
-        "You are a helpful banking assistant. You analyze user queries. "
-        "If the user asks for 'rates', 'FD', 'interest', or specific tenures, "
-        "you MUST use the 'Trigger FD Scraper' tool to get the latest data. "
-        "Once you get the CSV data from the tool, format it nicely for the user."
+        "You are a helpful banking assistant. You analyze user queries.\n"
+        "1. If the user asks for 'rates', 'FD', 'interest', or specific tenures, you MUST use the 'Trigger FD Scraper' tool.\n"
+        "2. If the user asks for 'risk', 'safety', 'CRISIL', 'rating', 'news', or 'stability' for a bank, you MUST use the 'Trigger Risk Analysis' tool.\n"
+        "Do not make up data; rely on the tools."
     ),
-    tools=[scraper_trigger_tool],
+    tools=[scraper_trigger_tool, risk_trigger_tool],
     verbose=True,
     llm=lammavl,
     allow_delegation=False

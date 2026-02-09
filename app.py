@@ -4,7 +4,6 @@ import plotly.express as px
 from io import StringIO
 from chat_crew import ChatCrew
 
-# Page Configuration
 st.set_page_config(page_title="FD Rate Chatbot", layout="wide")
 st.title("Bank FD Rate Assistant")
 
@@ -76,41 +75,36 @@ def display_grouped_tables(df):
             cols_to_show = [c for c in cols_to_show if c in subset.columns]
             st.dataframe(subset[cols_to_show], use_container_width=True)
 
+# Chat Interface
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Chat Input
-if prompt := st.chat_input("Ask about FD rates (e.g., 'What are the rates for 1 year?')"):
-    # Add user message to history
+if prompt := st.chat_input("Ask about FD rates or Bank Risk (e.g., 'Is HDFC safe right now?')"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Generate response
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             try:
                 chat_crew = ChatCrew()
                 result = chat_crew.kickoff(prompt)
                 response_text = result.raw
-                
-                # Display the text response
                 st.markdown(response_text)
-                
-                # Add assistant response to history
                 st.session_state.messages.append({"role": "assistant", "content": response_text})
 
-                # Check if response contains CSV data to update UI
+                # Check if response contains CSV data to update the chart/table UI
                 new_df = parse_csv_from_response(response_text)
                 if new_df is not None:
                     st.session_state.df_data = new_df
-                    st.success("Data updated successfully!")
+                    st.success("FD Rates data updated successfully!")
 
             except Exception as e:
                 st.error(f"An error occurred: {e}")
                 st.session_state.messages.append({"role": "assistant", "content": f"Error: {e}"})
 
+# --- Data Visualization Section ---
 if st.session_state.df_data is not None:
     st.markdown("---")
     st.subheader("Interest Rate Comparison")
@@ -147,7 +141,6 @@ if st.session_state.df_data is not None:
             'Sen Max': 'Senior Citizen'
         })
 
-        # Plot
         fig = px.bar(
             df_long, 
             x=bank_col, 
@@ -162,7 +155,6 @@ if st.session_state.df_data is not None:
         fig.update_layout(yaxis_title="Max Interest Rate (%)", xaxis_title="Bank Name", legend_title="Category")
         st.plotly_chart(fig, use_container_width=True)
     
-    # Display Grouped Tables
     display_grouped_tables(st.session_state.df_data)
 
 st.markdown("---")
