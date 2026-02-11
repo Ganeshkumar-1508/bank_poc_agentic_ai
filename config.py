@@ -14,7 +14,7 @@ def get_llm():
 def get_llm_2():
     return ChatNVIDIA(
         model="nvidia_nim/qwen/qwen3-235b-a22b", 
-        temperature=0,
+        temperature=0.4,
     )
 
 

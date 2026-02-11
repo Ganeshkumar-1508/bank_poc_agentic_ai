@@ -4,8 +4,8 @@ import plotly.express as px
 from io import StringIO
 from chat_crew import ChatCrew
 
-st.set_page_config(page_title="FD Rate Chatbot", layout="wide")
-st.title("Bank FD Rate Assistant")
+st.set_page_config(page_title="FD", layout="wide")
+st.title("FD Rate Assistant")
 
 if 'messages' not in st.session_state:
     st.session_state.messages = []
@@ -37,7 +37,6 @@ def clean_rate_column(series):
     return clean_display, plot_values
 
 def parse_csv_from_response(response_text):
-    """Attempts to find and parse CSV data from the LLM response."""
     if "Bank," in response_text:
         csv_data = response_text[response_text.find("Bank,"):]
         try:
@@ -48,7 +47,6 @@ def parse_csv_from_response(response_text):
     return None
 
 def display_grouped_tables(df):
-    """Displays the dataframe broken down by Tenure."""
     st.subheader("Extracted Data Tables")
     
     df.columns = [c.strip().lower() for c in df.columns]
@@ -77,7 +75,7 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-if prompt := st.chat_input("Ask about FD rates or Bank Risk (e.g., 'Is HDFC safe right now?')"):
+if prompt := st.chat_input("ask something..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)

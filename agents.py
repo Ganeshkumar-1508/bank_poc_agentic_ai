@@ -14,33 +14,6 @@ wrapper = DuckDuckGoSearchAPIWrapper(time="y", max_results=5)
 class BankBazaarScraperInput(BaseModel):
     url: str = Field(description="The URL of the BankBazaar FD rates page")
 
-class BankBazaarScraperTool(BaseTool):
-    name: str = "BankBazaar Table Scraper"
-    description: str = "Scrapes HTML tables specifically from BankBazaar FD rates page and returns them as text."
-    args_schema: Type[BaseModel] = BankBazaarScraperInput
-
-    def _run(self, url: str) -> str:
-        try:
-            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-            response = requests.get(url, headers=headers)
-            tables = pd.read_html(response.text)
-            
-            if not tables:
-                return "No tables found on the page."
-            
-            output_csvs = []
-            for i, table in enumerate(tables):
-                cols = [str(c).lower() for c in table.columns]
-                if 'interest' in ' '.join(cols) or 'tenure' in ' '.join(cols):
-                    output_csvs.append(f"--- Table {i} ---\n{table.to_csv(index=False)}")
-            
-            return "\n\n".join(output_csvs) if output_csvs else "No relevant rate tables found."
-            
-        except Exception as e:
-            return f"Error scraping website: {str(e)}"
-
-bankbazaar_scraper_tool = BankBazaarScraperTool()
-
 class ScraperTriggerInput(BaseModel):
     query: str = Field(description="The user's query requesting rate information")
 
@@ -67,6 +40,33 @@ class DDGSearchTool(BaseTool):
         return search.run(query)
 
 ddg_search_tool = DDGSearchTool()
+
+class BankBazaarScraperTool(BaseTool):
+    name: str = "BankBazaar Table Scraper"
+    description: str = "Scrapes HTML tables specifically from BankBazaar FD rates page and returns them as text."
+    args_schema: Type[BaseModel] = BankBazaarScraperInput
+
+    def _run(self, url: str) -> str:
+        try:
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+            response = requests.get(url, headers=headers)
+            tables = pd.read_html(response.text)
+            
+            if not tables:
+                return "No tables found on the page."
+            
+            output_csvs = []
+            for i, table in enumerate(tables):
+                cols = [str(c).lower() for c in table.columns]
+                if 'interest' in ' '.join(cols) or 'tenure' in ' '.join(cols):
+                    output_csvs.append(f"--- Table {i} ---\n{table.to_csv(index=False)}")
+            
+            return "\n\n".join(output_csvs) if output_csvs else "No relevant rate tables found."
+            
+        except Exception as e:
+            return f"Error scraping website: {str(e)}"
+
+bankbazaar_scraper_tool = BankBazaarScraperTool()
 
 class RiskAnalysisInput(BaseModel):
     query: str = Field(description="The user's specific query about a bank's risk or rating")
@@ -124,7 +124,7 @@ risk_analysis_agent = Agent(
     backstory=(
         "You are a financial expert specializing in banking risk. "
         "When given a specific bank name, you search for their CRISIL ratings and any significant recent news about that Bank. "
-        "You summarize the findings clearly for the user."
+        "You summarize the findings clearly and professionally for the user."
     ),
     tools=[ddg_search_tool],
     verbose=True,
