@@ -1,69 +1,115 @@
-# 🏦 Bank POC: Agentic AI for Fixed Deposits
 
-Welcome to the **Bank POC Agentic AI** repository. This project is a Proof of Concept (POC) demonstrating how a Multi-Agent AI system can automate financial research, risk assessment, and return projections for Fixed Deposit (FD) products. 
+# 🏦 Fixed Deposit Advisor
 
-It uses **CrewAI** for agent orchestration, **LangChain** with **NVIDIA NIM** (Llama 3.1 405b) for intelligence, and **Streamlit** for a user-friendly web interface.
+An AI-powered financial advisory application that helps you find the best Fixed Deposit (FD) options in India. This tool uses a multi-agent system (CrewAI) and NVIDIA NIMs to analyze interest rates, assess institutional safety, and calculate financial projections based on natural language queries.
 
----
+![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.2+-red.svg)
+![CrewAI](https://img.shields.io/badge/CrewAI-Latest-green.svg)
 
-## 🚀 Quick Start & Installation
+## ✨ Features
 
-The main application code is located in the `poc/` directory. Follow these steps to run the application locally.
+*   **Natural Language Queries**: Simply ask questions like *"What is the maturity amount for 1 Lakh over 5 years?"*
+*   **Real-Time Market Research**: Automatically searches the web for the latest FD interest rates.
+*   **Safety Analysis**: Categorizes providers (Banks/NBFCs) into **Safe**, **Moderate**, or **Risky** based on credit ratings and news.
+*   **Financial Projections**: Calculates maturity amounts and interest earned using quarterly compounding.
+*   **Visual Dashboards**: Interactive charts comparing maturity amounts and interest rates.
+*   **Comprehensive Reports**: Generates in-depth Markdown reports covering market news, risk analysis, and strategic recommendations.
 
-### 1. Prerequisites
-* Python 3.9 or higher
-* An [NVIDIA API Key](https://build.nvidia.com/) (to access the Llama 3.1 405b model)
+## 🏗️ Architecture
 
-### 2. Setup Instructions
+This application utilizes **CrewAI** to orchestrate a team of specialized AI agents:
 
-Clone the repository and navigate to the `poc` folder:
+1.  **Manager Agent**: Routes user queries to the appropriate workflow (Analysis vs. Research).
+2.  **Query Parser**: Extracts investment amount and tenure from natural text.
+3.  **Market Scanner**: Searches for the highest current interest rates.
+4.  **Financial Researcher**: Gathers detailed news and summaries about providers.
+5.  **Risk Analyst**: Evaluates safety based on credit ratings and financial health.
+6.  **Financial Calculator**: Computes precise projections.
+7.  **Investment Strategist**: Synthesizes all data into a final actionable report.
+
+The app is powered by **NVIDIA's LLMs** for fast, intelligent reasoning.
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+*   Python 3.8 or higher
+*   An NVIDIA API Key (Get one free at [build.nvidia.com](https://build.nvidia.com/))
+
+### Installation
+
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/your-username/fixed-deposit-advisor.git
+    cd fixed-deposit-advisor
+    ```
+
+2.  **Create a virtual environment** (Recommended)
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows use: venv\Scripts\activate
+    ```
+
+3.  **Install dependencies**
+    Create a `requirements.txt` file with the following content and install it:
+
+    ```text
+    streamlit
+    crewai
+    langchain-nvidia-ai-endpoints
+    langchain-community
+    python-dotenv
+    pandas
+    matplotlib
+    duckduckgo-search
+    ```
+
+    Then run:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+### Configuration
+
+1.  Create a `.env` file in the root directory of the project.
+2.  Add your NVIDIA API Key:
+
+    ```env
+    NVIDIA_API_KEY=nvapi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    ```
+
+## 🎮 Usage
+
+Run the Streamlit application:
+
 ```bash
-git clone [https://github.com/Ganeshkumar-1508/bank_poc_agentic_ai.git](https://github.com/Ganeshkumar-1508/bank_poc_agentic_ai.git)
-cd bank_poc_agentic_ai/poc
-
-
-** Install Required Dependencies**
-
-pip install -r requirements.txt
-
-Create a .env file in your project, and there mention your secret api keys needed for the Project setup
-
-**EX**
-NVIDIA_API_KEY=your_nvidia_api_key_here
-
-Navigate to the POC directory and to host your UI mention the following command
-
 streamlit run app.py
+```
 
+The application will open in your default web browser (usually `http://localhost:8501`).
 
-**System Architecture & Roadmap**
+**Example Queries:**
+*   *"I want to invest 500,000 INR for 2 years. Show me the best options."*
+*   *"Compare FD rates for senior citizens for a 3-year tenure."*
+*   *"List the top 10 FD providers and analyze their safety."*
 
-This project is being developed in phases based on our System Architecture design.
+## 📂 Project Structure
 
-**Phase 1: Current Implementation (The Engine)**
+```text
+.
+├── app.py              # Streamlit frontend, visualization, and parsing logic.
+├── fd_crew.py          # CrewAI agents, tasks, and workflow orchestration.
+├── .env                # Environment variables (API Keys).
+└── README.md           # This file.
+```
 
-The current POC successfully implements the core analytical engine.
+## ⚠️ Disclaimer
 
-**Orchestration Engine (CrewAI):** A sequential process chaining 5 specialized AI agents (fd_crew.py).
+> **This tool is for educational and informational purposes only.**
+> 
+> The data provided (interest rates, safety ratings, and projections) is generated by AI and may not always reflect real-time market conditions or accurate financial advice. Please consult with a qualified financial advisor before making any investment decisions.
 
-**Chat UI / CLI:** A responsive Streamlit dashboard (app.py) for user input (Amount, Tenure) and result visualization.
+## 🤝 Contributing
 
-**LLM Integration:** Powered by NVIDIA NIM (meta/llama-3.1-405b-instruct).
-
-**Live Web Tools:** Integration with DuckDuckGo to fetch real-time FD rates and the latest banking news.
-
-Financial Math Tool: Python-based fd_projection tool to ensure 100% accurate compound interest calculations without LLM hallucinations.
-
- **Phase 2: Future Roadmap (The Platform)**
-
-The following components from the system architecture are planned for the next development phase to transition this POC into a full-scale banking assistant:
-
-**Manager Agent (NLU & Intention): **A routing agent to understand natural language user intents (e.g., "Invest in FD" vs "Update KYC") and dynamically trigger the right workflow.
-
-**KYC & Compliance Agents:** Dedicated agents to handle identity verification, document validation, and regulatory checks.
-
-**Database Integration (RDBMS & Vector):** Persistent storage for user profiles, transaction histories, and customized financial advice.
-
-**Document Processing:** OCR and Vision capabilities allow users to upload IDs and bank statements for analysis.
-
-**Notification Channels:** Automated alerts (Email, SMS, WhatsApp) for deposit proofs, maturity reminders, and rate updates.
+Contributions, issues, and feature requests are welcome!
