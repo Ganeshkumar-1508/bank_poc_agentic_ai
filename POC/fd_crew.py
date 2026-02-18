@@ -1,10 +1,10 @@
 import os
 from typing import Union
 from crewai import Agent, Task, Crew, Process, CrewOutput
-from crewai.tools import tool
-from ddgs import DDGS
-from langchain_nvidia_ai_endpoints import NVIDIA
-from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+from crewai.tools import BaseTool, tool
+from pydantic import Field
+from langchain_community.tools import DuckDuckGoSearchRun
+from langchain_nvidia import NVIDIA,ChatNVIDIA
 from dotenv import load_dotenv
 
 load_dotenv()  
@@ -13,18 +13,29 @@ if 'NVIDIA_API_KEY' not in os.environ:
     raise ValueError("Please set the NVIDIA_API_KEY environment variable.")
 
 def get_llm():
-    return NVIDIA(model="meta/llama-3.1-405b-instruct") # qwen/qwen3-next-80b-a3b-instruct , meta/llama-3.1-405b-instruct
+    return NVIDIA(model="qwen/qwen3-next-80b-a3b-instruct") #meta/llama-3.1-405b-instruct , qwen/qwen3-next-80b-a3b-instruct, qwen/qwen3-235b-a22b , qwen/qwen3-next-80b-a3b-thinking
 
 def get_llm_2():
-    return NVIDIA(model="qwen/qwen3-next-80b-a3b-instruct") # qwen/qwen3-next-80b-a3b-instruct , meta/llama-3.1-405b-instruct
+    return NVIDIA(model="qwen/qwen3-next-80b-a3b-instruct") #meta/llama-3.1-405b-instruct , qwen/qwen3-next-80b-a3b-instruct , qwen/qwen3-235b-a22b, qwen/qwen3-next-80b-a3b-thinking
 
-# Tool Definitions
-@tool("DuckDuckGo Search")
-def search_ddg(query: str) -> str:
-    """Search DuckDuckGo and return top results as a string."""
-    with DDGS() as ddgs:
-        results = ddgs.text(query, max_results=10) 
-        return str(results)
+# def get_llm_3():
+#     return ChatNVIDIA(
+#         model="meta/llama-4-maverick-17b-128e-instruct",
+#         )
+
+class DuckDuckGoSearchTool(BaseTool):
+    name: str = "DuckDuckGo Search"
+    description: str = "Useful for search queries about current events, financial data, or finding specific websites. Input should be a search query."
+    search: DuckDuckGoSearchRun = Field(default_factory=DuckDuckGoSearchRun)
+
+    def _run(self, query: str) -> str:
+        """Execute the search query and return results"""
+        try:
+            return self.search.run(query)
+        except Exception as e:
+            return f"Error performing search: {str(e)}"
+
+search_ddg = DuckDuckGoSearchTool()
 
 @tool("Fixed Deposit Projection Calculator")
 def fd_projection(principal: float, rate: float, tenure: int) -> str:
@@ -36,23 +47,24 @@ def fd_projection(principal: float, rate: float, tenure: int) -> str:
     interest = amount - principal
     return f"Maturity Amount: {amount:.2f}, Interest Earned: {interest:.2f}"
 
-# Agent Definitions
+
 def create_agents():
     llm = get_llm()
-    llm_2= get_llm_2()
+    llm_2 = get_llm_2()
+    # llm_3 = get_llm_3()
     
     query_parser_agent = Agent(
         role="Financial Query Analyzer",
         goal="Extract specific investment amount and tenure from natural language user queries.",
-        backstory="You are an expert at understanding user intent and extracting structured financial data from conversation text. You identify currency amounts and time periods accurately.",
+        backstory="You are an expert at understanding user intent and extracting structured financial data.",
         llm=llm_2,
         verbose=True
     )
 
     search_agent = Agent(
         role="Fixed Deposit Rate Researcher",
-        goal="Find the top 10 fixed deposit providers with the highest interest rates for the given tenure.",
-        backstory="You are an expert at searching the web for financial products and extracting relevant information. You always provide accurate and up-to-date interest rate data.",
+        goal="Find the top fixed deposit providers with the highest interest rates for specific tenures.",
+        backstory="You are an expert at searching the web for financial products.",
         tools=[search_ddg],
         llm=llm_2,
         verbose=True
@@ -60,8 +72,8 @@ def create_agents():
 
     research_agent = Agent(
         role="Financial Researcher",
-        goal="Gather detailed information about each fixed deposit provider, including latest news and financial health.",
-        backstory="You are skilled at researching financial institutions and summarizing key information. You focus on recent developments and company stability.",
+        goal="Gather detailed information about each fixed deposit provider.",
+        backstory="You are skilled at researching financial institutions.",
         tools=[search_ddg],
         llm=llm_2,
         verbose=True
@@ -69,8 +81,8 @@ def create_agents():
 
     safety_agent = Agent(
         role="Risk Analyst",
-        goal="Categorize each fixed deposit provider by safety based on credit ratings, financial health, and recent news.",
-        backstory="You have expertise in assessing the safety of financial institutions. You consider multiple factors including credit ratings, regulatory compliance, and recent financial performance.",
+        goal="Categorize each fixed deposit provider by safety based on credit ratings and news.",
+        backstory="You have expertise in assessing the safety of financial institutions.",
         tools=[search_ddg],
         llm=llm,
         verbose=True
@@ -78,137 +90,292 @@ def create_agents():
 
     projection_agent = Agent(
         role="Financial Calculator",
-        goal="Calculate the projected maturity amount and interest earned for each provider using precise financial formulas.",
-        backstory="You are precise in financial calculations and always provide accurate projections. You ensure all calculations use the exact interest rates provided.",
+        goal="Calculate projected maturity amounts precisely.",
+        backstory="You are precise in financial calculations.",
         tools=[fd_projection],
         llm=llm_2,
         verbose=True
     )
 
     summary_agent = Agent(
-        role="Financial Advisor",
-        goal="Create a comprehensive, user-friendly report summarizing the top fixed deposit options with safety categories and projections.",
-        backstory="You are a helpful financial advisor who provides clear and actionable advice. You structure information in an easy-to-understand format and highlight key insights.",
+        role="Senior Investment Strategist",
+        goal="Synthesize raw financial data, market news, safety ratings, and projections into a professional, exhaustive investment thesis.",
+        backstory=(
+            "You are a veteran Chief Investment Strategist at a leading wealth management firm. "
+            "You specialize in Fixed Income portfolios. You excel at connecting the dots between "
+            "quantitative data (interest rates, maturity amounts) and qualitative factors (market news, credit ratings). "
+            "Your reports are known for being detailed, objective, and highly actionable."
+        ),
+        llm=llm,
+        verbose=True
+    )
+
+    # --- Deep Research Crew Agents ---
+    
+    provider_search_agent = Agent(
+        role="Market Scanner",
+        goal="Identify the top 10 most popular and reliable Fixed Deposit providers in the current market.",
+        backstory="You have a broad view of the financial market and know how to identify leading institutions.",
+        tools=[search_ddg],
+        llm=llm_2,
+        verbose=True
+    )
+
+    deep_research_agent = Agent(
+        role="Senior Financial Investigator",
+        goal="Conduct exhaustive research on specific financial institutions to find credit ratings, recent news, and financial health.",
+        backstory="You are an investigative journalist specializing in finance.",
+        tools=[search_ddg],
+        #context=[provider_search_agent],
+        llm=llm,
+        verbose=True
+    )
+
+    research_compilation_agent = Agent(
+        role="Research Editor",
+        goal="Compile detailed findings into a structured, exhaustive report.",
+        backstory="You are an editor who ensures all critical details are presented clearly.",
+        llm=llm,
+        verbose=True
+    )
+
+    # --- Manager Agent ---
+    
+    manager_agent = Agent(
+        role="Crew Manager",
+        goal="Identify the user's intent and delegate the task to the appropriate team.",
+        backstory="You are a senior manager at a financial firm.",
         llm=llm,
         verbose=True
     )
 
     return {
+        # Analysis
         "query_parser_agent": query_parser_agent,
         "search_agent": search_agent,
         "research_agent": research_agent,
         "safety_agent": safety_agent,
         "projection_agent": projection_agent,
-        "summary_agent": summary_agent
+        "summary_agent": summary_agent,
+        # Research
+        "provider_search_agent": provider_search_agent,
+        "deep_research_agent": deep_research_agent,
+        "research_compilation_agent": research_compilation_agent,
+        # Manager
+        "manager_agent": manager_agent
     }
 
-# Task Definitions
-def create_tasks(agents, user_query: str):
-    # Task 1: Parse Query
+# ==========================================
+# TASK DEFINITIONS
+# ==========================================
+
+def create_analysis_tasks(agents, user_query: str):
     parse_task = Task(
         description=(
             f"Analyze the following user query: '{user_query}'. "
             f"Extract the investment amount and tenure. "
-            f"Convert amounts like '100k' or '1 lakh' to full integers (e.g., 100000). "
-            f"Convert tenure to years. If months are mentioned, convert to years (e.g., 24 months = 2 years). "
+            f"Convert amounts like '100k' to full integers. "
+            f"Convert tenure to years. "
             f"Output strictly in the format: 'Amount: [Integer], Tenure: [Integer]'. "
-            f"Do not output anything else."
         ),
         expected_output="A string containing 'Amount: [Value], Tenure: [Value]'.",
         agent=agents["query_parser_agent"]
     )
 
-    # Task 2: Search for top FD rates
     search_task = Task(
         description=(
-            "Based on the parsed parameters: {parse_task.output}, identify the tenure. "
+            "Based on parsed parameters: {parse_task.output}, identify the tenure. "
             "Search for top fixed deposit interest rates for that specific tenure in India. "
-            "Use the query: 'fixed deposit interest rates for [tenure] years top banks India general citizens'. "
-            "Return a list of the top 10 providers with their interest rates in the exact format: "
-            "'Provider: [Name], Interest Rate: [X.X]%'. "
-            "Ensure the interest rates are for general citizens."
+            "Return a list of the top 10 providers with their interest rates in the format: "
+            "'Provider: [Name], Interest Rate: [X.X]%'"
         ),
-        expected_output="A list of exactly 10 fixed deposit providers with interest rates in the specified format.",
+        expected_output="A list of exactly 10 fixed deposit providers with interest rates.",
         agent=agents["search_agent"],
         context=[parse_task]
     )
 
-    # Task 3: Research each provider
     research_task = Task(
         description=(
-            "For each provider in the list from the previous task: {search_task.output}, "
-            "research the provider thoroughly. Provide a brief summary (2-3 sentences) about the bank/NBFC, "
-            "and include the latest news (within the last 6 months) about the provider. "
-            "Format each entry as: "
-            "'Provider: [Name], Summary: [Summary], Latest News: [News]'"
+            "For each provider in the list: {search_task.output}, "
+            "research the provider thoroughly. Provide a brief summary and latest news. "
+            "Format: 'Provider: [Name], Summary: [Summary], Latest News: [News]'"
         ),
-        expected_output="A list of provider summaries with latest news in the specified format.",
+        expected_output="A list of provider summaries with latest news.",
         agent=agents["research_agent"],
         context=[search_task]
     )
 
-    # Task 4: Safety categorization
     safety_task = Task(
         description=(
-            "Based on the summaries and news: {research_task.output}, "
-            "categorize each provider's safety for fixed deposit as 'Safe', 'Moderate', or 'Risky'. "
-            "Format each entry as: "
-            "'Provider: [Name], Category: [Safe/Moderate/Risky], Reason: [Brief reason]'"
+            "Based on: {research_task.output}, "
+            "categorize each provider's safety as 'Safe', 'Moderate', or 'Risky'. "
+            "Format: 'Provider: [Name], Category: [Safe/Moderate/Risky], Reason: [Brief reason]'"
         ),
-        expected_output="A list of safety categorizations with reasons in the specified format.",
+        expected_output="A list of safety categorizations with reasons.",
         agent=agents["safety_agent"],
         context=[research_task]
     )
 
-    # Task 5: Financial projections
     projection_task = Task(
         description=(
-            "Calculate fixed deposit projections for each provider. "
-            "Use the amount extracted from: {parse_task.output} and the interest rates from: {search_task.output}. "
-            "Use the fd_projection tool for each provider. "
-            "Output a table in strict CSV format (no additional text, no markdown) as follows: "
-            "'Provider,Interest Rate,Maturity Amount,Interest Earned' followed by each provider on a new line. "
-            "Example: 'HDFC Bank,5.5%,55250.00,5250.00'."
+            "Calculate projections for each provider. "
+            "Use amount from: {parse_task.output} and rates from: {search_task.output}. "
+            "Output a table in strict CSV format: "
+            "'Provider,Interest Rate,Maturity Amount,Interest Earned'"
         ),
-        expected_output="A CSV-formatted table with projections for each provider.",
+        expected_output="A CSV-formatted table with projections.",
         agent=agents["projection_agent"],
         context=[parse_task, search_task]
     )
 
-    # Task 6: Final summary report
     summary_task = Task(
         description=(
-            "Create a comprehensive, user-friendly markdown report with the following sections: "
-            "## Top Fixed Deposit Options\n"
-            "### 1. Interest Rate Comparison Table\n"
-            "### 2. Provider Details\n"
-            "### 3. Projection Analysis\n"
-            "### 4. Recommendations\n\n"
-            "Use the following data sources:\n"
-            "- Safety categories: {safety_task.output}\n"
-            "- Projections: {projection_task.output}\n"
+            "Create a comprehensive, in-depth investment report using the data from:\n"
+            "1. Research & News: {research_task.output}\n"
+            "2. Safety Categorization: {safety_task.output}\n"
+            "3. Financial Projections: {projection_task.output}\n\n"
+            
+            "Your report must be professionally formatted in Markdown and strictly follow this structure:\n\n"
+            
+            "#  Comprehensive Fixed Deposit Analysis Report\n\n"
+            
+            "## 1. Executive Summary\n"
+            "- Provide a high-level overview of the best options found.\n"
+            "- Highlight the highest yield and the safest option based on the data.\n\n"
+            
+            "## 2. Market Overview & Provider Analysis\n"
+            "For EACH provider listed in the research data, provide a detailed subsection including:\n"
+            "- **Provider Name & Interest Rate**\n"
+            "- **Safety Profile**: (Safe/Moderate/Risky) and the specific reason why (credit ratings, news, etc.).\n"
+            "- **Market Context**: Incorporate the 'Latest News' and 'Summary' from the research task. "
+            "Explain any recent events that might impact their stability or rates.\n\n"
+            
+            "## 3. Financial Projection Deep Dive\n"
+            "- Analyze the raw numbers. Discuss the Maturity Amount and Interest Earned.\n"
+            "- Compare the compounding benefits across providers.\n\n"
+            
+            "## 4. Risk vs. Reward Assessment\n"
+            "- Categorize the findings into three buckets: 'Maximum Safety', 'High Yield', and 'Balanced Choice'.\n"
+            "- Discuss the trade-offs between choosing a higher rate (Risky/Moderate) vs. a lower rate (Safe).\n\n"
+            
+            "## 5. Strategic Recommendations\n"
+            "Based on the user's query and the analysis, provide tailored advice:\n"
+            "- **Option A (Conservative)**: Best for capital preservation.\n"
+            "- **Option B (Aggressive)**: Best for maximizing returns.\n"
+            "- **Option C (Balanced)**: Best mix of safety and return.\n\n"
+            
+            "## 6. Conclusion\n"
+            "- A final wrapping sentence summarizing the best course of action.\n\n"
+            
+            "---\n"
+            "*Disclaimer: This report is generated by AI for informational purposes only and does not constitute professional financial advice.*"
         ),
-        expected_output="A comprehensive markdown report with all sections as specified.",
+        expected_output="A highly detailed, structured Markdown report covering market news, risk analysis, and strategic financial recommendations.",
         agent=agents["summary_agent"],
-        context=[safety_task, projection_task]
+        context=[research_task, safety_task, projection_task] 
+        # CRITICAL: Added 'research_task' to context so the agent has access to news/summaries
     )
 
     return [parse_task, search_task, research_task, safety_task, projection_task, summary_task]
 
-def create_crew(user_query: str):
+def create_research_tasks(agents, user_query: str):
+    identify_providers_task = Task(
+        description=(
+            f"Analyze the query: '{user_query}'. "
+            f"Identify and list the top 10 Fixed Deposit providers (Banks & NBFCs) in India. "
+            f"Output a simple list of 10 names."
+        ),
+        expected_output="A list of 10 top Fixed Deposit provider names.",
+        agent=agents["provider_search_agent"]
+    )
+
+    deep_research_task = Task(
+        description=(
+            "For every provider in the list: {identify_providers_task.output}, perform exhaustive research. "
+            "You must find the following for EACH provider:\n"
+            "1. Credit Ratings (CRISIL, ICRA, CARE, etc.).\n"
+            "2. Interest Rate ranges.\n"
+            "3. Recent News (last 6 months).\n"
+            "4. Financial Health indicators.\n"
+            "Format the output clearly for each provider."
+        ),
+        expected_output="Detailed structured data for each provider.",
+        agent=agents["deep_research_agent"],
+        context=[identify_providers_task]
+    )
+
+    compile_report_task = Task(
+        description=(
+            "Compile findings from: {deep_research_task.output} into a final report. "
+            "Structure it as:\n"
+            "## Analysis of Top FD Providers\n"
+            "Subheadings for each provider with Ratings, News, Financials, and Verdict."
+        ),
+        expected_output="A structured markdown report.",
+        agent=agents["research_compilation_agent"],
+        context=[deep_research_task]
+    )
+
+    return [identify_providers_task, deep_research_task, compile_report_task]
+
+# ==========================================
+# CREW & ROUTER LOGIC
+# ==========================================
+
+def get_analysis_crew(user_query: str):
     agents = create_agents()
-    tasks = create_tasks(agents, user_query)
-    
-    crew = Crew(
-        agents=list(agents.values()),
+    tasks = create_analysis_tasks(agents, user_query)
+    return Crew(
+        agents=[agents["query_parser_agent"], agents["search_agent"], agents["research_agent"], 
+                agents["safety_agent"], agents["projection_agent"], agents["summary_agent"]],
         tasks=tasks,
         process=Process.sequential,
-        memory=False,
         verbose=True
     )
-    return crew
+
+def get_research_crew(user_query: str):
+    agents = create_agents()
+    tasks = create_research_tasks(agents, user_query)
+    return Crew(
+        agents=[agents["provider_search_agent"], agents["deep_research_agent"], agents["research_compilation_agent"]],
+        tasks=tasks,
+        process=Process.sequential,
+        verbose=True
+    )
 
 def run_crew(user_query: str):
-    crew = create_crew(user_query)
+    agents = create_agents()
+    manager = agents["manager_agent"]
+    
+    routing_task = Task(
+        description=(
+            f"Analyze the user query: '{user_query}'\n\n"
+            f"Determine the intent:\n"
+            f"- If the user asks for calculations, maturity amounts, or comparisons based on a specific amount, respond with 'ANALYSIS'.\n"
+            f"- If the user asks for general information, top providers, credit ratings, or detailed reports, respond with 'RESEARCH'.\n\n"
+            f"Respond with ONLY one word: ANALYSIS or RESEARCH."
+        ),
+        expected_output="Single word: ANALYSIS or RESEARCH",
+        agent=manager
+    )
+    
+    router_crew = Crew(
+        agents=[manager],
+        tasks=[routing_task],
+        verbose=True
+    )
+    
+    print("--- Agent Deciding Route ---")
+    route_result = router_crew.kickoff()
+    decision = route_result.raw.strip().upper()
+    print(f"--- Agent Decision: {decision} ---")
+    
+    if "ANALYSIS" in decision:
+        print("Starting Analysis Crew...")
+        crew = get_analysis_crew(user_query)
+    else:
+        print("Starting Deep Research Crew...")
+        crew = get_research_crew(user_query)
+        
     result = crew.kickoff()
     return result
