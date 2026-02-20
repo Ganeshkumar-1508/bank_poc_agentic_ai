@@ -1,0 +1,14 @@
+pandas
+streamlit
+matplotlib
+crewai
+langchain_nvidia_ai_endpoints
+crewai_tools
+numpy
+langchain-community
+langchain
+ddgs
+litellm
+litellm[proxy]
+plotly
+dotenv 
