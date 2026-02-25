@@ -11,6 +11,4 @@ ddgs
 litellm
 litellm[proxy]
 plotly
-dotenv
-python-dotenv
-pydantic
+dotenv 

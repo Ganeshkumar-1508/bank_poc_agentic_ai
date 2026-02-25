@@ -1,236 +1,228 @@
 import os
 import re
+import sqlite3
+import json
+import random
 import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
+import plotly.express as px  
+from pathlib import Path
 from dotenv import load_dotenv
-from fd_crew import run_crew
+from fd_crew import run_crew, get_onboarding_crew
 
 load_dotenv()
+DB_PATH = Path(__file__).resolve().parent / "bank_poc.db"
 
-def parse_projection_table(projection_text: str) -> pd.DataFrame:
-    """Parse the projection output into a structured DataFrame."""
-    data = []
-    try:
-        clean_text = projection_text.replace("```csv", "").replace("```", "").strip()
-        lines = clean_text.split('\n')
-
-        for line in lines:
-            if line.strip() and not line.lower().startswith('provider,'):
-                parts = [part.strip() for part in line.split(',')]
-                if len(parts) >= 4:
-                    provider = parts[0]
-
-                    rate_str = parts[1].replace('%', '').strip()
-                    try:
-                        rate = float(rate_str)
-                    except ValueError:
-                        rate = 0.0
-
-                    maturity_str = parts[2].replace('₹', '').replace(',', '').strip()
-                    try:
-                        maturity = float(maturity_str)
-                    except ValueError:
-                        maturity = 0.0
-
-                    interest_str = parts[3].replace('₹', '').replace(',', '').strip()
-                    try:
-                        interest = float(interest_str)
-                    except ValueError:
-                        interest = 0.0
-
-                    data.append({
-                        'Provider': provider,
-                        'Interest Rate (%)': rate,
-                        'Maturity Amount': maturity,
-                        'Interest Earned': interest
-                    })
-
-        df = pd.DataFrame(data)
-        return df
-
-    except Exception as e:
-        st.warning(f"Could not parse projection table: {str(e)}")
-        return pd.DataFrame()
-
-def parse_safety_data(safety_text: str) -> dict:
-    """Parse safety task output to extract categories."""
-    safety_map = {}
-    try:
-        lines = safety_text.split('\n')
-        for line in lines:
-            if "Provider:" in line and "Category:" in line:
-                provider_part = line.split("Provider:")[1].split(",")[0].strip()
-                category_part = line.split("Category:")[1].split(",")[0].strip()
-                safety_map[provider_part] = category_part
-    except Exception as e:
-        st.warning(f"Could not parse safety data: {str(e)}")
-    return safety_map
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 st.set_page_config(
     page_title="Fixed Deposit Advisor",
-    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2.5rem !important;
-        color: #1E3A8A;
-        margin-bottom: 1rem;
-    }
-    .sub-header {
-        font-size: 1.5rem;
-        color: #3B82F6;
-        margin-top: 1rem;
-        margin-bottom: 0.5rem;
-    }
-    .stButton>button {
-        background-color: #3B82F6;
-        color: white;
-        font-weight: bold;
-        border-radius: 5px;
-        padding: 0.5rem 1rem;
-    }
-    .stButton>button:hover {
-        background-color: #2563EB;
-    }
+    .main-header { font-size: 2.5rem !important; color: #1E3A8A; margin-bottom: 1rem; }
+    .sub-header { font-size: 1.5rem; color: #3B82F6; margin-top: 1rem; margin-bottom: 0.5rem; }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown('<h1 class="main-header">Fixed Deposit Advisor</h1>', unsafe_allow_html=True)
-#st.markdown("Find the best fixed deposit options with highest interest rates and safety analysis.")
 
-if not os.getenv("NVIDIA_API_KEY"):
-    st.error("NVIDIA_API_KEY not found in environment variables!")
-    st.stop()
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-st.markdown("### Enter your query")
-#st.markdown("Example: *What will be maturity amount if I deposited 100k as a onetime payment for 5 years?*")
+def reset_session():
+    st.session_state.messages = []
+    if "ONBOARDING_FLOW" in st.session_state:
+        del st.session_state["ONBOARDING_FLOW"]
+    st.rerun()
 
-user_query = st.text_area("Your Question:", height=100, placeholder="your query..")
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    analyze_button = st.button("Analyze Fixed Deposit Options", use_container_width=True)
 
-if analyze_button and user_query:
-    progress_bar = st.progress(0)
-    status_text = st.empty()
+user_input = st.chat_input("Ask about FDs, check your data, or say 'Open an account'")
 
+if user_input:
+
+    st.session_state.messages.append({"role": "user", "content": user_input})
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
+    # Check API Key
+    has_api_key = bool(os.getenv("NVIDIA_API_KEY"))
+    if not has_api_key:
+        with st.chat_message("assistant"):
+            st.warning("NVIDIA_API_KEY not found. Please configure it to use AI features.")
+    else:
+        with st.chat_message("assistant"):
+            with st.spinner("Processing..."):
+                try:
+
+                    if st.session_state.messages and "ONBOARDING_FLOW" in st.session_state:
+                        # We are in onboarding flow - The Agent handles everything now
+                        conversation_history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
+                        response = get_onboarding_crew(conversation_history).kickoff()
+                        
+                        # Simply display the Agent's response (which contains success/failure info)
+                        st.markdown(response.raw)
+                        st.session_state.messages.append({"role": "assistant", "content": response.raw})
+
+                        # UPDATED RESET LOGIC: Check for Success, Email Sent, or Failure to clear flow
+                        if "Success" in response.raw or "Email sent" in response.raw or "Transaction Failed" in response.raw:
+                            if "ONBOARDING_FLOW" in st.session_state:
+                                del st.session_state["ONBOARDING_FLOW"]
+                    
+                    else:
+                        # New interaction, run the main router/crew
+                        result = run_crew(user_input)
+                        
+                        # Check if router decided ONBOARDING
+                        if result.raw == "ONBOARDING":
+                            st.session_state["ONBOARDING_FLOW"] = True
+                            # Trigger the first onboarding question
+                            conversation_history = f"user: {user_input}\nassistant: I can help with that. Let's start."
+                            response = get_onboarding_crew(conversation_history).kickoff()
+                            st.markdown(response.raw)
+                            st.session_state.messages.append({"role": "assistant", "content": response.raw})
+                        
+                        elif hasattr(result, 'tasks_output') and len(result.tasks_output) >= 5:
+                            
+                            st.markdown(result.raw)
+                            
+                            if len(result.tasks_output) >= 5:
+                                projection_output = result.tasks_output[4].raw
+                                
+                                # Parsing logic with better error handling
+                                def parse_projection_table(projection_text: str) -> pd.DataFrame:
+                                    try:
+                                        clean_text = projection_output.replace("```csv", "").replace("```", "").strip()
+                                        import io
+                                        df = pd.read_csv(io.StringIO(clean_text))
+                                        # Basic sanity: ensure key columns exist
+                                        required = {"Provider", "General Rate (%)", "Senior Rate (%)",
+                                                    "General Maturity", "Senior Maturity"}
+                                        if not required.issubset(df.columns):
+                                            return pd.DataFrame()
+                                        return df
+                                    except Exception as e:
+                                        return pd.DataFrame()
+
+                                df = parse_projection_table(projection_output)
+                                if not df.empty:
+                                    # Show a clean table with formatted numbers
+                                    def fmt(x):
+                                        if isinstance(x, (int, float)):
+                                            return f"{x:,.2f}"
+                                        return str(x)
+
+                                    styled_df = df.copy()
+                                    for col in ["General Rate (%)", "Senior Rate (%)",
+                                                "General Maturity", "Senior Maturity",
+                                                "General Interest", "Senior Interest"]:
+                                        if col in styled_df.columns:
+                                            styled_df[col] = styled_df[col].apply(fmt)
+                                    st.dataframe(styled_df, use_container_width=True)
+
+                                    col1, col2 = st.columns(2)
+
+                                    with col1:
+                                        st.markdown("### Interest Rates by Provider")
+                                        
+                                        df_rate_long = df.melt(
+                                            id_vars="Provider", 
+                                            value_vars=["General Rate (%)", "Senior Rate (%)"],
+                                            var_name="Category", 
+                                            value_name="Rate"
+                                        )
+                                        
+                                        fig_rate = px.bar(
+                                            df_rate_long, 
+                                            x="Provider", 
+                                            y="Rate", 
+                                            color="Category",
+                                            barmode="group",
+                                            title="General vs Senior Interest Rates",
+                                            color_discrete_map={
+                                                "General Rate (%)": "#7197D4",  
+                                                "Senior Rate (%)": "#1E3A8A"   
+                                            },
+                                            hover_data={"Rate": ":.2f"}
+                                        )
+                                        fig_rate.update_layout(
+                                            yaxis_title="Interest Rate (%)",
+                                            legend_title="Category",
+                                            xaxis_title="Provider"
+                                        )
+                                        st.plotly_chart(fig_rate, use_container_width=True)
+
+                                    with col2:
+                                        st.markdown("### Maturity Amounts by Provider")
+                                        
+                                        # Reshape data for Plotly
+                                        df_mat_long = df.melt(
+                                            id_vars="Provider", 
+                                            value_vars=["General Maturity", "Senior Maturity"],
+                                            var_name="Category", 
+                                            value_name="Amount"
+                                        )
+                                        
+                                        fig_mat = px.bar(
+                                            df_mat_long, 
+                                            x="Provider", 
+                                            y="Amount", 
+                                            color="Category",
+                                            barmode="group",
+                                            title="General vs Senior Maturity Amounts",
+                                            color_discrete_map={
+                                                "General Maturity": "#7FACF5",
+                                                "Senior Maturity": "#1E3A8A"
+                                            },
+                                            hover_data={"Amount": ":.2f"}
+                                        )
+                                        fig_mat.update_layout(
+                                            yaxis_title="Maturity Amount",
+                                            legend_title="Category",
+                                            xaxis_title="Provider"
+                                        )
+                                        st.plotly_chart(fig_mat, use_container_width=True)
+                            
+                            st.session_state.messages.append({"role": "assistant", "content": result.raw})
+                        else:
+                            st.markdown(result.raw)
+                            st.session_state.messages.append({"role": "assistant", "content": result.raw})
+
+                except Exception as e:
+                    st.error(f"An error occurred: {str(e)}")
+                    st.exception(e)
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Database Records")
+
+def load_fd_table() -> pd.DataFrame:
+    if not DB_PATH.exists(): return pd.DataFrame()
     try:
-
-        status_text.text("Analyzing your request to extract investment details...")
-        progress_bar.progress(10)
-
-        with st.spinner("Processing... This may take 2-3 minutes. Please wait."):
-            result = run_crew(user_query)
-
-        progress_bar.progress(80)
-        status_text.text("Preparing visualizations...")
-
-        progress_bar.progress(100)
-        #status_text.text("Analysis complete!")
-
-        st.markdown("---")
-        st.markdown('<h2 class="sub-header">Analysis Report</h2>', unsafe_allow_html=True)
-
-        st.markdown(result.raw)
-
-        st.markdown("---")
-        st.markdown('<h2 class="sub-header">Financial Projections</h2>', unsafe_allow_html=True)
-
-        if len(result.tasks_output) >= 5:
-            projection_output = result.tasks_output[4].raw
-            safety_output = result.tasks_output[3].raw
-
-            projection_data = parse_projection_table(projection_output)
-            safety_map = parse_safety_data(safety_output)
-
-            if not projection_data.empty and safety_map:
-                projection_data['Safety Category'] = projection_data['Provider'].apply(
-                    lambda x: safety_map.get(x.strip(), safety_map.get(x.strip().lower(), "Unknown"))
-                )
-            else:
-                projection_data['Safety Category'] = "Unknown"
-
-            if not projection_data.empty:
-                st.dataframe(projection_data, use_container_width=True)
-
-                col_viz1, col_viz2 = st.columns(2)
-
-                with col_viz1:
-                    st.markdown("### Maturity Amount Comparison")
-                    fig1, ax1 = plt.subplots(figsize=(10, 6))
-
-                    color_map = {'Safe': '#3B82F6', 'Moderate': '#F59E0B', 'Risky': '#EF4444', 'Unknown': '#9CA3AF'}
-                    colors = [color_map.get(cat, '#9CA3AF') for cat in projection_data['Safety Category']]
-
-                    bars = ax1.barh(projection_data['Provider'], projection_data['Maturity Amount'], color=colors)
-                    ax1.set_xlabel('Maturity Amount (INR)')
-                    ax1.set_title('Projected Maturity Amounts by Provider')
-
-                    for bar in bars:
-                        width = bar.get_width()
-                        ax1.text(width * 1.01, bar.get_y() + bar.get_height()/2, 
-                                 f'Rs.{width:,.0f}', ha='left', va='center')
-
-                    plt.tight_layout()
-                    st.pyplot(fig1)
-
-                with col_viz2:
-                    st.markdown("### Interest Rate Distribution")
-                    fig2, ax2 = plt.subplots(figsize=(10, 6))
-                    ax2.bar(projection_data['Provider'], projection_data['Interest Rate (%)'], color=colors)
-                    ax2.set_xlabel('Provider')
-                    ax2.set_ylabel('Interest Rate (%)')
-                    ax2.set_title('Interest Rates by Provider')
-                    ax2.tick_params(axis='x', rotation=45)
-
-                    for i, v in enumerate(projection_data['Interest Rate (%)']):
-                        ax2.text(i, v + 0.05, f'{v}%', ha='center')
-
-                    plt.tight_layout()
-                    st.pyplot(fig2)
-
-                st.markdown("---")
-                st.markdown('<h2 class="sub-header">Safety Overview</h2>', unsafe_allow_html=True)
-
-                safety_counts = projection_data['Safety Category'].value_counts()
-                col_safety1, col_safety2, col_safety3 = st.columns(3)
-
-                with col_safety1:
-                    st.metric("Safe Providers", safety_counts.get('Safe', 0), delta=None)
-                with col_safety2:
-                    st.metric("Moderate Risk", safety_counts.get('Moderate', 0), delta=None)
-                with col_safety3:
-                    st.metric("High Risk", safety_counts.get('Risky', 0), delta=None)
-
-                st.markdown("---")
-                st.markdown('<h2 class="sub-header">Top Recommendations</h2>', unsafe_allow_html=True)
-
-                safe_options = projection_data[projection_data['Safety Category'] == 'Safe']
-                if not safe_options.empty:
-                    top_recommendation = safe_options.loc[safe_options['Interest Rate (%)'].idxmax()]
-                    st.success(f"**Best Safe Option**: {top_recommendation['Provider']} "
-                              f"at {top_recommendation['Interest Rate (%)']}% "
-                              f"(Maturity: Rs.{top_recommendation['Maturity Amount']:,.2f})")
-
-                highest_return = projection_data.loc[projection_data['Interest Rate (%)'].idxmax()]
-                st.info(f"**Highest Return**: {highest_return['Provider']} "
-                       f"at {highest_return['Interest Rate (%)']}% "
-                       f"(Maturity: Rs.{highest_return['Maturity Amount']:,.2f}) - "
-                       f"Safety: {highest_return['Safety Category']}")
-            else:
-                st.warning("Could not generate projection data visualization.")
-        else:
-            st.warning("Crew output structure was not as expected. Unable to visualize details.")
-
+        with sqlite3.connect(DB_PATH) as conn:
+            return pd.read_sql_query("SELECT * FROM fixed_deposit ORDER BY fd_id", conn)
     except Exception as e:
-        st.error(f"An error occurred during analysis: {str(e)}")
-        st.exception(e)
+        st.sidebar.warning(f"Error: {str(e)}")
+        return pd.DataFrame()
 
-elif analyze_button and not user_query:
-    st.warning("Please enter a question to analyze.")
+fd_df = load_fd_table()
+if not fd_df.empty:
+    st.sidebar.dataframe(fd_df, use_container_width=True)
+else:
+    st.sidebar.info("No FD records found.")
+
+if st.sidebar.button("Refresh Data"):
+    st.rerun()
+
+st.sidebar.markdown("---")
+if st.sidebar.button("Reset Session / Clear Chat"):
+    reset_session()
