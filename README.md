@@ -1,115 +1,93 @@
 
-# 🏦 Fixed Deposit Advisor
-
-An AI-powered financial advisory application that helps you find the best Fixed Deposit (FD) options in India. This tool uses a multi-agent system (CrewAI) and NVIDIA NIMs to analyze interest rates, assess institutional safety, and calculate financial projections based on natural language queries.
-
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
-![Streamlit](https://img.shields.io/badge/Streamlit-1.2+-red.svg)
-![CrewAI](https://img.shields.io/badge/CrewAI-Latest-green.svg)
-
-## ✨ Features
-
-*   **Natural Language Queries**: Simply ask questions like *"What is the maturity amount for 1 Lakh over 5 years?"*
-*   **Real-Time Market Research**: Automatically searches the web for the latest FD interest rates.
-*   **Safety Analysis**: Categorizes providers (Banks/NBFCs) into **Safe**, **Moderate**, or **Risky** based on credit ratings and news.
-*   **Financial Projections**: Calculates maturity amounts and interest earned using quarterly compounding.
-*   **Visual Dashboards**: Interactive charts comparing maturity amounts and interest rates.
-*   **Comprehensive Reports**: Generates in-depth Markdown reports covering market news, risk analysis, and strategic recommendations.
-
-## 🏗️ Architecture
-
-This application utilizes **CrewAI** to orchestrate a team of specialized AI agents:
-
-1.  **Manager Agent**: Routes user queries to the appropriate workflow (Analysis vs. Research).
-2.  **Query Parser**: Extracts investment amount and tenure from natural text.
-3.  **Market Scanner**: Searches for the highest current interest rates.
-4.  **Financial Researcher**: Gathers detailed news and summaries about providers.
-5.  **Risk Analyst**: Evaluates safety based on credit ratings and financial health.
-6.  **Financial Calculator**: Computes precise projections.
-7.  **Investment Strategist**: Synthesizes all data into a final actionable report.
-
-The app is powered by **NVIDIA's LLMs** for fast, intelligent reasoning.
-
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 
-*   Python 3.8 or higher
-*   An NVIDIA API Key (Get one free at [build.nvidia.com](https://build.nvidia.com/))
+-   Python 3.10+
+-   NVIDIA API Key (Get one from [NVIDIA NIM](https://build.nvidia.com/))
+-   SMTP credentials (optional, for email features)
 
 ### Installation
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/your-username/fixed-deposit-advisor.git
-    cd fixed-deposit-advisor
+    git clone https://github.com/Ganeshkumar-1508/bank_poc_agentic_ai.git
+    cd POC
     ```
 
-2.  **Create a virtual environment** (Recommended)
+2.  **Create a virtual environment and install dependencies**
     ```bash
     python -m venv venv
-    source venv/bin/activate  # On Windows use: venv\Scripts\activate
-    ```
-
-3.  **Install dependencies**
-    Create a `requirements.txt` file with the following content and install it:
-
-    ```text
-    streamlit
-    crewai
-    langchain-nvidia-ai-endpoints
-    langchain-community
-    python-dotenv
-    pandas
-    matplotlib
-    duckduckgo-search
-    ```
-
-    Then run:
-    ```bash
+    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
     pip install -r requirements.txt
     ```
 
-### Configuration
-
-1.  Create a `.env` file in the root directory of the project.
-2.  Add your NVIDIA API Key:
-
+3.  **Set up Environment Variables**
+    Create a `.env` file in the root directory:
     ```env
-    NVIDIA_API_KEY=nvapi-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    NVIDIA_API_KEY=nvapi-xxxx...
+    
+    # Optional: For Email functionality
+    SMTP_SERVER=smtp.gmail.com
+    SMTP_PORT=587
+    SMTP_USER=your-email@gmail.com
+    SMTP_PASSWORD=your-app-password
     ```
 
-## 🎮 Usage
+4.  **Initialize the Database**
+    Run the seed script to create the `bank_poc.db` database and populate it with dummy data.
+    > **Note**: Ensure you have a `kyc_validation.py` file if required by `seed_dummy_data.py`, or modify the seed script to run without it if strictly testing.
 
-Run the Streamlit application:
+    ```bash
+    python seed_dummy_data.py
+    ```
 
-```bash
-streamlit run app.py
-```
+5.  **Run the Application**
+    ```bash
+    streamlit run app.py
+    ```
 
-The application will open in your default web browser (usually `http://localhost:8501`).
+##  Usage Scenarios
 
-**Example Queries:**
-*   *"I want to invest 500,000 INR for 2 years. Show me the best options."*
-*   *"Compare FD rates for senior citizens for a 3-year tenure."*
-*   *"List the top 10 FD providers and analyze their safety."*
+Once the app is running, you can interact with it using natural language:
 
-## 📂 Project Structure
+### 1. Market Analysis & Recommendations
+-   **Input**: *"I have 5 lakhs to invest for 2 years. Compare options for HDFC, SBI, and ICICI."*
+-   **Result**: The Agent crew will search for current rates, calculate maturity amounts, assess risk based on news, and generate a detailed report with interactive charts.
 
-```text
-.
-├── app.py              # Streamlit frontend, visualization, and parsing logic.
-├── fd_crew.py          # CrewAI agents, tasks, and workflow orchestration.
-├── .env                # Environment variables (API Keys).
-└── README.md           # This file.
-```
+### 2. Customer Onboarding
+-   **Input**: *"I want to open a Fixed Deposit."* or *"I am an existing user with account 100000000001 and want to book an FD."*
+-   **Flow**:
+    1.  The Agent determines if you are a new or existing customer.
+    2.  It asks for required details (Name, PAN, Amount, Tenure) conversationally.
+    3.  It automatically fetches the latest interest rate for the requested bank.
+    4.  It executes the backend transaction (deducting balance, creating FD record).
+    5.  It generates a PDF and emails it to you (if SMTP is configured).
 
-## ⚠️ Disclaimer
+### 3. Database Queries
+-   **Input**: *"Show me all active FDs."* or *"What is the total balance of user Amit Sharma?"*
+-   **Result**: The DB Agent writes SQL queries to fetch and display the data from the local SQLite database.
 
-> **This tool is for educational and informational purposes only.**
-> 
-> The data provided (interest rates, safety ratings, and projections) is generated by AI and may not always reflect real-time market conditions or accurate financial advice. Please consult with a qualified financial advisor before making any investment decisions.
+##  The Agent Crew
 
-## 🤝 Contributing
+The system uses a **Manager Agent** to route queries to the appropriate sub-teams:
 
-Contributions, issues, and feature requests are welcome!
+1.  **Analysis Team**: `Query Parser` → `Search Agent` → `Researcher` → `Risk Analyst` → `Projection Agent` → `Strategist`.
+2.  **Onboarding Team**: `Onboarding Agent` (Collects info) → `Email Specialist` (Sends PDF).
+3.  **Database Team**: `DB Agent` (SQL Expert).
+
+## Database Schema
+
+The application uses a local SQLite database (`bank_poc.db`) with the following key tables:
+-   `users`: Customer details.
+-   `accounts`: Financial balances.
+-   `fixed_deposit`: FD records linked to users.
+-   `kyc_verification`: KYC status.
+-   `address`: Customer addresses.
+
+## Disclaimer
+
+This project is for demonstration and educational purposes only. Financial data is fetched from public search results and may not be accurate. Use the code responsibly and verify all financial logic before applying it to real-world scenarios.
+
+---
+Built using CrewAI and Streamlit.
