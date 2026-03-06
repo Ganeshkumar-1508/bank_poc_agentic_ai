@@ -1,281 +1,460 @@
+# app.py
 import os
 import re
+import sqlite3
+import json
+import random
 import pandas as pd
 import streamlit as st
-import json
-import matplotlib.pyplot as plt
+import plotly.express as px  
+import altair as alt
+from pathlib import Path
 from dotenv import load_dotenv
-from fd_crew import run_crew
-from database_manager import save_user_data
+from streamlit_echarts import st_echarts
+from datetime import datetime, timedelta
+from crews import run_crew, FixedDepositCrews
+from tools import extract_json_balanced
 
 load_dotenv()
+DB_PATH = Path(__file__).resolve().parent / "bank_poc.db"
 
-# --- Helper Functions ---
-def parse_projection_table(projection_text: str) -> pd.DataFrame:
-    data = []
-    try:
-        clean_text = projection_text.replace("```csv", "").replace("```", "").strip()
-        lines = clean_text.split('\n')
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-        for line in lines:
-            if line.strip() and not line.lower().startswith('provider'):
-                parts = [part.strip() for part in line.split(',')]
-                if len(parts) >= 7:
-                    def parse_val(val_str):
-                        val_str = val_str.replace('%', '').replace('₹', '').replace(',', '').strip()
-                        try:
-                            return float(val_str)
-                        except ValueError:
-                            return 0.0
-
-                    data.append({
-                        'Provider': parts[0],
-                        'General Rate (%)': parse_val(parts[1]),
-                        'Senior Rate (%)': parse_val(parts[2]),
-                        'General Maturity': parse_val(parts[3]),
-                        'Senior Maturity': parse_val(parts[4]),
-                        'General Interest': parse_val(parts[5]),
-                        'Senior Interest': parse_val(parts[6])
-                    })
-        return pd.DataFrame(data)
-    except Exception as e:
-        st.warning(f"Could not parse projection table: {str(e)}")
-        return pd.DataFrame()
-
-
-def parse_safety_data(safety_text: str) -> dict:
-    safety_map = {}
-    try:
-        lines = safety_text.split('\n')
-        for line in lines:
-            if "Provider:" in line and "Category:" in line:
-                provider_part = line.split("Provider:")[1].split(",")[0].strip()
-                category_part = line.split("Category:")[1].split(",")[0].strip()
-                safety_map[provider_part] = category_part
-    except Exception as e:
-        st.warning(f"Could not parse safety data: {str(e)}")
-    return safety_map
-
-
-def parse_all_news_sources(research_text: str) -> dict:
-    providers_data = {}
-    blocks = [b for b in research_text.split("Provider:") if b.strip()]
-    for block in blocks:
-        lines = block.split('\n')
-        provider_name = lines[0].strip()
-        news_items = []
-        for line in lines[1:]:
-            if "News:" in line and "URL:" in line:
-                try:
-                    parts = line.split("URL:")
-                    headline_part = parts[0].replace("News:", "").strip()
-                    url_part = parts[1].strip()
-                    news_items.append({"headline": headline_part, "url": url_part})
-                except Exception:
-                    continue
-        if provider_name and news_items:
-            providers_data[provider_name] = news_items
-    return providers_data
-
-
-# --- Page Configuration ---
 st.set_page_config(
-    page_title="FD Advisor with AML",
-    page_icon="🛡️",
+    page_title="Fixed Deposit Advisor",
     layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 st.markdown("""
 <style>
     .main-header { font-size: 2.5rem !important; color: #1E3A8A; margin-bottom: 1rem; }
-    .chat-message { padding: 1rem; border-radius: 0.5rem; margin-bottom: 1rem; }
+    .sub-header { font-size: 1.5rem; color: #3B82F6; margin-top: 1rem; margin-bottom: 0.5rem; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-header">FD Advisor & AML Check</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-header">Fixed Deposit Advisor</h1>', unsafe_allow_html=True)
 
-if not os.getenv("NVIDIA_API_KEY"):
-    st.error("NVIDIA_API_KEY not found in environment variables!")
-    st.stop()
-
-# --- Session State Initialization ---
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": (
-            "Hello! I can help you find the best Fixed Deposit options. "
-            "Before we proceed, I need to collect some details for KYC/AML verification."
-        )
-    })
 
-if "user_data" not in st.session_state:
-    st.session_state.user_data = {
-        "name": None, "dob": None, "address": None,
-        "pan": None, "phone": None, "email": None, "account_number": None
-    }
+if "last_analysis_data" not in st.session_state:
+    st.session_state.last_analysis_data = None
 
-if "kyc_complete" not in st.session_state:
-    st.session_state.kyc_complete = False
+def reset_session():
+    st.session_state.messages = []
+    if "ONBOARDING_FLOW" in st.session_state:
+        del st.session_state["ONBOARDING_FLOW"]
+    if "last_analysis_data" in st.session_state:
+        del st.session_state["last_analysis_data"]
+    st.rerun()
 
-if "aml_checked" not in st.session_state:
-    st.session_state.aml_checked = False
+# --- TABS ---
+tab1, tab2 = st.tabs(["FD Advisor", "Peer Analysis"])
 
-if "last_analysis_result" not in st.session_state:
-    st.session_state.last_analysis_result = None
+# =========================================================================
+# TAB 1: Original FD Advisor Chat Interface
+# =========================================================================
+with tab1:
+    for idx, message in enumerate(st.session_state.messages):
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            if "chart_option" in message:
+                st_echarts(options=message["chart_option"], height="400px", key=f"hist_viz_{idx}")
 
-# --- Chat History ---
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+    user_input = st.chat_input("Ask about FDs, check your data, or say 'Open an account'")
 
-# --- Visualization Panel ---
-# FIX 5: `last_analysis_result` is now actually populated (see below), so this
-#         block will execute correctly instead of always being skipped.
-if st.session_state.last_analysis_result:
-    st.markdown("---")
-    st.markdown("### 📊 Financial Visualizations")
-    viz_df = st.session_state.last_analysis_result['df']
-    news_map = st.session_state.last_analysis_result['news']
+    if user_input:
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
-    if not viz_df.empty:
-        col_viz1, col_viz2 = st.columns(2)
-
-        with col_viz1:
-            st.markdown("### Maturity Amount Comparison")
-            fig1, ax1 = plt.subplots(figsize=(10, 6))
-            providers = viz_df['Provider']
-            gen_maturity = viz_df['General Maturity']
-            sen_maturity = viz_df['Senior Maturity']
-            x = range(len(providers))
-            width = 0.35
-            rects1 = ax1.barh([i - width/2 for i in x], gen_maturity, width, label='General', color='#60A5FA')
-            rects2 = ax1.barh([i + width/2 for i in x], sen_maturity, width, label='Senior', color='#1E40AF')
-            ax1.set_xlabel('Maturity Amount (INR)')
-            ax1.set_yticks(x)
-            ax1.set_yticklabels(providers)
-            ax1.legend()
-            ax1.bar_label(rects1, padding=3, fmt='Rs.%0.0f')
-            ax1.bar_label(rects2, padding=3, fmt='Rs.%0.0f')
-            plt.tight_layout()
-            st.pyplot(fig1)
-
-        with col_viz2:
-            st.markdown("### Interest Rate Distribution")
-            fig2, ax2 = plt.subplots(figsize=(10, 6))
-            gen_rate = viz_df['General Rate (%)']
-            sen_rate = viz_df['Senior Rate (%)']
-            rects1 = ax2.bar([i - width/2 for i in x], gen_rate, width, label='General Rate', color='#60A5FA')
-            rects2 = ax2.bar([i + width/2 for i in x], sen_rate, width, label='Senior Rate', color='#1E40AF')
-            ax2.set_ylabel('Interest Rate (%)')
-            ax2.set_xticks(x)
-            ax2.set_xticklabels(providers, rotation=45, ha='right')
-            ax2.legend()
-            ax2.bar_label(rects1, padding=3, fmt='%0.1f%%')
-            ax2.bar_label(rects2, padding=3, fmt='%0.1f%%')
-            plt.tight_layout()
-            st.pyplot(fig2)
-
-    if news_map:
-        st.markdown("### 📰 Latest News")
-        for provider, items in news_map.items():
-            with st.expander(f"News for {provider}"):
-                for item in items:
-                    st.markdown(f"- [{item['headline']}]({item['url']})")
-
-
-# --- Chat Input & Logic ---
-if prompt := st.chat_input("Type your message here..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        with st.spinner("Processing..."):
-            current_context = {
-                "kyc_complete": st.session_state.kyc_complete,
-                "aml_checked": st.session_state.aml_checked,
-                "user_data": st.session_state.user_data
-            }
-
-            # FIX 6: run_crew now returns (CrewOutput, tasks_output | None).
-            #         Unpack both values so we can access tasks_output for visualizations.
-            result, tasks_output = run_crew(prompt, current_context)
-            response_text = result.raw
-
-            # --- KYC: Incremental data saving on every KYC turn ---
-            # The agent emits PARTIAL_DATA: {...} after every response so we can
-            # persist each field as it is collected, keeping current_data accurate
-            # for the next turn and preventing the agent from re-asking old questions.
-            if not st.session_state.kyc_complete:
-                # Prefer COLLECTION_COMPLETE; fall back to PARTIAL_DATA
-                if "COLLECTION_COMPLETE" in response_text:
-                    marker = "COLLECTION_COMPLETE"
-                elif "PARTIAL_DATA" in response_text:
-                    marker = "PARTIAL_DATA"
-                else:
-                    marker = None
-
-                if marker:
+        has_api_key = bool(os.getenv("NVIDIA_API_KEY"))
+        if not has_api_key:
+            with st.chat_message("assistant"):
+                st.warning("NVIDIA_API_KEY not found. Please configure it to use AI features.")
+        else:
+            with st.chat_message("assistant"):
+                with st.spinner("Processing..."):
                     try:
-                        raw_json = response_text.split(marker)[-1].strip()
-                        # Strip optional colon that the agent may include
-                        raw_json = raw_json.lstrip(":").strip()
-                        raw_json = re.sub(r'```json|```', '', raw_json).strip()
-                        # Extract only the first JSON object found
-                        json_match = re.search(r'\{.*?\}', raw_json, re.DOTALL)
-                        if json_match:
-                            partial = json.loads(json_match.group())
-                            # Merge: only overwrite fields that are now non-null
-                            for key, val in partial.items():
-                                if val is not None and str(val).lower() not in ("null", "none", ""):
-                                    st.session_state.user_data[key] = val
+                        viz_keywords = ["plot", "chart", "graph", "visualize", "show me", "donut", "pie", "line", "bar", "break down"]
+                        is_viz_request = any(keyword in user_input.lower() for keyword in viz_keywords)
+
+                        if is_viz_request:
+                            crews = FixedDepositCrews()
+                            if st.session_state.last_analysis_data is not None:
+                                data_json = st.session_state.last_analysis_data.to_json(orient="records")
+                            else:
+                                data_json = "None"
+                            
+                            viz_crew = crews.get_visualization_crew(user_input, data_json)
+                            viz_result = viz_crew.kickoff()
+                            
+                            try:
+                                chart_option = extract_json_balanced(viz_result.raw)
+                                st.markdown("I've generated the chart for you below.")
+                                st_echarts(options=chart_option, height="400px", key=f"viz_chat_{len(st.session_state.messages)}")
+                                st.session_state.messages.append({
+                                    "role": "assistant", 
+                                    "content": f"Generated chart based on: {user_input}",
+                                    "chart_option": chart_option
+                                })
+                            except Exception as e:
+                                st.error(f"Failed to parse chart configuration: {str(e)}")
+                                st.session_state.messages.append({"role": "assistant", "content": "Sorry, I couldn't generate that chart."})
+
+                        elif "ONBOARDING_FLOW" in st.session_state:
+                            conversation_history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
+                            crews = FixedDepositCrews()
+                            data_response = crews.get_data_collection_crew(conversation_history).kickoff()
+                            
+                            st.markdown(data_response.raw)
+                            st.session_state.messages.append({"role": "assistant", "content": data_response.raw})
+
+                            if "DATA_READY" in data_response.raw:
+                                try:
+                                    json_str = data_response.raw.split("DATA_READY:")[1].strip()
+                                    with st.spinner("Performing AML Checks (This may take a moment)..."):
+                                        aml_response = crews.get_aml_execution_crew(json_str).kickoff()
+                                        st.markdown(aml_response.raw)
+                                        st.session_state.messages.append({"role": "assistant", "content": aml_response.raw})
+                                    del st.session_state["ONBOARDING_FLOW"]
+                                except Exception as e:
+                                    st.error(f"Error processing client data: {str(e)}")
+                                    del st.session_state["ONBOARDING_FLOW"]
                         
-                        if marker == "COLLECTION_COMPLETE":
-                            st.session_state.kyc_complete = True
-                            save_user_data("session_" + str(hash(prompt)), st.session_state.user_data)
-                            response_text += "\n\nKYC Complete. Checking Sanctions..."
+                        else:
+                            result = run_crew(user_input)
+                            
+                            if result.raw == "ONBOARDING":
+                                st.session_state["ONBOARDING_FLOW"] = True
+                                st.markdown("I can help with that. Let's start by collecting some details.")
+                                st.session_state.messages.append({"role": "assistant", "content": "I can help with that. Let's start by collecting some details."})
+                                
+                                crews = FixedDepositCrews()
+                                history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
+                                data_resp = crews.get_data_collection_crew(history).kickoff()
+                                st.markdown(data_resp.raw)
+                                st.session_state.messages.append({"role": "assistant", "content": data_resp.raw})
+                            
+                            elif hasattr(result, 'tasks_output') and len(result.tasks_output) >= 5:
+                                st.markdown(result.raw)
+                                
+                                if len(result.tasks_output) >= 5:
+                                    projection_output = result.tasks_output[4].raw
+                                    
+                                    def parse_projection_table(projection_text: str) -> pd.DataFrame:
+                                        try:
+                                            clean_text = projection_output.replace("```csv", "").replace("```", "").strip()
+                                            import io
+                                            df = pd.read_csv(io.StringIO(clean_text))
+                                            required = {"Provider", "General Rate (%)", "Senior Rate (%)",
+                                                        "General Maturity", "Senior Maturity"}
+                                            if not required.issubset(df.columns):
+                                                return pd.DataFrame()
+                                            return df
+                                        except Exception as e:
+                                            return pd.DataFrame()
+
+                                    df = parse_projection_table(projection_output)
+                                    if not df.empty:
+                                        st.session_state.last_analysis_data = df
+                                        st.info("Analysis complete. Switch to the 'Peer Analysis' tab to compare these banks visually.")
+
+                                        def fmt(x):
+                                            if isinstance(x, (int, float)):
+                                                return f"{x:,.2f}"
+                                            return str(x)
+
+                                        styled_df = df.copy()
+                                        for col in ["General Rate (%)", "Senior Rate (%)",
+                                                    "General Maturity", "Senior Maturity",
+                                                    "General Interest", "Senior Interest"]:
+                                            if col in styled_df.columns:
+                                                styled_df[col] = styled_df[col].apply(fmt)
+                                        
+                                        st.dataframe(styled_df, use_container_width=True, key="analysis_df")
+
+                                        col1, col2 = st.columns(2)
+                                        with col1:
+                                            st.markdown("### Interest Rates by Provider")
+                                            df_rate_long = df.melt(id_vars="Provider", value_vars=["General Rate (%)", "Senior Rate (%)"], var_name="Category", value_name="Rate")
+                                            fig_rate = px.bar(df_rate_long, x="Provider", y="Rate", color="Category", barmode="group", title="General vs Senior Interest Rates", color_discrete_map={"General Rate (%)": "#7197D4", "Senior Rate (%)": "#1E3A8A"}, hover_data={"Rate": ":.2f"})
+                                            fig_rate.update_layout(yaxis_title="Interest Rate (%)", legend_title="Category", xaxis_title="Provider")
+                                            st.plotly_chart(fig_rate, use_container_width=True, key="plotly_rate")
+
+                                        with col2:
+                                            st.markdown("### Maturity Amounts by Provider")
+                                            df_mat_long = df.melt(id_vars="Provider", value_vars=["General Maturity", "Senior Maturity"], var_name="Category", value_name="Amount")
+                                            fig_mat = px.bar(df_mat_long, x="Provider", y="Amount", color="Category", barmode="group", title="General vs Senior Maturity Amounts", color_discrete_map={"General Maturity": "#7FACF5", "Senior Maturity": "#1E3A8A"}, hover_data={"Amount": ":.2f"})
+                                            fig_mat.update_layout(yaxis_title="Maturity Amount", legend_title="Category", xaxis_title="Provider")
+                                            st.plotly_chart(fig_mat, use_container_width=True, key="plotly_maturity")
+                                
+                                st.session_state.messages.append({"role": "assistant", "content": result.raw})
+                            else:
+                                st.markdown(result.raw)
+                                st.session_state.messages.append({"role": "assistant", "content": result.raw})
+
                     except Exception as e:
-                        st.warning(f"KYC data parsing failed: {e}")
+                        st.error(f"An error occurred: {str(e)}")
+                        st.exception(e)
 
-            # --- AML Completion Check ---
-            if st.session_state.kyc_complete and not st.session_state.aml_checked:
-                aml_keywords = ["OpenSanctions", "Sanctions", "Clear", "Risk", "Flagged", "No match"]
-                if any(kw in response_text for kw in aml_keywords):
-                    aml_status = "Flagged" if ("Suspicious" in response_text or "High Risk" in response_text) else "Checked"
-                    save_user_data(
-                        "session_" + str(hash(prompt)),
-                        st.session_state.user_data,
-                        {"status": aml_status, "details": response_text}
+
+# =========================================================================
+# TAB 2: Peer Analysis (Updated Layout & Timeline)
+# =========================================================================
+with tab2:
+    if st.session_state.last_analysis_data is None:
+        st.info("No analysis data available yet. Please perform an FD search in the 'FD Advisor' tab first.")
+    else:
+        df = st.session_state.last_analysis_data
+        available_banks = df["Provider"].unique().tolist()
+        default_selection = available_banks[:3] if len(available_banks) > 3 else available_banks
+
+        # --- CONTROLS SECTION ---
+        tickers = st.multiselect(
+            "Banks to Compare",
+            options=available_banks,
+            default=default_selection,
+            placeholder="Select banks to analyze"
+        )
+
+        if not tickers:
+            st.info("Select at least one bank.")
+            st.stop()
+
+        # --- SIMULATION HORIZON SECTION ---
+        st.markdown("---")
+        st.markdown("### Simulation Horizon")
+        
+        horizon_map = {
+            "1 Year": 12,
+            "2 Years": 24,
+            "3 Years": 36,
+            "5 Years": 60
+        }
+        
+        # Default to 1 Year, or try to infer from the data if possible
+        # Since the analysis is specific to a query, we offer projections for standard tenures
+        horizon = st.pills(
+            "Time Horizon",
+            options=list(horizon_map.keys()),
+            default="2 Years" # Default to 2 years for better visualization
+        )
+        
+        selected_tenure_months = horizon_map[horizon]
+
+        # --- VISUALIZATION SECTION (Full Width) ---
+        if True:
+            # --- DATA PREPARATION: Simulate Growth Curves with Timeline ---
+            
+            # Determine Principal from the first valid row (Maturity - Interest)
+            if "General Maturity" in df.columns and "General Interest" in df.columns:
+                # Use the first row's data to estimate principal
+                principal = df.iloc[0]["General Maturity"] - df.iloc[0]["General Interest"]
+            else:
+                principal = 100000 # Fallback
+
+            # Generate Date Timeline
+            start_date = datetime.now()
+            months = list(range(0, selected_tenure_months + 1))
+            
+            growth_records = []
+
+            for _, row in df.iterrows():
+                bank_name = row["Provider"]
+                rate = row["General Rate (%)"] / 100.0 # Using General Rate for visualization
+                
+                for m in months:
+                    # Calculate Date for timeline
+                    # Approximate month addition using timedelta(days=30) for visualization purposes
+                    current_date = start_date + timedelta(days=30*m)
+                    
+                    # Compound Interest Formula: A = P(1 + r/n)^(nt)
+                    # Assuming Quarterly Compounding (n=4)
+                    n = 4
+                    t = m / 12
+                    balance = principal * (1 + rate/n) ** (n*t)
+                    interest_earned = balance - principal
+                    
+                    growth_records.append({
+                        "Date": current_date,
+                        "Month": m,
+                        "Bank": bank_name,
+                        "Balance": balance,
+                        "Interest": interest_earned
+                    })
+
+            growth_df = pd.DataFrame(growth_records)
+            selected_growth_df = growth_df[growth_df["Bank"].isin(tickers)]
+
+            # --- 1. BEST / WORST METRICS (Based on Final Month of Simulation) ---
+            final_month_data = selected_growth_df[selected_growth_df["Month"] == selected_tenure_months]
+            
+            if not final_month_data.empty:
+                best_bank = final_month_data.loc[final_month_data["Balance"].idxmax()]
+                worst_bank = final_month_data.loc[final_month_data["Balance"].idxmin()]
+
+                best_pct = ((best_bank["Balance"] - principal) / principal) * 100
+                worst_pct = ((worst_bank["Balance"] - principal) / principal) * 100
+
+                col_metrics = st.columns(2)
+                with col_metrics[0]:
+                    st.metric(
+                        "Best Performer",
+                        best_bank["Bank"],
+                        delta=f"↑ {best_pct:.1f}%",
+                        delta_color="normal"
                     )
-                    st.session_state.aml_checked = True
-                    response_text += "\n\nAML Verification Complete. You can now ask for FD recommendations."
+                with col_metrics[1]:
+                    st.metric(
+                        "Lowest Performer",
+                        worst_bank["Bank"],
+                        delta=f"↑ {worst_pct:.1f}%",
+                        delta_color="normal"
+                    )
+            else:
+                st.warning("Could not calculate metrics for selected horizon.")
 
-            # FIX 7: Replaced the bare `pass` block with actual visualization parsing.
-            #         When the analysis crew runs, tasks_output is not None and contains
-            #         the individual task results we need for charts and news.
-            if st.session_state.kyc_complete and st.session_state.aml_checked and tasks_output:
-                try:
-                    # tasks_output order: parse, search, research, safety, projection, summary
-                    # Index 4 = projection_task, Index 2 = research_task
-                    projection_output = tasks_output[4].raw if len(tasks_output) > 4 else ""
-                    research_output = tasks_output[2].raw if len(tasks_output) > 2 else ""
+            # --- 2. MAIN GROWTH TRAJECTORY CHART (Timeline, Quarterly Segments) ---
+            st.markdown(f"### Growth Trajectory (Principal: ₹{principal:,.0f})")
+            
+            # Ensure we sort by Date for the line chart
+            selected_growth_df = selected_growth_df.sort_values("Date")
 
-                    viz_df = parse_projection_table(projection_output)
-                    news_map = parse_all_news_sources(research_output)
+            base_chart = alt.Chart(selected_growth_df).mark_line().encode(
+                x=alt.X("Date:T", title="Timeline", axis=alt.Axis(format="%Y Q%q")), # Format as Year Q#
+                y=alt.Y("Balance:Q", title="Maturity Amount", axis=alt.Axis(format=",.0f"), scale=alt.Scale(zero=False)),
+                color=alt.Color("Bank:N", legend=alt.Legend(orient="bottom")),
+                tooltip=[alt.Tooltip("Date:T", format="%Y-%m-%d"), "Bank", alt.Tooltip("Balance", format=",.2f")]
+            ).properties(height=400)
+            
+            st.altair_chart(base_chart, use_container_width=True)
 
-                    if not viz_df.empty or news_map:
-                        st.session_state.last_analysis_result = {
-                            "df": viz_df,
-                            "news": news_map
-                        }
-                except Exception as e:
-                    st.warning(f"Could not build visualizations: {e}")
+            st.markdown("---")
+            st.markdown("### Individual Banks vs Peer Average")
 
-            # Strip the internal marker lines before displaying to the user
-            for marker in ("COLLECTION_COMPLETE", "PARTIAL_DATA"):
-                if marker in response_text:
-                    response_text = response_text.split(marker)[0].strip()
+            # --- 3. DETAILED COMPARISON (Fixed Alignment) ---
+            
+            # Check if we have enough banks for Peer Average
+            if len(tickers) <= 1:
+                st.info("Select at least 2 banks to see the Peer Comparison analysis.")
+            else:
+                # Pivot table to easily calculate peer average per month
+                pivot_df = selected_growth_df.pivot(index="Date", columns="Bank", values="Balance")
+                
+                # Process all banks and store chart pairs
+                chart_pairs = []
+                
+                for bank in tickers:
+                    # Prepare Peer Average Data
+                    # Select all columns EXCEPT current bank
+                    other_banks = [b for b in tickers if b != bank]
+                    
+                    peer_avg = pivot_df[other_banks].mean(axis=1)
+                    current_bank_vals = pivot_df[bank]
+                    
+                    comparison_df = pd.DataFrame({
+                        "Date": pivot_df.index,
+                        "Bank": current_bank_vals,
+                        "Peer Average": peer_avg
+                    }).reset_index(drop=True)
 
-            st.markdown(response_text)
-            st.session_state.messages.append({"role": "assistant", "content": response_text})
+                    # CHART 1: Bank vs Peer (Line Chart: Red vs Gray)
+                    chart1_data = comparison_df.melt(id_vars=["Date"], var_name="Series", value_name="Balance")
+                    
+                    chart1 = (
+                        alt.Chart(chart1_data)
+                        .mark_line()
+                        .encode(
+                            x=alt.X("Date:T", title="Timeline", axis=alt.Axis(format="%Y Q%q")),
+                            y=alt.Y("Balance:Q", title="Maturity Amount", axis=alt.Axis(format=",.0f")),
+                            color=alt.Color(
+                                "Series:N",
+                                scale=alt.Scale(domain=["Bank", "Peer Average"], range=["#EF4444", "#94A3B8"]), # Red vs Gray
+                                legend=alt.Legend(orient="bottom"),
+                            ),
+                            tooltip=[alt.Tooltip("Date:T", format="%Y-%m-%d"), "Series", alt.Tooltip("Balance", format=",.2f")]
+                        )
+                        .properties(title=f"{bank} vs Peer Average", height=300)
+                    )
+
+                    # CHART 2: Delta (Area Chart: Bank minus Average)
+                    delta_df = comparison_df.copy()
+                    delta_df["Delta"] = delta_df["Bank"] - delta_df["Peer Average"]
+
+                    chart2 = (
+                        alt.Chart(delta_df)
+                        .mark_area(opacity=0.6)
+                        .encode(
+                            x=alt.X("Date:T", title="Timeline", axis=alt.Axis(format="%Y Q%q")),
+                            y=alt.Y("Delta:Q", title="Difference (Bank - Average)"),
+                            color=alt.condition(
+                                alt.datum.Delta > 0,
+                                alt.value("#2563EB"), # Blue for positive
+                                alt.value("#EF4444")  # Red for negative
+                            ),
+                            tooltip=[alt.Tooltip("Date:T", format="%Y-%m-%d"), alt.Tooltip("Delta", format=",.2f")]
+                        )
+                        .properties(title=f"{bank} minus Peer Average", height=300)
+                    )
+                    
+                    chart_pairs.append((chart1, chart2))
+                
+                # Display chart pairs in rows of 2
+                for i in range(0, len(chart_pairs), 2):
+                    col1, col2 = st.columns(2, gap="medium")
+                    
+                    # First chart pair
+                    with col1:
+                        with st.container(border=True):
+                            st.altair_chart(chart_pairs[i][0], use_container_width=True)
+                            st.altair_chart(chart_pairs[i][1], use_container_width=True)
+                    
+                    # Second chart pair (if exists)
+                    if i + 1 < len(chart_pairs):
+                        with col2:
+                            with st.container(border=True):
+                                st.altair_chart(chart_pairs[i + 1][0], use_container_width=True)
+                                st.altair_chart(chart_pairs[i + 1][1], use_container_width=True)
+
+        st.markdown("---")
+        st.markdown("### Raw Data Comparison")
+        
+        display_cols = ["Provider", "General Rate (%)", "General Maturity", "General Interest"]
+        valid_cols = [col for col in display_cols if col in df.columns]
+        
+        st.dataframe(
+            df[df["Provider"].isin(tickers)][valid_cols], 
+            use_container_width=True
+        )
+
+
+# Sidebar Database Logic (Preserved from original)
+st.sidebar.markdown("---")
+st.sidebar.markdown("### Database Records")
+
+def load_fd_table() -> pd.DataFrame:
+    if not DB_PATH.exists(): return pd.DataFrame()
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            return pd.read_sql_query("SELECT * FROM fixed_deposit ORDER BY fd_id", conn)
+    except Exception as e:
+        st.sidebar.warning(f"Error: {str(e)}")
+        return pd.DataFrame()
+
+fd_df = load_fd_table()
+if not fd_df.empty:
+    st.sidebar.dataframe(fd_df, use_container_width=True, key="sidebar_df")
+else:
+    st.sidebar.info("No FD records found.")
+
+if st.sidebar.button("Refresh Data"):
+    st.rerun()
+
+st.sidebar.markdown("---")
+if st.sidebar.button("Reset Session / Clear Chat"):
+    reset_session()

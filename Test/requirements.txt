@@ -8,7 +8,9 @@ numpy
 langchain-community
 langchain
 ddgs
-litellm
+litellm==1.75.3
 litellm[proxy]
 plotly
-dotenv 
+dotenv
+python-dotenv
+pydantic

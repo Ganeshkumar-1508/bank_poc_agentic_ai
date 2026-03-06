@@ -1,8 +1,0 @@
-crewai
-crewai_tools
-duckduckgo_search
-langchain_nvidia_ai_endpoints
-streamlit
-python-dotenv
-pandas
-matplotlib
