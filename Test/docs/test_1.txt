@@ -1,0 +1,408 @@
+{
+   "limit":10,
+   "offset":0,
+   "total":{
+      "value":1547,
+      "relation":"eq"
+   },
+   "results":[
+      {
+         "id":"Q7747",
+         "caption":"Vladimir Putin",
+         "schema":"Person",
+         "properties":{
+            "classification":[
+               "National government (current)"
+            ],
+            "name":[
+               "Vladimir Vladimiroviç Putin",
+               "Putin Vladimir Vladimirovich",
+               "Vladimirs Putins",
+               "ولادیمیر پوتین",
+               "Vladímír Pútín",
+               "भ्लादिमिर पुटिन",
+               "Wladimir Poetin",
+               "ဗလာဒီမီယာ ပူတင်",
+               "ולדימיר פוטין",
+               "PUTIN, Vladimir Vladimirovich",
+               "Vladimir Poutine",
+               "វ៉្លាឌីមៀរ ពូទីន",
+               "Vladimir Vladimirovich Putin",
+               ,
+               "Путін Володимир Володимирович",
+               "Βλαντίμιρ Πούτιν",
+               "Vladimiras Putinas",
+               "弗拉基米尔·普京",
+               "Уладзімір Уладзіміравіч Пуцін",
+               "ولادیمیر پوٹن",
+               "ವ್ಲಾದಿಮಿರ್ ಪುತಿನ್",
+               "Vladimir Vladimirovič Putin",
+               "Vladimir Vladimirovich POUTINE",
+               "Vladimir Putin",
+               "Vladím     mir Putin",
+               "Влади́мир Влади́мирович ПУ́ТИН",
+               "Vladimir V. Putin",
+               "ভ্লাদিমির পুতিন",
+               "Wladimir Wladimirowitsch Putin",
+               "Wladimir Putin",
+               "ვლადიმერ პუტინი",
+               "Владимир Владимирович Путин",
+               "Vlagyimir Vlagyimirovics Putyin",
+               "Владимир Путин",
+               "Путин Владимир    р Владимирович",
+               "Vladimir Poetin",
+               "Vladimir Vladimirovitj PUTIN",
+               "블라디미르 푸틴",
+               "ウラジーミル・プーチン",
+               "Władimir Putin",
+               "فلاديمير بوتين",
+               "Vladimir Vladimirovich PUTIN",
+               "Վլադիմիր Պուտին",
+               "व्लादिमीर पुतिन"
+            ],
+            "topics":[
+               "corp.disqual",
+               "role.pep",
+               ,
+               "sanction",
+               "poi",
+               "debarment",
+               "export.control",
+               "wanted"
+            ],
+            "createdAt":[
+               "2022-02-25"
+            ],
+            "birthDate":[
+               "1952-10-07"
+            ],
+            "notes":[
+               "Disqualified",
+               "As the President of Russia, he shapes the policy of the Russian government, which threatens the territorial integrity, sovereignty and independence of Ukraine.",
+               "President of the Russian Federation",
+               "2nd and 4th President of Russia (2000–2008, 2012–present), 7th and 11th Prime Minister of Russia (1999–2000, 2008–2012), Director of the Federal Security Service (1998–1999) and Deputy Mayor of Saint Petersburg (1994–1996)",
+               "President of the Russian Federation. Corruption.",
+               "Function: President of the Russian Federation",
+               "Vladimir Poutine est le président de la Fédération de Russie. Le 22 février 2022, il a signé un décret reconnaissant l'\"indépendance et la souveraineté\" des zones des oblasts ukrainiens de Donetsk et de Louhansk non contrôlées par le gouvernement, et a ordonné le déploiement des forces armées russes dans ces zones. Le 24 février 2022, il a ordonné le lancement d'une opération militaire en Ukraine et les forces armées russes ont commencé à attaquer l'Ukraine. Cette attaque est une violation flagrante de l'intégrité territoriale, de la souveraineté et de l'indépendance de l'Ukraine. Vladimir Poutine est responsable d'actions compromettant l'intégrité territoriale, la souveraineté et l'indépendance de l'Ukraine, ou la stabilité ou la sécurité en Ukraine, et soutient activement ces actions.",
+               "NOT SUBJECT TO TRAVEL RESTRICTIONS ACCORDING TO ARTICLE 29(1)",
+               "The Director Disqualification Sanction was imposed on 09/04/2025.",
+               "(also VLADIMIR VLADIMIROVICH PUTIN)",
+               "(also VLADIMIR PUTIN)",
+               "(Date of UN designation: 2022-02-25)",
+               "Vladimir Putin is the President of the Russian Federation. On 22 Feb 2022, he signed a decree recognising the \"independence and sovereignty\" of the non-government-controlled areas of the Donetsk and Luhansk oblasts of Ukraine, and ordered the Russian armed forces into those areas. On 24 Feb 2022, he ordered a military operation in Ukraine and Russian armed forces began an attack on Ukraine. That attack is a blatant violation of the territorial integrity, sovereignty and independence of Ukraine. Vladimir Putin is responsible for and actively supporting actions undermining the territorial integrity, sovereignty and independence of Ukraine, as well as stability and security in Ukraine."
+            ],
+            "programId":[
+               "GB-RUS",
+               "UA-WS-MARE",
+               "NZ-RSA2022",
+               "SECO-UKRAINE",
+               "UA-SA1644",
+               "CA-SEMA",
+               "EU-UKR",
+               "AU-RUSSIA",
+               "US-RUSHAR",
+               "UA-WS-EXECUTIVES"
+            ],
+            "birthPlace":[
+               "Leningrad",
+               "Russia",
+               "Leningrad, RSFSR, USSR",
+               "Leningrad (now Saint-Petersburg)",
+               "レニングラード（現サンクトペテルブルク）（ロシア）",
+               "V.F. Snegiryov Maternity Hospital No.6",
+               "Leningrad (now Saint-Petersburg), RUSSIAN FEDERATION",
+               "St Petersburg (then Leningrad)",
+               "Saint Petersburg",
+               "м. Санкт-Петербург, Російська Федерація",
+               "Saint Petersburg, Russia",
+               "Saint-Petersburg, Russian Federation",
+               "Leningrad, Russia",
+               "Léningrad, aujourd'hui Saint-Pétersbourg : RUSSIE",
+               "Léningrad, aujourd'hui Saint-Pétersbourg"
+            ],
+            "sourceUrl":[
+               "https://war-sanctions.gur.gov.ua/executives/persons/880",
+               "https://www.cia.gov/resources/world-leaders/foreign-governments/russia",
+               "https://find-and-update.company-information.service.gov.uk/disqualified-officers/natural/CoTYy6JdAkw2xBkbaHhn_4ZOVFs",
+               "https://war-sanctions.gur.gov.ua/transport/persons/880",
+               "https://home.treasury.gov/news/press-releases/jy0624",
+               "https://sanctionssearch.ofac.treas.gov/Details.aspx?id=35096",
+               "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=uriserv%3AOJ.L_.2022.053.01.0001.01.ENG&toc=OJ%3AL%3A2022%3A053%3ATOC",
+               "https://gels-avoirs.dgtresor.gouv.fr/Gels/RegistreDetail?idRegistre=4271",
+               "https://wikispooks.com/wiki/Vladimir_Putin",
+               "https://www.cia.gov/the-world-factbook/countries/russia"
+            ],
+            "position":[
+               "Deputy Chairman of the Government of the Russian Federation (1999-1999)",
+               "Prime Minister of Russia (2008-2012)",
+               "Supreme Commander-in-Chief of the Armed Forces of the Russian Federation (2012-)",
+               "President of the Russian Federation",
+               "Permanent member of the Security Council of Russia",
+               "recruiter",
+               "President of Russia (2000-2008)",
+               "president for life",
+               "voorzitter van de Veiligheidsraad van de Russische Federatie",
+               "président de la Fédération de Russie",
+               "ロシア連邦大統領",
+               "party leader",
+               "President of Russia (2012-)",
+               "Director of the Federal Security Service (1998-1999)",
+               "Chairman of the Council of CIS Heads of State (2000-2003)",
+               "голова of the Security Council of the russian federation",
+               "chairperson (2012-)",
+               "chairman of the military-industrial commission",
+               "Chairman of the Military Industrial Commission of the russian federation",
+               "Chairman of the Council of CIS Heads of State (2017-2017)",
+               "Chairman of the State Council of the russian federation",
+               "President",
+               "Президент Російської Федерації",
+               "Acting President of Russia (1999-2000)",
+               "chairperson",
+               "Chairman of the Council of CIS Heads of State (2004-2006)",
+               "president of the russian federation",
+               "Supreme Commander-in-Chief of the Armed Forces of the russian federation",
+               "Supreme Commander-in-Chief of the Armed Forces of the Russian Federation (1999-2008)",
+               "Prime Minister of Russia (1999-2000)",
+               "party leader (1995-1997)",
+               "Chairman of the Council of CIS Heads of State (2024-2024)",
+               "Secretary of the Security Council of Russia (1999-1999)",
+               "Chairman of the Commission on Military-Technical Cooperation of the russian federation with foreign countries"
+            ],
+            "country":[
+               "ru"
+            ],
+            "gender":[
+               "male"
+            ],
+            "alias":[
+               "Presidente Putin",
+               "Vladímir Vladímirovich Putin",
+               "블라디미르 블라디미로비치 푸틴",
+               "Президент Путин",
+               "Wladimir Wladimirowitsj Poetin",
+               "владимир владимирович путин",
+               "Presiden Putin",
+               "Vladímir Vladímirovitx Putin",
+               "Βλαντίμιρ Βλαντίμιροβιτς Πούτιν",
+               "Władimir Władimirowicz Putin",
+               "Președintele Putin",
+               "فلاديمير بوتن",
+               "Vladimir Vladimirovich Putin",
+               "Vlagyimir Putyin",
+               "Vladimír Vladimirovič Putin",
+               "Vladimir Vladimirovitj Putin",
+               "Vladimir Vladimirovici Putin",
+               "فلاديمير فلاديميروفيتش بوتين",
+               "Vladimir Vladimirovich POUTINE",
+               "Путин В. В.",
+               "Путин, Владимир Владимирович",
+               "Vladimir Putin",
+               "В. В. Путин",
+               "Путин, Владимир",
+               "Путин Владимир",
+               "Predsjednik Putin",
+               "Vladimír Putin",
+               "Владимир Владимирович Путин",
+               "فلادمير بوتين",
+               "ПУ́ТИН Влади́мир Влади́мирович",
+               "Владимир Путин",
+               "Presidente Vladimir Putin",
+               "Путин Владимир Владимирович",
+               "PUTIN, Vladimir",
+               "Präsident Putin",
+               "فلادمير بوتن",
+               "Уладзімір Пуцін",
+               "Vladimir Vladimiro  ovitch Poutine",
+               "Putin Volodymyr Volodymyrovych",
+               "Putyin elnök"
+            ],
+            "lastName":[
+               "ПУ́ТИН",
+               "POUTINE",
+               "Putin",
+               "PUTIN",
+               "Путин"
+            ],
+            "firstName":[
+               "Владимир",
+               "Vladimir Vladimirovich",
+               "Vladimir",
+               "Влади́мир"
+            ],
+            "modifiedAt":[
+               "2023-03-21"
+            ],
+            "fatherName":[
+               "Vladimiro ovich",
+               "Влади́мирович"
+            ],
+            "birthCountry":[
+               "ru"
+            ],
+            "address":[
+               "Novo-Ogaryevo Moscow Region Russia",
+               "Bocharov Ruchey Sochi Russia",
+               "Moscow, Russia",
+               "Moscow",
+               "Valdai Novgorod Region Russia",
+               "Valdai, Novgorod Region",
+               "Novo-Ogaryevo, Moscow Region",
+               "Kremllin, Moscow",
+               "Kremlin Moscow Russia",
+               "Bocharov Ruchey, Sochi"
+            ],
+            "nationality":[
+               "ru"
+            ],
+            "addressEntity":[
+               "NK-3Kw6ZCXo8SddN8PJ58uuvE",
+               "addr-6a580aed4f28c6a4fadbd12cdda90fa720eb6e98",
+               "addr-50939bdd8b6a2a9653e2cb3ad02d4f241a456895",
+               "addr-299cf3828103aed1c5b8546b69fbe62e1aae0da9",
+               "addr-90f75394e3b7cf5a2c0d6d7f1317d995244742f5"
+            ],
+            "description":[
+               "Prseident of the Russian Federation, who gifted weapons to Kim Jong Un during his visit to Russia in September 2023."
+            ],
+            "middleName":[
+               "Vladimirovich",
+               "Владимирович"
+            ],
+            "citizenship":[
+               "ru",
+               "suhh"
+            ],
+            "taxNumber":[
+               "711813038431"
+            ],
+            "title":[
+               "His Excellency"
+            ],
+            "uniqueEntityId":[
+               "NYRVMEKYU3U9"
+            ],
+            "wikidataId":[
+               "Q7747"
+            ],
+            "weakAlias":[
+               "ヴラジーミル・ヴラジーミロヴィッチ・プーチン",
+               "В.Путин",
+               "ヴラジーミル・ヴラジ ーミロヴィチ・プーチン",
+               "ウラジーミル・ウラジーミロヴィチ・プーチン",
+               "プーチン",
+               "ヴラジーミル・プーチン",
+               "Platov",
+               "뿌찐",
+               "ߔߑߟߊߕߐߝ߭",
+               "弗拉基米尔·弗拉基米罗维奇·普京",
+               "Платов",
+               "Путин",
+               "푸틴",
+               "ပူတင်",
+               "بوتين",
+               "普丁",
+               "普京",
+               "بوتن",
+               "পুতিন",
+               "פוטין"
+            ],
+            "e   education":[
+               "Candidate of Economic Sciences (1997)",
+               "School 281 (1968-1970)",
+               "School 193 (1960-1968)",
+               "St. Petersburg Institute of the FSB of Russia",
+               "Saint Petersburg Mining University (-1997)",
+               "Faculty of Law, Saint Petersburg State University (1970-1975)",
+               "Academy of the Federal Security Service of the Russian Federation",
+               "Academy of Foreign Intelligence",
+               "Saint Petersburg State University"
+            ],
+            "political":[
+               "Our Home – Russia",
+               "Communist Party of the Soviet Union",
+               "United Russia"
+            ],
+            "website":[
+               "http://putin.kremlin.ru/"
+            ],
+            "religion":[
+               "Eastern Orthodoxy"
+            ],
+            "ethnicity":[
+               "Russians"
+            ]
+         },
+         "datasets":[
+            "un_ga_protocol",
+            "gb_coh_disqualified",
+            "us_sam_exclusions",
+            "us_trade_csl",
+            "be_fod_sanctions",
+            "gb_hmt_sanctions",
+            "mc_fund_freezes",
+            "ua_war_sanctions",
+            "tw_shtc",
+            "ann_pep_positions",
+            "ca_dfatd_sema_sanctions",
+            "ua_nsdc_sanctions",
+            "au_dfat_sanctions",
+            "ext_us_ofac_press_releases",
+            "ru_acf_bribetakers",
+            "nz_russia_sanctions",
+            "eu_fsf",
+            "wd_categories",
+            "wikidata",
+            "wd_curated",
+            "us_ofac_sdn",
+            "kp_rusi_reports",
+            "fr_tresor_gels_avoir",
+            "us_cia_world_leaders",
+            "us_cia_world_factbook",
+            "gb_fcdo_sanctions",
+            "ch_seco_sanctions",
+            "jp_mof_sanctions"
+         ],
+         "referents":[
+            "NK-9cBAraYzBpAqFbnqsQRSht",
+            "ca-sema-60e89a4901773522fb01725b0d3302f2e6dba62c",
+            "ua-ws-856ff7ef3fefa0ff88edc5754e35d1afe6551049",
+            "acf-39b7a17a53441b22846dfafcef974c7a28204672",
+            "ch-seco-49812",
+            "be-fod-b5e4ab64639c9c7f869afedda014858f5700f5a5",
+            "unprot-8b1ac4ae93075a7bfb6745d9c5e3e8fa852fcdc0",
+            "eu-oj-e31802b61236f88412313c82e838a835aa174865",
+            "eu-oj-d65e31ca4e1b1990211a63108c507e51633ad0df",
+            "gb-hmt-14196",
+            "ofac-pr-f8c86694458c59b06d2c188ae313b2e4357939a0",
+            "tw-shtc-9df27dced12904cbcc9a53219b6231801f4b6d9c",
+            "gb-coh-cotyy6jdakw2xbkbahhn-4zovfs",
+            "ja-mof-1e45d73d4aefd473f51cc8bb96061a16984b96c0",
+            "ofac-35096",
+            "gb-fcdo-rus0251",
+            "fr-ga-4271",
+            "mc-freezes-e70429b07b7edc46d5667118dc5a59c4dd84ac1c",
+            "ch-seco-ac221e105ee1eaec78a4596c46b8b62d544b823b",
+            "ltfiu-sanctioned-vladimir-vladimirovich-putin",
+            "ua-nsdc-16102-putin-volodimir-volodimirovic",
+            "unprot-32bf82971599eb954c89ea33a205527cd2038596",
+            "us-cia-russia-vladimir-vladimirovich-putin-president",
+            "au-dfat-6678-vladimir-vladimirovich-putin",
+            "eu-fsf-eu-7510-16",
+            "kprusi-3779d003ab6de980dee5c5d1980bdb033345e57e",
+            "eu-tb-logical-135909",
+            "ch-seco-8be1b1cbdf04edeca5dd8dba8f0da22dc84eb168",
+            "lv-sanction-7e183b3d29abc48d6e71baf614c3b5132e98ee54",
+            "nz-ru-named-vladimir-putin",
+            "usgsa-s4mrtyd57",
+            "usgsa-s4mrky6qp",
+            "nz-ru-ind-1-vladimir-putin",
+            "tw-shtc-3c50f625574dd3f9403a9f24f0b515913953c51f",
+            "ua-ws-person-880"
+         ],
+         "target":true,
+         "first_seen":"2022-04-27T18:12:14",
+         "last_seen":"2026-03-03T00:48:03",
+         "last_change":"2026-02-28T17:20:14"
+      },
+   ]
+}

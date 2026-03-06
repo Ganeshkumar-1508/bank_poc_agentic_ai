@@ -1,0 +1,1195 @@
+{
+   "limit":10,
+   "offset":0,
+   "total":{
+      "value":1547,
+      "relation":"eq"
+   },
+   "results":[
+      {
+         "id":"Q7747",
+         "caption":"Vladimir Putin",
+         "schema":"Person",
+         "properties":{
+            "classification":[
+               "National government (current)"
+            ],
+            "name":[
+               "Vladimir Vladimiroviç Putin",
+               "Putin Vladimir Vladimirovich",
+               "Vladimirs Putins",
+               "ولادیمیر پوتین",
+               "Vladímír Pútín",
+               "भ्लादिमिर पुटिन",
+               "Wladimir Poetin",
+               "ဗလာဒီမီယာ ပူတင်",
+               "ולדימיר פוטין",
+               "PUTIN, Vladimir Vladimirovich",
+               "Vladimir Poutine",
+               "វ៉្លាឌីមៀរ ពូទីន",
+               "Vladimir Vladimirovich Putin",
+               ,
+               "Путін Володимир Володимирович",
+               "Βλαντίμιρ Πούτιν",
+               "Vladimiras Putinas",
+               "弗拉基米尔·普京",
+               "Уладзімір Уладзіміравіч Пуцін",
+               "ولادیمیر پوٹن",
+               "ವ್ಲಾದಿಮಿರ್ ಪುತಿನ್",
+               "Vladimir Vladimirovič Putin",
+               "Vladimir Vladimirovich POUTINE",
+               "Vladimir Putin",
+               "Vladím     mir Putin",
+               "Влади́мир Влади́мирович ПУ́ТИН",
+               "Vladimir V. Putin",
+               "ভ্লাদিমির পুতিন",
+               "Wladimir Wladimirowitsch Putin",
+               "Wladimir Putin",
+               "ვლადიმერ პუტინი",
+               "Владимир Владимирович Путин",
+               "Vlagyimir Vlagyimirovics Putyin",
+               "Владимир Путин",
+               "Путин Владимир    р Владимирович",
+               "Vladimir Poetin",
+               "Vladimir Vladimirovitj PUTIN",
+               "블라디미르 푸틴",
+               "ウラジーミル・プーチン",
+               "Władimir Putin",
+               "فلاديمير بوتين",
+               "Vladimir Vladimirovich PUTIN",
+               "Վլադիմիր Պուտին",
+               "व्लादिमीर पुतिन"
+            ],
+            "topics":[
+               "corp.disqual",
+               "role.pep",
+               ,
+               "sanction",
+               "poi",
+               "debarment",
+               "export.control",
+               "wanted"
+            ],
+            "createdAt":[
+               "2022-02-25"
+            ],
+            "birthDate":[
+               "1952-10-07"
+            ],
+            "notes":[
+               "Disqualified",
+               "As the President of Russia, he shapes the policy of the Russian government, which threatens the territorial integrity, sovereignty and independence of Ukraine.",
+               "President of the Russian Federation",
+               "2nd and 4th President of Russia (2000–2008, 2012–present), 7th and 11th Prime Minister of Russia (1999–2000, 2008–2012), Director of the Federal Security Service (1998–1999) and Deputy Mayor of Saint Petersburg (1994–1996)",
+               "President of the Russian Federation. Corruption.",
+               "Function: President of the Russian Federation",
+               "Vladimir Poutine est le président de la Fédération de Russie. Le 22 février 2022, il a signé un décret reconnaissant l'\"indépendance et la souveraineté\" des zones des oblasts ukrainiens de Donetsk et de Louhansk non contrôlées par le gouvernement, et a ordonné le déploiement des forces armées russes dans ces zones. Le 24 février 2022, il a ordonné le lancement d'une opération militaire en Ukraine et les forces armées russes ont commencé à attaquer l'Ukraine. Cette attaque est une violation flagrante de l'intégrité territoriale, de la souveraineté et de l'indépendance de l'Ukraine. Vladimir Poutine est responsable d'actions compromettant l'intégrité territoriale, la souveraineté et l'indépendance de l'Ukraine, ou la stabilité ou la sécurité en Ukraine, et soutient activement ces actions.",
+               "NOT SUBJECT TO TRAVEL RESTRICTIONS ACCORDING TO ARTICLE 29(1)",
+               "The Director Disqualification Sanction was imposed on 09/04/2025.",
+               "(also VLADIMIR VLADIMIROVICH PUTIN)",
+               "(also VLADIMIR PUTIN)",
+               "(Date of UN designation: 2022-02-25)",
+               "Vladimir Putin is the President of the Russian Federation. On 22 Feb 2022, he signed a decree recognising the \"independence and sovereignty\" of the non-government-controlled areas of the Donetsk and Luhansk oblasts of Ukraine, and ordered the Russian armed forces into those areas. On 24 Feb 2022, he ordered a military operation in Ukraine and Russian armed forces began an attack on Ukraine. That attack is a blatant violation of the territorial integrity, sovereignty and independence of Ukraine. Vladimir Putin is responsible for and actively supporting actions undermining the territorial integrity, sovereignty and independence of Ukraine, as well as stability and security in Ukraine."
+            ],
+            "programId":[
+               "GB-RUS",
+               "UA-WS-MARE",
+               "NZ-RSA2022",
+               "SECO-UKRAINE",
+               "UA-SA1644",
+               "CA-SEMA",
+               "EU-UKR",
+               "AU-RUSSIA",
+               "US-RUSHAR",
+               "UA-WS-EXECUTIVES"
+            ],
+            "birthPlace":[
+               "Leningrad",
+               "Russia",
+               "Leningrad, RSFSR, USSR",
+               "Leningrad (now Saint-Petersburg)",
+               "レニングラード（現サンクトペテルブルク）（ロシア）",
+               "V.F. Snegiryov Maternity Hospital No.6",
+               "Leningrad (now Saint-Petersburg), RUSSIAN FEDERATION",
+               "St Petersburg (then Leningrad)",
+               "Saint Petersburg",
+               "м. Санкт-Петербург, Російська Федерація",
+               "Saint Petersburg, Russia",
+               "Saint-Petersburg, Russian Federation",
+               "Leningrad, Russia",
+               "Léningrad, aujourd'hui Saint-Pétersbourg : RUSSIE",
+               "Léningrad, aujourd'hui Saint-Pétersbourg"
+            ],
+            "sourceUrl":[
+               "https://war-sanctions.gur.gov.ua/executives/persons/880",
+               "https://www.cia.gov/resources/world-leaders/foreign-governments/russia",
+               "https://find-and-update.company-information.service.gov.uk/disqualified-officers/natural/CoTYy6JdAkw2xBkbaHhn_4ZOVFs",
+               "https://war-sanctions.gur.gov.ua/transport/persons/880",
+               "https://home.treasury.gov/news/press-releases/jy0624",
+               "https://sanctionssearch.ofac.treas.gov/Details.aspx?id=35096",
+               "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=uriserv%3AOJ.L_.2022.053.01.0001.01.ENG&toc=OJ%3AL%3A2022%3A053%3ATOC",
+               "https://gels-avoirs.dgtresor.gouv.fr/Gels/RegistreDetail?idRegistre=4271",
+               "https://wikispooks.com/wiki/Vladimir_Putin",
+               "https://www.cia.gov/the-world-factbook/countries/russia"
+            ],
+            "position":[
+               "Deputy Chairman of the Government of the Russian Federation (1999-1999)",
+               "Prime Minister of Russia (2008-2012)",
+               "Supreme Commander-in-Chief of the Armed Forces of the Russian Federation (2012-)",
+               "President of the Russian Federation",
+               "Permanent member of the Security Council of Russia",
+               "recruiter",
+               "President of Russia (2000-2008)",
+               "president for life",
+               "voorzitter van de Veiligheidsraad van de Russische Federatie",
+               "président de la Fédération de Russie",
+               "ロシア連邦大統領",
+               "party leader",
+               "President of Russia (2012-)",
+               "Director of the Federal Security Service (1998-1999)",
+               "Chairman of the Council of CIS Heads of State (2000-2003)",
+               "голова of the Security Council of the russian federation",
+               "chairperson (2012-)",
+               "chairman of the military-industrial commission",
+               "Chairman of the Military Industrial Commission of the russian federation",
+               "Chairman of the Council of CIS Heads of State (2017-2017)",
+               "Chairman of the State Council of the russian federation",
+               "President",
+               "Президент Російської Федерації",
+               "Acting President of Russia (1999-2000)",
+               "chairperson",
+               "Chairman of the Council of CIS Heads of State (2004-2006)",
+               "president of the russian federation",
+               "Supreme Commander-in-Chief of the Armed Forces of the russian federation",
+               "Supreme Commander-in-Chief of the Armed Forces of the Russian Federation (1999-2008)",
+               "Prime Minister of Russia (1999-2000)",
+               "party leader (1995-1997)",
+               "Chairman of the Council of CIS Heads of State (2024-2024)",
+               "Secretary of the Security Council of Russia (1999-1999)",
+               "Chairman of the Commission on Military-Technical Cooperation of the russian federation with foreign countries"
+            ],
+            "country":[
+               "ru"
+            ],
+            "gender":[
+               "male"
+            ],
+            "alias":[
+               "Presidente Putin",
+               "Vladímir Vladímirovich Putin",
+               "블라디미르 블라디미로비치 푸틴",
+               "Президент Путин",
+               "Wladimir Wladimirowitsj Poetin",
+               "владимир владимирович путин",
+               "Presiden Putin",
+               "Vladímir Vladímirovitx Putin",
+               "Βλαντίμιρ Βλαντίμιροβιτς Πούτιν",
+               "Władimir Władimirowicz Putin",
+               "Președintele Putin",
+               "فلاديمير بوتن",
+               "Vladimir Vladimirovich Putin",
+               "Vlagyimir Putyin",
+               "Vladimír Vladimirovič Putin",
+               "Vladimir Vladimirovitj Putin",
+               "Vladimir Vladimirovici Putin",
+               "فلاديمير فلاديميروفيتش بوتين",
+               "Vladimir Vladimirovich POUTINE",
+               "Путин В. В.",
+               "Путин, Владимир Владимирович",
+               "Vladimir Putin",
+               "В. В. Путин",
+               "Путин, Владимир",
+               "Путин Владимир",
+               "Predsjednik Putin",
+               "Vladimír Putin",
+               "Владимир Владимирович Путин",
+               "فلادمير بوتين",
+               "ПУ́ТИН Влади́мир Влади́мирович",
+               "Владимир Путин",
+               "Presidente Vladimir Putin",
+               "Путин Владимир Владимирович",
+               "PUTIN, Vladimir",
+               "Präsident Putin",
+               "فلادمير بوتن",
+               "Уладзімір Пуцін",
+               "Vladimir Vladimiro  ovitch Poutine",
+               "Putin Volodymyr Volodymyrovych",
+               "Putyin elnök"
+            ],
+            "lastName":[
+               "ПУ́ТИН",
+               "POUTINE",
+               "Putin",
+               "PUTIN",
+               "Путин"
+            ],
+            "firstName":[
+               "Владимир",
+               "Vladimir Vladimirovich",
+               "Vladimir",
+               "Влади́мир"
+            ],
+            "modifiedAt":[
+               "2023-03-21"
+            ],
+            "fatherName":[
+               "Vladimiro ovich",
+               "Влади́мирович"
+            ],
+            "birthCountry":[
+               "ru"
+            ],
+            "address":[
+               "Novo-Ogaryevo Moscow Region Russia",
+               "Bocharov Ruchey Sochi Russia",
+               "Moscow, Russia",
+               "Moscow",
+               "Valdai Novgorod Region Russia",
+               "Valdai, Novgorod Region",
+               "Novo-Ogaryevo, Moscow Region",
+               "Kremllin, Moscow",
+               "Kremlin Moscow Russia",
+               "Bocharov Ruchey, Sochi"
+            ],
+            "nationality":[
+               "ru"
+            ],
+            "addressEntity":[
+               "NK-3Kw6ZCXo8SddN8PJ58uuvE",
+               "addr-6a580aed4f28c6a4fadbd12cdda90fa720eb6e98",
+               "addr-50939bdd8b6a2a9653e2cb3ad02d4f241a456895",
+               "addr-299cf3828103aed1c5b8546b69fbe62e1aae0da9",
+               "addr-90f75394e3b7cf5a2c0d6d7f1317d995244742f5"
+            ],
+            "description":[
+               "Prseident of the Russian Federation, who gifted weapons to Kim Jong Un during his visit to Russia in September 2023."
+            ],
+            "middleName":[
+               "Vladimirovich",
+               "Владимирович"
+            ],
+            "citizenship":[
+               "ru",
+               "suhh"
+            ],
+            "taxNumber":[
+               "711813038431"
+            ],
+            "title":[
+               "His Excellency"
+            ],
+            "uniqueEntityId":[
+               "NYRVMEKYU3U9"
+            ],
+            "wikidataId":[
+               "Q7747"
+            ],
+            "weakAlias":[
+               "ヴラジーミル・ヴラジーミロヴィッチ・プーチン",
+               "В.Путин",
+               "ヴラジーミル・ヴラジ ーミロヴィチ・プーチン",
+               "ウラジーミル・ウラジーミロヴィチ・プーチン",
+               "プーチン",
+               "ヴラジーミル・プーチン",
+               "Platov",
+               "뿌찐",
+               "ߔߑߟߊߕߐߝ߭",
+               "弗拉基米尔·弗拉基米罗维奇·普京",
+               "Платов",
+               "Путин",
+               "푸틴",
+               "ပူတင်",
+               "بوتين",
+               "普丁",
+               "普京",
+               "بوتن",
+               "পুতিন",
+               "פוטין"
+            ],
+            "e   education":[
+               "Candidate of Economic Sciences (1997)",
+               "School 281 (1968-1970)",
+               "School 193 (1960-1968)",
+               "St. Petersburg Institute of the FSB of Russia",
+               "Saint Petersburg Mining University (-1997)",
+               "Faculty of Law, Saint Petersburg State University (1970-1975)",
+               "Academy of the Federal Security Service of the Russian Federation",
+               "Academy of Foreign Intelligence",
+               "Saint Petersburg State University"
+            ],
+            "political":[
+               "Our Home – Russia",
+               "Communist Party of the Soviet Union",
+               "United Russia"
+            ],
+            "website":[
+               "http://putin.kremlin.ru/"
+            ],
+            "religion":[
+               "Eastern Orthodoxy"
+            ],
+            "ethnicity":[
+               "Russians"
+            ]
+         },
+         "datasets":[
+            "un_ga_protocol",
+            "gb_coh_disqualified",
+            "us_sam_exclusions",
+            "us_trade_csl",
+            "be_fod_sanctions",
+            "gb_hmt_sanctions",
+            "mc_fund_freezes",
+            "ua_war_sanctions",
+            "tw_shtc",
+            "ann_pep_positions",
+            "ca_dfatd_sema_sanctions",
+            "ua_nsdc_sanctions",
+            "au_dfat_sanctions",
+            "ext_us_ofac_press_releases",
+            "ru_acf_bribetakers",
+            "nz_russia_sanctions",
+            "eu_fsf",
+            "wd_categories",
+            "wikidata",
+            "wd_curated",
+            "us_ofac_sdn",
+            "kp_rusi_reports",
+            "fr_tresor_gels_avoir",
+            "us_cia_world_leaders",
+            "us_cia_world_factbook",
+            "gb_fcdo_sanctions",
+            "ch_seco_sanctions",
+            "jp_mof_sanctions"
+         ],
+         "referents":[
+            "NK-9cBAraYzBpAqFbnqsQRSht",
+            "ca-sema-60e89a4901773522fb01725b0d3302f2e6dba62c",
+            "ua-ws-856ff7ef3fefa0ff88edc5754e35d1afe6551049",
+            "acf-39b7a17a53441b22846dfafcef974c7a28204672",
+            "ch-seco-49812",
+            "be-fod-b5e4ab64639c9c7f869afedda014858f5700f5a5",
+            "unprot-8b1ac4ae93075a7bfb6745d9c5e3e8fa852fcdc0",
+            "eu-oj-e31802b61236f88412313c82e838a835aa174865",
+            "eu-oj-d65e31ca4e1b1990211a63108c507e51633ad0df",
+            "gb-hmt-14196",
+            "ofac-pr-f8c86694458c59b06d2c188ae313b2e4357939a0",
+            "tw-shtc-9df27dced12904cbcc9a53219b6231801f4b6d9c",
+            "gb-coh-cotyy6jdakw2xbkbahhn-4zovfs",
+            "ja-mof-1e45d73d4aefd473f51cc8bb96061a16984b96c0",
+            "ofac-35096",
+            "gb-fcdo-rus0251",
+            "fr-ga-4271",
+            "mc-freezes-e70429b07b7edc46d5667118dc5a59c4dd84ac1c",
+            "ch-seco-ac221e105ee1eaec78a4596c46b8b62d544b823b",
+            "ltfiu-sanctioned-vladimir-vladimirovich-putin",
+            "ua-nsdc-16102-putin-volodimir-volodimirovic",
+            "unprot-32bf82971599eb954c89ea33a205527cd2038596",
+            "us-cia-russia-vladimir-vladimirovich-putin-president",
+            "au-dfat-6678-vladimir-vladimirovich-putin",
+            "eu-fsf-eu-7510-16",
+            "kprusi-3779d003ab6de980dee5c5d1980bdb033345e57e",
+            "eu-tb-logical-135909",
+            "ch-seco-8be1b1cbdf04edeca5dd8dba8f0da22dc84eb168",
+            "lv-sanction-7e183b3d29abc48d6e71baf614c3b5132e98ee54",
+            "nz-ru-named-vladimir-putin",
+            "usgsa-s4mrtyd57",
+            "usgsa-s4mrky6qp",
+            "nz-ru-ind-1-vladimir-putin",
+            "tw-shtc-3c50f625574dd3f9403a9f24f0b515913953c51f",
+            "ua-ws-person-880"
+         ],
+         "target":true,
+         "first_seen":"2022-04-27T18:12:14",
+         "last_seen":"2026-03-03T00:48:03",
+         "last_change":"2026-02-28T17:20:14"
+      },
+      {
+         "id":"Q1833348",
+         "caption":"Igor Alexandrovich PUTIN",
+         "schema":"Person",
+         "properties":{
+            "topics":[
+               "corp.disqual",
+               "role.pep",
+               "sanction",
+               "role.rca",
+               "mil",
+               "poi"
+            ],
+            "name":[
+               "Igor Putin",
+               "إيغور بوتين",
+               "Ігор Олександрович Путін",
+               "Igor Poetin",
+               "Igor Alexandrovič Putin",
+               "イーゴリ・プーチン",
+               "ايجور بوتين",
+               "Putin Igor Alexandrovich",
+               "Путін Ігор Олександрович",
+               "İgor Putin",
+               "Igor Alexandrovich PUTIN",
+               "Putin Igor Aleksandrovich",
+               "Игор Александрович Путин",
+               "Путин Игорь Александрович",
+               "Игорь Александрович Путин",
+               "ایگور پوٹن",
+               "伊戈尔·普京",
+               "Igor' Putin"
+            ],
+            "birthPlace":[
+               "St Petersburg, Russia",
+               "Saint Petersburg",
+               "Russia",
+               "St Petersburg"
+            ],
+            "birthDate":[
+               "1953-03-30"
+            ],
+            "programId":[
+               "UA-SA1644",
+               "AU-RUSSIA",
+               "GB-RUS",
+               "NZ-RSA2022"
+            ],
+            "citizenship":[
+               "ru",
+               "suhh"
+            ],
+            "notes":[
+               "Disqualified",
+               "Director of Pechenga International Sea Port, and relative of President Putin",
+               "Director of Pechenga International Sea Port",
+               "The Director Disqualification Sanction was imposed on 09/04/2025.",
+               "Is or has been involved in obtaining a benefit from or supporting the Government of Russia as a director of OJSC International Sea Port of Pechenga. International Sea Port of Pechenga is an entity operating in a sector of strategic significance to the Government of Russia, namely, the transport sector.",
+               "Russian politician and cousin of Vladimir Putin"
+            ],
+            "createdAt":[
+               "2022-05-13"
+            ],
+            "firstName":[
+               "Igor"
+            ],
+            "sourceUrl":[
+               "https://find-and-update.company-information.service.gov.uk/disqualified-officers/natural/zYG9E60vkt4phgJf-TV5LG1uF5k"
+            ],
+            "lastName":[
+               "Putin",
+               "PUTIN"
+            ],
+            "nationality":[
+               "ru"
+            ],
+            "alias":[
+               "Putin Ihor Oleksandrovych",
+               "Igor Aleksandrovitx Putin",
+               "Igor Alexandrowitsch Putin",
+               "Igor' Aleksandrovič Putin",
+               "Игорь Путин",
+               "игорь александрович путин",
+               "İgor Aleksandroviç Putin",
+               "Путин, Игорь Александрович",
+               "Igor Alexandrovich Putin",
+               "Путин Игорь Александрович",
+               "И. А. Путин",
+               "Igor Aleksandrowicz Putin"
+            ],
+            "gender":[
+               "male"
+            ],
+            "birthCountry":[
+               "ru"
+            ],
+            "modifiedAt":[
+               "2023-03-21"
+            ],
+            "middleName":[
+               "Alexandrovich"
+            ],
+            "address":[
+               "Російська Федерація, м. Санкт-Петербург"
+            ],
+            "wikidataId":[
+               "Q1833348"
+            ],
+            "political":[
+               "United Russia"
+            ],
+            "weakAlias":[
+               "イーゴリ・アレクサンドロヴィチ・プーチン",
+               "イーゴリ・アレクサンドロヴィッチ・プーチン"
+            ],
+            "education":[
+               "Nizhny Novgorod Management University"
+            ]
+         },
+         "datasets":[
+            "gb_coh_disqualified",
+            "wd_categories",
+            "wikidata",
+            "gb_hmt_sanctions",
+            "wd_curated",
+            "gb_fcdo_sanctions",
+            "ua_nsdc_sanctions",
+            "au_dfat_sanctions",
+            "ru_acf_bribetakers",
+            "nz_russia_sanctions"
+         ],
+         "referents":[
+            "gb-hmt-15386",
+            "au-dfat-7243-igor-alexandrovich-putin",
+            "acf-55785570180aa39d4b129e0c145bcdae5ced8843",
+            "gb-coh-zyg9e60vkt4phgjf-tv5lg1uf5k",
+            "ua-nsdc-17102-putin-igor-oleksandrovic",
+            "gb-fcdo-rus1424",
+            "nz-ru-ind-746-igor-putin"
+         ],
+         "target":true,
+         "first_seen":"2022-08-02T18:12:33",
+         "last_seen":"2026-03-03T00:40:03",
+         "last_change":"2026-01-28T12:14:01"
+      },
+      {
+         "id":"Q124822348",
+         "caption":"Mikhail Evgenievich PUTIN",
+         "schema":"Person",
+         "properties":{
+            "citizenship":[
+               "ru",
+               "suhh"
+            ],
+            "name":[
+               "Mikhail Putin",
+               "PUTIN Mikhail",
+               "Михаил Евгеньевич Путин",
+               "ПУТІН Михайло Євгенійович",
+               "Putin Mikhail Evgenievich",
+               "ПУТІН Михайло Євгенович",
+               "Mikhail Evgenievich PUTIN",
+               "ПУТИН Михаил Евгеньевич"
+            ],
+            "notes":[
+               "А great-nephew of Vladimir Putin. Involved in corruption schemes of PJSC Gazprom and its subsidiaries. Participated in the formation of corrupt sources of income for Vladimir Putin and his closest associates.",
+               "Russian businessperson",
+               "Member of PJSC Gazprom's collegial executive body",
+               "He is a son of Vladimir Putin's cousin. He is also a Deputy CEO of Gazprom PJSC and a member of its collegial executive body. Gazprom PJSC, a state-owned company, plays a crucial role in the Russian economy and the foreign policy of Putin's regime as a leverage over countries dependent on Russian gas supplies or its transportation. Additionally, this company serves as a source of enrichment for Vladimir Putin and his inner circle through numerous corruption schemes.",
+               "The Director Disqualification Sanction was imposed on 09/04/2025.",
+               "Deputy Chairman of the Management Board of Sogaz Insurance and Gazprom, and relative of President Putin",
+               "Заместитель Председателя Правления ПАО «Газпром»"
+            ],
+            "createdAt":[
+               "2022-05-13"
+            ],
+            "programId":[
+               "GB-RUS",
+               "NZ-RSA2022",
+               "UA-SA1644",
+               "CA-SEMA",
+               "AU-RUSSIA"
+            ],
+            "topics":[
+               "sanction",
+               "poi"
+            ],
+            "birthDate":[
+               "1967-02-07",
+               "1967-07-02"
+            ],
+            "birthPlace":[
+               "Ivanovo",
+               "Russia",
+               "Ivanovo, Russia"
+            ],
+            "alias":[
+               "Mikhail Evgenyevich Putin",
+               "Михаил Евгеньевич Путин",
+               "PUTIN Mykhailo Yevheniiovych",
+               "Putin Mikhail Evgenyevich",
+               "Путин Михаил Евгеньевич",
+               "михаил евгеньевич путин"
+            ],
+            "lastName":[
+               "ПУТИН",
+               "PUTIN"
+            ],
+            "firstName":[
+               "Mikhail Evgenievich",
+               "МИХАИЛ",
+               "Mikhail"
+            ],
+            "country":[
+               "ru"
+            ],
+            "fatherName":[
+               "ЕВГЕНЬЕВИЧ"
+            ],
+            "innCode":[
+               "331000068907"
+            ],
+            "nationality":[
+               "ru"
+            ],
+            "gender":[
+               "male"
+            ],
+            "birthCountry":[
+               "ru"
+            ],
+            "modifiedAt":[
+               "2023-03-21"
+            ],
+            "middleName":[
+               "Evgenievich"
+            ],
+            "position":[
+               "Top Management of State Owned Companies",
+               "Руководители госкомпаний"
+            ],
+            "wikidataId":[
+               "Q124822348"
+            ],
+            "education":[
+               "State University of Management (-1998)",
+               "Candidate of Sciences in Medicine",
+               "Ivanovo State Medical Academy (-1990)"
+            ]
+         },
+         "datasets":[
+            "wikidata",
+            "gb_hmt_sanctions",
+            "wd_curated",
+            "ext_ru_egrul",
+            "gb_fcdo_sanctions",
+            "ua_nsdc_sanctions",
+            "ca_dfatd_sema_sanctions",
+            "au_dfat_sanctions",
+            "ru_acf_bribetakers",
+            "nz_russia_sanctions"
+         ],
+         "referents":[
+            "acf-851d92d7a8813f6116cda9e035c5b33f44e2ac54",
+            "ua-nsdc-33228-putin-mihajlo-evgenijovic",
+            "gb-hmt-15388",
+            "au-dfat-7244-mikhail-evgenievich-putin",
+            "gb-fcdo-rus1461",
+            "nz-ru-ind-747-mikhail-putin",
+            "ca-sema-f962d9d74fe58071dd44dfe1d6e58a28c1360f8a",
+            "ru-inn-331000068907"
+         ],
+         "target":true,
+         "first_seen":"2022-08-02T18:12:33",
+         "last_seen":"2026-03-03T00:43:02",
+         "last_change":"2026-01-28T12:14:01"
+      },
+      {
+         "id":"Q15087614",
+         "caption":"Roman Igorevich PUTIN",
+         "schema":"Person",
+         "properties":{
+            "birthPlace":[
+               "Russia",
+               "Ryazan",
+               "Ryazan, Russia"
+            ],
+            "birthDate":[
+               "1977-11-10"
+            ],
+            "name":[
+               "רומן פוטין",
+               "Putin Roman",
+               "Roman Igorevich PUTIN",
+               "Роман Игоревич Путин",
+               "Путін Роман Ігорович",
+               "Путин Роман Игоревич",
+               "Roman Poutine",
+               "Putin Roman Igorevich",
+               "رومان بوتين",
+               "Роман Путин",
+               "Roman Putin",
+               "رومن پوٹن",
+               "رومان پوتين",
+               "ロシアテコンドー連盟",
+               "罗曼·伊戈列维奇·普京",
+               "Roman Igorevič Putin"
+            ],
+            "citizenship":[
+               "ru",
+               "suhh"
+            ],
+            "programId":[
+               "NZ-RSA2022",
+               "GB-RUS",
+               "UA-SA1644",
+               "AU-RUSSIA"
+            ],
+            "createdAt":[
+               "2022-05-13"
+            ],
+            "topics":[
+               "corp.disqual",
+               "role.pep",
+               "sanction",
+               "role.rca",
+               "poi"
+            ],
+            "notes":[
+               "Disqualified",
+               "Involved in obtaining a benefit from or supporting the Government of Russia by working as the Chair of the Board of Directors of the LLC MRT Group of Companies, which operates in the Russian transport sector, a sector of strategic significance to the Government of Russia.",
+               "The Director Disqualification Sanction was imposed on 09/04/2025.",
+               "Chair of the Board of Directors of the MRT Group of Companies LLC",
+               "Russian businessman and politician",
+               "Chair of the board of directors of the MRT Group of Companies LLC, and relative of President Putin"
+            ],
+            "nationality":[
+               "ru"
+            ],
+            "sourceUrl":[
+               "https://find-and-update.company-information.service.gov.uk/disqualified-officers/natural/h3XhWs4hWfIFD2iY4or9PLGs2ws"
+            ],
+            "lastName":[
+               "Putin",
+               "PUTIN"
+            ],
+            "firstName":[
+               "Roman"
+            ],
+            "gender":[
+               "male"
+            ],
+            "alias":[
+               "Roman Ígorevitx Putin",
+               "Roman Igorewitsch Putin",
+               "Роман Игоревич Путин",
+               "Putin Roman Ihorovych",
+               "Путин Роман Игоревич",
+               "Roman Igorevich Putin",
+               "Roman İgoreviç Putin",
+               "Путин, Роман Игоревич",
+               "Путин Роман"
+            ],
+            "position":[
+               "Director"
+            ],
+            "birthCountry":[
+               "ru"
+            ],
+            "modifiedAt":[
+               "2023-03-21"
+            ],
+            "middleName":[
+               "Igorevich"
+            ],
+            "address":[
+               "Російська Федерація, м. Рязань"
+            ],
+            "wikidataId":[
+               "Q15087614"
+            ],
+            "weakAlias":[
+               "ロマン・プーチン"
+            ],
+            "education":[
+               "Military Academy for Logistics (-2001)"
+            ]
+         },
+         "datasets":[
+            "gb_coh_disqualified",
+            "wd_categories",
+            "wikidata",
+            "gb_hmt_sanctions",
+            "wd_curated",
+            "gb_fcdo_sanctions",
+            "ua_nsdc_sanctions",
+            "au_dfat_sanctions",
+            "ru_acf_bribetakers",
+            "nz_russia_sanctions"
+         ],
+         "referents":[
+            "gb-hmt-15392",
+            "gb-coh-h3xhws4hwfifd2iy4or9plgs2ws",
+            "nz-ru-ind-748-roman-putin",
+            "au-dfat-7245-roman-igorevich-putin",
+            "acf-505995ea546966f66ae514159435c2eb5211bfce",
+            "gb-fcdo-rus1463",
+            "ua-nsdc-17219-putin-roman-igorovic"
+         ],
+         "target":true,
+         "first_seen":"2022-08-02T18:12:33",
+         "last_seen":"2026-03-03T00:40:03",
+         "last_change":"2026-02-09T14:49:12"
+      },
+      {
+         "id":"Q130234762",
+         "caption":"Vladimir Putin Jr.",
+         "schema":"Person",
+         "properties":{
+            "topics":[
+               "role.rca",
+               "sanction.linked"
+            ],
+            "alias":[
+               "Путин, Владимир Владимирович",
+               "فلاديمير بوتين",
+               "Vladimir Putin",
+               "Vladimir Putin, Vladimir Vladimirovič Putin"
+            ],
+            "notes":[
+               "alleged son of Vladimir Putin"
+            ],
+            "firstName":[
+               "Vladimir"
+            ],
+            "birthPlace":[
+               "Moscow"
+            ],
+            "name":[
+               "Vladimir Putin Jr.",
+               "Vladimir Putin mladší",
+               "فلاديمير بوتين الابن",
+               "ウラジーミル・プーチン・ジュニア",
+               "Владимир Путин"
+            ],
+            "citizenship":[
+               "ru"
+            ],
+            "lastName":[
+               "Putin"
+            ],
+            "gender":[
+               "male"
+            ],
+            "sourceUrl":[
+               "https://dossier.center/succession/"
+            ],
+            "birthDate":[
+               "2019"
+            ],
+            "wikidataId":[
+               "Q130234762"
+            ],
+            "weakAlias":[
+               "Путин-младший"
+            ]
+         },
+         "datasets":[
+            "wikidata",
+            "ann_graph_topics"
+         ],
+         "referents":[
+            
+         ],
+         "target":true,
+         "first_seen":"2024-09-09T00:47:02",
+         "last_seen":"2026-03-02T18:56:00",
+         "last_change":"2026-01-06T19:04:42"
+      },
+      {
+         "id":"Q124822037",
+         "caption":"Evgeny Putin",
+         "schema":"Person",
+         "properties":{
+            "topics":[
+               "role.rca",
+               "sanction.linked"
+            ],
+            "alias":[
+               "Евгений Путин",
+               "Evgeny Mikhailovich Putin",
+               "Yevgeni Mihailoviç Putin"
+            ],
+            "name":[
+               "Yevgeni Putin",
+               "Евгений Михайлович Путин",
+               "Evgeny Putin"
+            ],
+            "notes":[
+               "Russian urologist, first cousin of Vladimir Putin"
+            ],
+            "citizenship":[
+               "ru",
+               "suhh"
+            ],
+            "birthDate":[
+               "1933-02-25"
+            ],
+            "wikidataId":[
+               "Q124822037"
+            ],
+            "deathDate":[
+               "2024-03"
+            ],
+            "lastName":[
+               "Putin"
+            ],
+            "gender":[
+               "male"
+            ]
+         },
+         "datasets":[
+            "wikidata",
+            "ann_graph_topics"
+         ],
+         "referents":[
+            
+         ],
+         "target":true,
+         "first_seen":"2024-03-17T00:48:26",
+         "last_seen":"2026-03-02T18:56:00",
+         "last_change":"2026-01-06T19:04:42"
+      },
+      {
+         "id":"Q27303716",
+         "caption":"Alexander Putin",
+         "schema":"Person",
+         "properties":{
+            "topics":[
+               "role.rca",
+               "sanction.linked"
+            ],
+            "name":[
+               "Alexander Putin",
+               "Alexander Spiridonovich Putin",
+               "アレクサンドル・スピリドノヴィッチ・プーチン",
+               "Aleksandr Putin",
+               "Александр Спиридонович Путин"
+            ],
+            "firstName":[
+               "Aleksandr"
+            ],
+            "gender":[
+               "male"
+            ],
+            "alias":[
+               "Путин, Александр Спиридонович",
+               "Aleksandr Spiridonoviç Putin",
+               "Александр Путин"
+            ],
+            "notes":[
+               "paternal uncle of Vladimir Putin"
+            ],
+            "weakAlias":[
+               "アレクサンドル・スピリドノヴィチ・プーチン"
+            ],
+            "citizenship":[
+               "suhh"
+            ],
+            "lastName":[
+               "Putin"
+            ],
+            "deathDate":[
+               "2008-04-09"
+            ],
+            "birthDate":[
+               "1920-03-20"
+            ],
+            "birthPlace":[
+               "Pominovo, Orekhovo-Zuevskiy rayon"
+            ],
+            "wikidataId":[
+               "Q27303716"
+            ]
+         },
+         "datasets":[
+            "wikidata",
+            "ann_graph_topics"
+         ],
+         "referents":[
+            
+         ],
+         "target":true,
+         "first_seen":"2023-07-18T22:03:41",
+         "last_seen":"2026-03-02T18:56:00",
+         "last_change":"2026-01-06T19:04:42"
+      },
+      {
+         "id":"Q65597321",
+         "caption":"Daniel Putin",
+         "schema":"Person",
+         "properties":{
+            "classification":[
+               "Local government (past)"
+            ],
+            "citizenship":[
+               "fr"
+            ],
+            "deathDate":[
+               "2023-02-14"
+            ],
+            "name":[
+               "Daniel Putin"
+            ],
+            "topics":[
+               "role.pep"
+            ],
+            "wikidataId":[
+               "Q65597321"
+            ],
+            "birthDate":[
+               "1963-10-08"
+            ],
+            "position":[
+               "Mayor of Champagnat (2020-2023)",
+               "Mayor of Champagnat (2014-2020)",
+               "conseiller municipal de Champagnat (2020-2023)",
+               "conseiller municipal de Champagnat (2014-2020)",
+               "conseiller communautaire de Bresse Louhannaise Intercom' (2017-)"
+            ],
+            "gender":[
+               "male"
+            ],
+            "notes":[
+               "French politician"
+            ],
+            "lastName":[
+               "Putin"
+            ],
+            "firstName":[
+               "Daniel"
+            ]
+         },
+         "datasets":[
+            "ann_pep_positions",
+            "wikidata",
+            "wd_peps"
+         ],
+         "referents":[
+            
+         ],
+         "target":true,
+         "first_seen":"2024-10-11T11:32:54",
+         "last_seen":"2026-03-02T13:38:23",
+         "last_change":"2026-01-16T13:38:22"
+      },
+      {
+         "id":"NK-eyxbJfam3iAs8Zz38QmBkw",
+         "caption":"ANO APE \"RUS NAMED AFTER V.V. PUTIN\"",
+         "schema":"LegalEntity",
+         "properties":{
+            "innCode":[
+               "2014010122"
+            ],
+            "address":[
+               "366202, russian federation, Chechen Republic, m. district Gudermes, Gudermes settlement, Gudermes, Rostovskaya str. 2/2A, office 2"
+            ],
+            "sourceUrl":[
+               "https://war-sanctions.gur.gov.ua/kidnappers/companies/13330"
+            ],
+            "programId":[
+               "UA-WS-KIDNAPPERS"
+            ],
+            "name":[
+               "ANO APE \"RUS NAMED AFTER V.V. PUTIN\"",
+               "AUTONOMOUS NON-PROFIT ORGANIZATION OF ADDITIONAL PROFESSIONAL EDUCATION \"RUSSIAN UNIVERSITY OF SPECIAL FORCES NAMED AFTER THE SUPREME COMMANDER-IN-CHIEF, PRESIDENT OF RUSSIA VLADIMIR VLADIMIROVICH PUTIN\""
+            ],
+            "country":[
+               "ru"
+            ],
+            "topics":[
+               "poi"
+            ],
+            "ogrnCode":[
+               "1152036000478"
+            ]
+         },
+         "datasets":[
+            "ua_war_sanctions"
+         ],
+         "referents":[
+            "ua-ws-entity-13330",
+            "ua-ws-aaa2d6d646b9bd03bcc3bdde82a0d5b29f5fbb30"
+         ],
+         "target":true,
+         "first_seen":"2026-01-22T05:41:01",
+         "last_seen":"2026-03-02T05:41:01",
+         "last_change":"2026-02-05T14:54:48"
+      },
+      {
+         "id":"Q20850503",
+         "caption":"Yevgeny Prigozhin",
+         "schema":"Person",
+         "properties":{
+            "classification":[
+               "National government (past)"
+            ],
+            "topics":[
+               "poi",
+               "debarment",
+               "sanction",
+               "wanted",
+               "corp.disqual",
+               "crime.war",
+               "export.control",
+               "crime",
+               "role.pep"
+            ],
+            "createdAt":[
+               "2017-01-26"
+            ],
+            "programId":[
+               "UA-SA1644",
+               "AU-UKRAINE",
+               "GB-LBY",
+               "US-UKRRUS-REL",
+               "CA-SEMA",
+               "NZ-RSA2022",
+               "SECO-UKRAINE",
+               "EU-UKR"
+            ],
+            "birthPlace":[
+               "Leningrad, Russia",
+               "Leningrad (St. Petersburg)",
+               "Saint-Pétersbourg: RUSSIE",
+               "Russia",
+               "Leningrad (St Petersburg)",
+               "Saint Petersburg, Russia",
+               "Saint Petersburg",
+               "St Petersburg, RUSSIAN FEDERATION",
+               "Leningrad (St-Pétersbourg)",
+               "St Petersburg",
+               "Leningrad, RUSSIAN FEDERATION",
+               "м. Санкт- Петербург, РФ",
+               "Ленинград, СССР",
+               "Leningrad"
+            ],
+            "citizenship":[
+               "ru",
+               "suhh"
+            ],
+            "birthDate":[
+               "1961-06-01"
+            ],
+            "name":[
+               "예브게니 프리고진",
+               "यभगेनी प्रिगोजिन",
+               "Yevgeniy Prigojin",
+               "PRIGOZHIN, Yevgeniy Viktorovich",
+               "येवगेनी विक्    टरोविच प्रिगोझिन",
+               "Jevgenij Prigozjin",
+               "Евгениј Пригожин",
+               "Jevgenij Prigosjin",
+               "Prigozhin Evgenij Viktorovich",
+               "Евгений Пригожин",
+               "Evguéni Prigojine",
+               "エフゲニー・プリゴジン",
+               "Jewgeni Wiktorowitsch Prigoschin",
+               "Prigozhin Yevgeniy Viktorovich",
+               "JJevgenij Viktorovič Prigožin",
+               "يفجينى بريجوزين",
+               "Jewgeni Prigozjin",
+               "Evgeny Prigozhin",
+               "Evgeny Victorovich Prigozhin",
+               "Yevgeny Prigozhin",
+               "Пригожин Евгений Викторович",
+               "Jevgenij Prigožin",
+               "Jevgeni Prigožin",
+               "ইয়েভগেনি প্রিগোজিন",
+               "يفغيني بريغوجين"",""エヴゲニー・プリゴジン"",""Yevgeni Prigojin"",""Пригожин Євген Вікторович"",""Yevgeniy Prigozhin"",""Evgueni Prigojine"",""叶夫根尼·普里戈任"",""Γιεβγκένι Πριγκόζιν"",""Yevgueni Prigozhin"",""יבגני פריגוז""ין\",\"Jevgenij Viktorovitj PRIGOZJIN\",\"Jevgenyij Viktorovics Prigozsin\",\"Evgheni Prigojin\",\"Yevgeni Priqojin\",\"Яўген Віктаравіч Прыгожын\",\"Evgenij Prigožin\",\"Jewgeni Wiktorowitsch Prigojin\",\"Јевгениј Пригожин\",\"Եվգենի Պրիգոժին\",\"Jewgienij Prigożyn\",\"Yevgeniy Viktorovich Prigozhin\",\"Jevgeni Prigozhin\",\"Yevgeny Viktorovich PRIGOZHIN\",\"Jevgeni Prigozjin\",\"Jevgēņijs Prigožins\",\"Yevgeny Viktorovich Prigozhin\",\"Евгений Викторович Пригожин\",\"ევგენი პრიგოჟინი\",\"Pryhozhyn Yevgeniy\",\"Jevgenijus Prigožinas\",\"Jevgeníj Prígozhín\",\"یوگنی پریگوژین\",\"Ievgueni Prigojin\",\"Prigozhin Yevgeniy\",\"Пригожин Євгеній Вікторович\"],\"middleName\":[\"Viktorovich\",\"Viktorovitj\",\"Викторович\"],\"notes\":[\"Yevgeniy Viktorovich Prigozhin is wanted by the FBI for his alleged involvement in a\",\"Associated entities: Wagner Group, internet Research Agency, Concord company group, Concord Management and Consulting LLC, Megaline LLC\",\"He reportedly died in a plane crash on 23 August 2023.\nAssociated persons: \nLyubov Valentinovna Prigozhina (spouse); \nVioletta Prigozhina (mother)\n\nAssociated entities: \nWagner Group, \ninternet Research Agency, \nConcord company group, \nConcord Management and Consulting LLC, \nMegaline LLC.\",\"Personnes associées : Lyubov Valentinovna Prigozhina (épouse)\nEntités associées : groupe Wagner, Internet Research Agency, Concord company group, Concord Management and Consulting LLC, Megaline LLC\",\"The Director Disqualification Sanction was imposed on 09/04/2025.\",\"Yevgeniy Prigozhin was a Russian leading businessperson with close ties to the President of the Russian Federation Vladimir Putin and the Russian Ministry of Defence. He reportedly died in a plane crash on 23 August 2023. He publicly confirmed that he founded the Wagner Group, a Russia-based unincorporated military entity, responsible for the deployment of Wagner Group mercenaries in Ukraine. In 2022, a joint stock company called “PMC Wagner Center” was established and registered in Saint Petersburg, with the aim of “providing a comfortable environment for generating new ideas to improve Russia’s defence capability”. The Wagner Group, led by Yevgeniy Prigozhin, has played an important role in the fighting in and occupation of territories in Eastern Ukraine. Concord, also known as KOMBINAT PITANIYA KONKORD OOO, a company which Prigozhin founded and owned until November 2019, and a group of other companies with ties to him, including Concord Management and Consulting LLC and Megaline LLC, have been benefitting from large public contracts with the Russian Ministry of Defence following the illegal annexation of Crimea by the Russian Federation and the occupation of Eastern Ukraine by Russia-backed separatists. Yevgeniy Prigozhin was a leading businessperson operating in Russia. He was responsible for and actively implemented actions which have undermined and threatened the territorial integrity, sovereignty and independence of Ukraine. Moreover, he benefitted from Russian decision-makers responsible for the annexation of Crimea and the destabilisation of Eastern Ukraine. Yevgeniy Prigozhin’s son, Pavel Prigozhin, is the primary heir and beneficiary of his assets, possessions, and properties. Pavel Prigozhin is listed by the Union for his involvement in military operations against Ukraine. Therefore, it is appropriate to retain Yevgeniy Prigozhin on the list of natural or legal persons, entities or bodies subject to the asset freeze and the prohibition on making funds and economic resources available as there is a likelihood that the assets concerned would otherwise be used to finance Russia’s war of aggression against Ukraine or other actions undermining or threatening the territorial integrity, sovereignty and independence of Ukraine.\",\"Entités associées: groupe Wagner, Internet Research Agency, Concord company group, Concord Management and Consulting LLC, Megaline LLC Nationalité: russe Sexe: masculin Yevgeniy Prigozhin était un homme d’affaires russe influent entretenant des liens étroits avec le président de la Fédération de Russie, Vladimir Poutine, et le ministère russe de la défense. Il serait décédé dans un accident d’avion le 23 août 2023. Il a publiquement confirmé avoir fondé le groupe Wagner, une entité militaire non constituée en société basée en Russie, responsable du déploiement de mercenaires du groupe Wagner en Ukraine. En 2022, une société par actions dénommée “PMC Wagner Center” a été créée et enregistrée à Saint-Pétersbourg, dans le but de “créer un environnement propice à la naissance de nouvelles idées permettant d’améliorer les capacités de défense de la Russie”. Le groupe Wagner, dirigé par Yevgeniy Prigozhin, a joué un rôle important dans les combats et l’occupation des territoires dans l’est de l’Ukraine. Concord, également connue sous la dénomination de KOMBINAT PITANIYA KONKORD OOO, une société que Prigozhin a fondée et détenue jusqu’en novembre 2019, et un groupe d’autres sociétés qui lui sont liées, y compris Concord Management and Consulting LLC et Megaline LLC, ont bénéficié d’importants contrats publics avec le ministère russe de la défense à la suite de l’annexion illégale de la Crimée par la Fédération de Russie et de l’occupation de l’est de l’Ukraine par des séparatistes soutenus par la Russie. Yevgeniy Prigozhin était un homme d’affaires influent exerçant des activités en Russie. Il était également responsable d’actions qui ont compromis et menacé l’intégrité territoriale, la souveraineté et l’indépendance de l’Ukraine et a activement mis en œuvre ces actions. En outre, il a tiré avantage de décideurs russes responsables de l’annexion de la Crimée ou de la déstabilisation de l’est de l’Ukraine. Le fils de Yevgeniy Prigozhin, Pavel Prigozhin, est le principal héritier et bénéficiaire de ses avoirs, de ses biens et de ses propriétés. Pavel Prigozhin est inscrit sur la liste de l’Union pour son implication dans des opérations militaires contre l’Ukraine. Par conséquent, il convient de maintenir Yevgeniy Prigozhin sur la liste des personnes physiques ou morales, des entités ou des organismes faisant l’objet d’un gel des avoirs ou d’une interdiction de mise à disposition de fonds et de ressources économiques, étant donné qu’il est probable que les avoirs concernés serviraient autrement au financement de la guerre d’agression menée par la Russie contre l’Ukraine ou d’autres actions compromettant ou menaçant l’intégrité territoriale, la souveraineté et l’indépendance de l’Ukraine.\",\"Почему в списке | Участие и пособничество в деятельности организованного преступного сообщества, созданного с целью систематического совершения особо опасных преступлений, направленных против основ конституционного строя и безопасности государства, государственной власти и интересов государственной службы, правосудия, а также против мира и безопасности. | Исходя из информации Центра управления расследованиями, подозревается в причастности к убийству Дмитрия Соколова, утонувшего после конфликта с Пригожиным в Санкт-Петербурге. Согласно выписке из дела, заведенного ГУ МВД по факту смерти, Пригожин ударил Соколова, в результате избиения последний упал в воду и утонул. Позже два уголовных дела, заведенные по факту смерти Соколова, исчезли. | Из опубликованных ранее материалов СМИ следует, что Пригожин и финансируемая им компания «Агентство интернет-исследований» («фабрика троллей») могут быть причастны к вмешательству в президентские выборы в США в 2016 году. В марте 2018 года Минфин США ввел санкции против Пригожина. Согласно обвинениям федерального суда округа Колумбия, «Агентство интернет-исследований» подозревается в подрыве имиджа кандидата от демократической партии Хиллари Клинтон, использовании краденных персональных данных американцев, а также во въезде сотрудников «Агентства интернет-исследований» на территорию США под фальшивым предлогом. | Как следует из публикации Deutsche Welle, Пригожин подозревается в финансировании незаконной ЧВК «Вагнер», бойцы которой участвовали в военных действиях на территории Украины и Сирии. | На основании информации из открытых источников можно предположить, что компания «Мегалайн» (структура «Конкорда»), связанная с Евгением Пригожиным, причастна к уклонению от уплаты налогов. Согласно бывшему заместителю регионального управляющего компании Марине Бычко, только 70% работников были официально трудоустроены, однако и они получали «белую» зарплату не полностью. Остальные деньги выдавались наличными — около 800 тыс. рублей ежемесячно. По информации ГУ МВД по СЗФО, Пригожин пользуется схемами обналичивания и изменений счетчиков кассовых аппаратов, при этом в ходе работы с зарубежными клиентами выручка от заказов переходит на офшорные счета за границей. | По данным «Фонтанки», компании Пригожина де-факто выступают монопольными поставщиками услуг на коммунальное обслуживание военных городков в Московской, Брянской и Тверской областях, заказчиком которых является структура Минобороны АО «ГУ ЖКХ». | Предположительно, поставщик Минобороны намеренно создал условия, исключающие проведение конкурентных рыночных торгов, с целью не допустить возможность получения контрактов независимыми компаниями. Процесс отбора поставщиков выглядит сомнительно — в частности, на незаконность проведения тендеров указывает предельно общий характер требований к участникам и критериев отбора победителей торгов. Кроме того, у победивших в конкурсах компаний отсутствуют необходимые лицензии на право работы с гостайной, опыт в сфере ЖКХ, а также штат сотрудников. | Исходя из информации Би-би-си, подозревается в аффилированности с сайтами «Кто есть кто» и «Викиблогер», на которых была размещена картотека оппозиционеров, получавших угрозы в социальных сетях. Согласно публикациям в российских СМИ, деятельность обоих сайтов связана с нападениями на оппозиционеров в Санкт-Петербурге.\",\"Also designated under Libya sanctions\",\"NCIC: W713167242\",\"(also YEVGENIY VIKTOROVICH PRIGOZHIN)\",\"Financier of Internet Research Agency and key leader of Wagner Group\",\"Возможные нарушения закона | В действиях Евгения Пригожина могут содержаться признаки следующих составов преступлений, предусмотренных УК РФ: | — Ст. 210 УК РФ «Организация преступного сообщества (преступной организации) или участие в нем (ней)», то есть участие в деятельности преступного сообщества, созданного с целью насильственного незаконного удержания власти вопреки требованиям Конституции РФ и систематического совершения других преступлений против власти, правосудия, интересов службы и мира. | — Ст. 111 п. 4 УК РФ «Умышленное причинение тяжкого вреда здоровью», то есть Умышленное причинение тяжкого вреда здоровью, опасного для жизни человека, повлекшие по неосторожности смерть потерпевшего. | — Ст. 125 УК РФ. «Оставление в опасности», то есть заведомое оставление без помощи лица, находящегося в опасном для жизни или здоровья состоянии и лишенного возможности принять меры к самосохранению по малолетству, старости, болезни или вследствие своей беспомощности, в случаях, если виновный имел возможность оказать помощь этому лицу и был обязан иметь о нем заботу либо сам поставил его в опасное для жизни или здоровья состояние. | — Ст. 199 УК РФ. «Уклонение от уплаты налогов, сборов, подлежащих уплате организацией, и (или) страховых взносов, подлежащих уплате организацией — плательщиком страховых взносов», то есть уклонение от уплаты налогов, сборов, подлежащих уплате организацией, и (или) страховых взносов, подлежащих уплате организацией — плательщиком страховых взносов, путем непредставления налоговой декларации (расчета) или иных документов, представление которых в соответствии с законодательством Российской Федерации о налогах и сборах является обязательным, либо путем включения в налоговую декларацию (расчет) или такие документы заведомо ложных сведений, совершенное в крупном размере. | — Ст. 359 УК РФ. «Наемничество», то есть вербовка, обучение, финансирование или иное материальное обеспечение наемника, а равно его использование в вооруженном конфликте или военных действиях. | — Ст. 119 УК РФ. «Угроза убийством или причинением тяжкого вреда здоровью», то есть угроза убийством или причинением тяжкого вреда здоровью, если имелись основания опасаться осуществления этой угрозы по мотивам политической, идеологической, расовой, национальной или религиозной ненависти или вражды либо по мотивам ненависти или вражды в отношении какой-либо социальной группы.\",\"(Date of UN designation: 2022-04-21) (Also designated under Libya sanctions)\",\"(also EVGENY PRIGOZHIN)\",\"Russian mercenary leader, oligarch, restaurateur, former owner of Wagner PVC (1961–2023)\",\"Associated persons: Lyubov Valentinovna Prigozhina (spouse)\",\"Disqualified\"],\"lastName\":[\"Prigožin\",\"PRIGOZHIN\",\"Prigojine\",\"Prigozhin\",\"ПРИГОЖИН\",\"PRIGOZJIN\",\"Prigożyn\"],\"gender\":[\"male\"],\"sourceUrl\":[\"https://home.treasury.gov/news/press-releases/sm1058\",\"https://home.treasury.gov/news/press-releases/sm0312\",\"https://home.treasury.gov/news/press-releases/jy0899\",\"https://home.treasury.gov/news/press-releases/jy0628\",\"https://find-and-update.company-information.service.gov.uk/disqualified-officers/natural/e7D4Leht_XvhX1AZ-vWSOHxnoEA\",\"https://home.treasury.gov/news/press-releases/sm1133\",\"https://peps.dossier.center/person/prigozhin-evgenij/\",\"https://myrotvorets.center/criminal/prigozhin-evgenij-viktorovich/\",\"https://home.treasury.gov/news/press-releases/jy0126\",\"https://home.treasury.gov/news/press-releases/sm577\",\"https://gels-avoirs.dgtresor.gouv.fr/Gels/RegistreDetail?idRegistre=2997\",\"https://home.treasury.gov/news/press-releases/sm787\",\"https://sanctionssearch.ofac.treas.gov/Details.aspx?id=21171\",\"https://baike.sogou.com/v209467375.htm\",\"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=OJ%3AL_202500527&qid=1742218670627\",\"https://home.treasury.gov/news/press-releases/sm1118\",\"https://www.fbi.gov/wanted/counterintelligence/yevgeniy-viktorovich-prigozhin\"],\"firstName\":[\"Evgeny\",\"Yevgeniy\",\"Evguéni\",\"Yevgeny Viktorovich\",\"Jevgenij\",\"Yevgeny\",\"Yevgeniy Viktorovich\",\"Евгений\",\"Jevgeni\",\"Jewgienij\"],\"country\":[\"ru\"],\"alias\":[\"Poetin""s kok"",""El cocinero de Putin"",""Дмитрий Гейлер"",""יבגני ויקטורוביץ"" פריגוז""ין"",""Олег Семёнов"",""Evgenij Viktorovich Prigozhin"",""Я. В. Прыгожын"",""bucătarul lui Putin"",""Eugeniy Prigozhin"",""Пригожин",
+               "Евгений"",""Evguéni Prigojine"",""Jevgenij Viktorovič Prigožin"",""PRIGOZHIN",
+               "Evgeny"",""il Cuoco di Putin"",""Јевгениј Викторович Пригожин"",""Yevgeniy Vicktorovich Prigozhin"",""Yevgeni Viktoroviç Prigojin"",""Пригожин Евгений Викторович"",""Evgeny Prigozhin"",""Yevgeny Prigozhin"",""Jewgeni Prigoschin"",""Jevgenij Viktorovitsj Prigosjin"",""Jevgenij Prigožin"",""Prigozhin",
+               "Yevgeny"",""Putins Koch"",""Yevgeniy Prigozhin"",""повар Путина"",""Evgenii Prigozhin"",""Jevgeni Viktorovitsj Prigozjin"",""Yevgeniy Viktorovich Prigojin"",""Jewgienij Wiktorowicz Prigożyn"",""Putinin aşbazı"",""Yevgeni Viktoroviç Priqojin"",""Jewgeni Wiktorowitsj Prigozjin"",""Яўген Прыгожын"",""Євгеній Вікторович Пригожин"",""Ievgueni Víktorovitx Prigojin"",""Pryhozhyn Yevhenii Viktorovych"",""Putin’s chef"",""Jevgeni Viktorovitš Prigožin"",""lo Chef di Putin"",""Jevgenij Viktorovitj Prigozjin"",""Evgheni Viktorovici Prigojin"",""Евгений Викторович ПРИГОЖИН"",""Евге́ний Ви́кторович Приго́жин"",""Evgenij Viktorovič Prigožin"",""Jewgienij Prigożyn"",""Пригожин",
+               "Евгений Викторович"",""Дмитрий Боб  бров"",""Yevgueni Víktorovich Prigozhin"",""Yevgeny Viktorovich Prigozhin"",""Евгений Викторович Пригожин"",""Jevgeníj Víktorovítsj Prígozhín"",""kucharz Putina"",""Prigozhin",
+               "Yevgueni"",""El chef de Putin"",""Iévguéni Prigojine""],""nationality"":[""ru""],""fatherName"":[""Viktorovich"",""Викторович"",""ВИКТОРОВИЧ""],""modifiedAt"":["2025-04-22"],""position"":[""Russian leading businessperson (founder and former owner of Concord",
+               "also known as KOMBINAT PITANIYA KONKORD OOO) and founder of the Wagner Group",
+               "a Russia-based unincorporated military entity"",""власник кейтерингового бізнесу"",""Responsible for and support to the Wagner Group"","Leader of the Wagner Group (2014-2023)",""предприниматель",
+               "ресторатор"",""ресторатор"",""Leader of Internet Research Agency (IRA) and Private military company (PMC) Wagner"",""російський бізнесмен"",""Funder and former director of Internet Research Agency"",""Ancien homme d""affaires influent\",\"генеральний директор ООО «Конкорд менеджмент и консалтинг»\",\"генеральний директор товариства з обмеженою відповідальністю «Конкорд менеджмент и консалтинг»\",\"インターネット・リサーチ・エージェンシー代表、民間軍事会社ワグナー代表\",\"Responsible for and support to the Wagner Group; funder and former director of Internet Research Agency\",\"commanding officer\"],\"innCode\":[\"780156803652\"],\"passportNumber\":[\"40 07 136936\"],\"birthCountry\":[\"ru\"],\"title\":[\"Mr\"],\"description\":[\"Russian national associated with the PMC Wagner Group.\"],\"summary\":[\"Probable Organizer\"],\"address\":[\"Russia\",\"Російська Федерація, м. Санкт-Петербург\"],\"eyeColor\":[\"Brown\"],\"ethnicity\":[\"White\"],\"hairColor\":[\"Bald\"],\"weakAlias\":[\"Yevgeny\",\"イェフゲニー・プリゴジン\",\"Жако\",\"Prigozhin\",\"エフゲニー・ヴィクトロヴィッチ・プリゴジン\",\"エブゲニー・プリゴジン\",\"Петрович\",\"普里戈津\",\"イェフゲニー・ヴィクトロヴィッチ・プリゴジン\",\"Prigozsin\",\"普里戈任\",\"叶夫根尼·普里戈津\",\"プーチンのシェフ\",\"イェフゲニー・ヴィクトロヴィチ・プリゴジン\",\"エフゲニー・ヴィクトロヴィチ・プリゴジン\",\"叶夫根尼·维克托罗维奇·普里戈任\"],\"wikidataId\":[\"Q20850503\"],\"deathDate\":[\"2023-08-23\"],\"education\":[\"Saint Petersburg State Chemical-Pharmaceutical University\",\"Saint Petersburg college of the Olympics reserve N. 1\"]},\"datasets\":[\"gb_coh_disqualified\",\"us_sam_exclusions\",\"us_trade_csl\",\"gb_hmt_sanctions\",\"be_fod_sanctions\",\"ru_myrotvorets_wagner\",\"wd_oligarchs\",\"mc_fund_freezes\",\"tw_shtc\",\"ext_ru_egrul\",\"ann_pep_positions\",\"ca_dfatd_sema_sanctions\",\"ua_nsdc_sanctions\",\"au_dfat_sanctions\",\"ext_us_ofac_press_releases\",\"nz_russia_sanctions\",\"eu_travel_bans\",\"eu_fsf\",\"wikidata\",\"wd_curated\",\"us_ofac_sdn\",\"kp_rusi_reports\",\"wd_peps\",\"fr_tresor_gels_avoir\",\"gb_fcdo_sanctions\",\"us_fbi_most_wanted\",\"ru_dossier_center_poi\",\"ch_seco_sanctions\",\"jp_mof_sanctions\"],\"referents\":[\"ofac-pr-75c5591e973538c992c909801a54662b9bab554d\",\"ru-inn-780156803652\",\"gb-fcdo-lib0071\",\"eu-oj-827f3408633155cb8a6bd25783c5ba3084fea9af\",\"gb-coh-e7d4leht-xvhx1az-vwsohxnoea\",\"ca-sema-9e9ecb5c5d220b45697ab125bb7bc14b938036e0\",\"fr-ga-named-yevgeny-prigozhin\",\"us-fbi-yevgeniy-viktorovich-prigozhin\",\"ja-mof-5f9bc4e12ec61c7289738b6dd151c9a1b7a520ac\",\"rumy-e2abb8028125cd8177478de8baf6aef639eca7b0\",\"ru-dc-poi-evgenij-viktorovic-prigozin\",\"be-fod-bfeea7be267c794d56306876acbb8a35547a6030\",\"au-dfat-6288-yevgeny-viktorovich-prigozhin\",\"ch-seco-43767\",\"gb-hmt-13968\",\"ch-seco-54375\",\"ch-seco-43757\",\"ofac-pr-a76fe7bbab56ecb73b127768888a62beab78ec19\",\"eu-fsf-eu-8153-35\",\"ofac-21171\",\"usgsa-s4mr5ctn1\",\"eu-tb-logical-139815\",\"usgsa-s4mr5czy2\",\"tw-shtc-01c76fb271ff6ddbf321abed01f8082b984d525e\",\"usgsa-s4mr5cshb\",\"nz-ru-ind-49-yevgeny-prigozhin\",\"ua-nsdc-13909-prigozin-evgenij-viktorovic\",\"fr-ga-2997\",\"tw-shtc-81b3ac34fc284625eda60f889b285e9c4a3d88ac\",\"kprusi-51d69111200cc6e5ba0ca55bf4df0fa09e6b0501\",\"mc-freezes-994dd4394398af0083221c7cb085ee6a937ca0d5\",\"Q120852784\"],\"target\":true,\"first_seen\":\"2022-04-27T18:12:14\",\"last_seen\":\"2026-03-03T06:43:01\",\"last_change\":\"2026-03-02T21:35:40\"}],\"facets\":{\"countries\":{\"label\":\"Countries\",\"values\":[{\"name\":\"ru\",\"label\":\"Russia\",\"count\":904},{\"name\":\"suhh\",\"label\":\"Soviet Union\",\"count\":367},{\"name\":\"ua\",\"label\":\"Ukraine\",\"count\":60},{\"name\":\"by\",\"label\":\"Belarus\",\"count\":12},{\"name\":\"kz\",\"label\":\"Kazakhstan\",\"count\":10},{\"name\":\"uz\",\"label\":\"Uzbekistan\",\"count\":8},{\"name\":\"de\",\"label\":\"Germany\",\"count\":7},{\"name\":\"il\",\"label\":\"Israel\",\"count\":7},{\"name\":\"az\",\"label\":\"Azerbaijan\",\"count\":6},{\"name\":\"ch\",\"label\":\"Switzerland\",\"count\":6},{\"name\":\"cy\",\"label\":\"Cyprus\",\"count\":6},{\"name\":\"fr\",\"label\":\"France\",\"count\":6},{\"name\":\"gb\",\"label\":\"United Kingdom\",\"count\":6},{\"name\":\"kg\",\"label\":\"Kyrgyzstan\",\"count\":6},{\"name\":\"fi\",\"label\":\"Finland\",\"count\":5},{\"name\":\"ge\",\"label\":\"Georgia\",\"count\":5},{\"name\":\"in\",\"label\":\"India\",\"count\":5},{\"name\":\"cn\",\"label\":\"China\",\"count\":4},{\"name\":\"am\",\"label\":\"Armenia\",\"count\":3},{\"name\":\"ky\",\"label\":\"Cayman Islands\",\"count\":3},{\"name\":\"md\",\"label\":\"Moldova\",\"count\":3},{\"name\":\"ua-cri\",\"label\":\"Crimea (Occupied Ukraine)\",\"count\":3},{\"name\":\"ae\",\"label\":\"United Arab Emirates\",\"count\":2},{\"name\":\"mc\",\"label\":\"Monaco\",\"count\":2},{\"name\":\"my\",\"label\":\"Malaysia\",\"count\":2},{\"name\":\"nl\",\"label\":\"Netherlands\",\"count\":2},{\"name\":\"us\",\"label\":\"United States\",\"count\":2},{\"name\":\"vg\",\"label\":\"British Virgin Islands\",\"count\":2},{\"name\":\"be\",\"label\":\"Belgium\",\"count\":1},{\"name\":\"dd\",\"label\":\"East Germany\",\"count\":1},{\"name\":\"dm\",\"label\":\"Dominica\",\"count\":1},{\"name\":\"ee\",\"label\":\"Estonia\",\"count\":1},{\"name\":\"hr\",\"label\":\"Croatia\",\"count\":1},{\"name\":\"it\",\"label\":\"Italy\",\"count\":1},{\"name\":\"jo\",\"label\":\"Jordan\",\"count\":1},{\"name\":\"lv\",\"label\":\"Latvia\",\"count\":1},{\"name\":\"md-pmr\",\"label\":\"Transnistria\",\"count\":1},{\"name\":\"mh\",\"label\":\"Marshall Islands\",\"count\":1},{\"name\":\"pt\",\"label\":\"Portugal\",\"count\":1},{\"name\":\"rs\",\"label\":\"Serbia\",\"count\":1},{\"name\":\"sy\",\"label\":\"Syria\",\"count\":1},{\"name\":\"tj\",\"label\":\"Tajikistan\",\"count\":1},{\"name\":\"ua-dpr\",\"label\":\"Donetsk (Occupied Ukraine)\",\"count\":1}]},\"topics\":{\"label\":\"Topics\",\"values\":[{\"name\":\"poi\",\"label\":\"Person of interest\",\"count\":1474},{\"name\":\"sanction\",\"label\":\"Sanctioned entity\",\"count\":766},{\"name\":\"role.pep\",\"label\":\"Politician\",\"count\":602},{\"name\":\"debarment\",\"label\":\"Debarred entity\",\"count\":467},{\"name\":\"corp.disqual\",\"label\":\"Disqualified\",\"count\":408},{\"name\":\"export.control\",\"label\":\"Export controlled\",\"count\":380},{\"name\":\"role.rca\",\"label\":\"Close Associate\",\"count\":78},{\"name\":\"role.oligarch\",\"label\":\"Oligarch\",\"count\":38},{\"name\":\"mil\",\"label\":\"Military\",\"count\":19},{\"name\":\"sanction.linked\",\"label\":\"Sanction-linked entity\",\"count\":11},{\"name\":\"corp.public\",\"label\":\"Public listed company\",\"count\":8},{\"name\":\"role.diplo\",\"label\":\"Diplomat\",\"count\":8},{\"name\":\"role.judge\",\"label\":\"Judge\",\"count\":5},{\"name\":\"export.risk\",\"label\":\"Trade risk\",\"count\":4},{\"name\":\"fin.bank\",\"label\":\"Bank\",\"count\":4},{\"name\":\"wanted\",\"label\":\"Wanted\",\"count\":4},{\"name\":\"asset.frozen\",\"label\":\"Frozen asset\",\"count\":1},{\"name\":\"crime\",\"label\":\"Crime\",\"count\":1},{\"name\":\"crime.war\",\"label\":\"War crimes\",\"count\":1},{\"name\":\"reg.action\",\"label\":\"Regulator action\",\"count\":1}]},\"datasets\":{\"label\":\"Data sources\",\"values\":[{\"name\":\"ru_acf_bribetakers\",\"label\":\"ACF List of War Enablers\",\"count\":1456},{\"name\":\"wikidata\",\"label\":\"Wikidata\",\"count\":786},{\"name\":\"ua_nsdc_sanctions\",\"label\":\"Ukraine NSDC State Register of Sanctions\",\"count\":743},{\"name\":\"wd_categories\",\"label\":\"Wikidata Persons in Relevant Categories\",\"count\":577},{\"name\":\"fr_tresor_gels_avoir\",\"label\":\"French National Asset Freezing System\",\"count\":565},{\"name\":\"mc_fund_freezes\",\"label\":\"Monaco National Fund Freezing List\",\"count\":564},{\"name\":\"eu_fsf\",\"label\":\"EU Financial Sanctions Files (FSF)\",\"count\":563},{\"name\":\"be_fod_sanctions\",\"label\":\"Belgian Financial Sanctions\",\"count\":562},{\"name\":\"ch_seco_sanctions\",\"label\":\"Swiss SECO Sanctions/Embargoes\",\"count\":557},{\"name\":\"ca_dfatd_sema_sanctions\",\"label\":\"Canadian Consolidated Autonomous Sanctions List\",\"count\":535},{\"name\":\"eu_travel_bans\",\"label\":\"EU Consolidated Travel Bans\",\"count\":520},{\"name\":\"wd_curated\",\"label\":\"Wikidata Entities of Interest\",\"count\":511},{\"name\":\"gb_fcdo_sanctions\",\"label\":\"UK FCDO Sanctions List\",\"count\":490},{\"name\":\"gb_hmt_sanctions\",\"label\":\"UK HMT/OFSI Consolidated List of Targets\",\"count\":490},{\"name\":\"au_dfat_sanctions\",\"label\":\"Australian Sanctions Consolidated List\",\"count\":477},{\"name\":\"us_trade_csl\",\"label\":\"US Trade Consolidated Screening List (CSL)\",\"count\":472},{\"name\":\"us_ofac_sdn\",\"label\":\"US OFAC Specially Designated Nationals (SDN) List\",\"count\":468},{\"name\":\"us_sam_exclusions\",\"label\":\"US SAM Procurement Exclusions\",\"count\":467},{\"name\":\"nz_russia_sanctions\",\"label\":\"New Zealand Russia Sanctions\",\"count\":443},{\"name\":\"ann_pep_positions\",\"label\":\"PEP position annotations by OpenSanctions\",\"count\":420},{\"name\":\"wd_peps\",\"label\":\"Wikidata Politically Exposed Persons\",\"count\":411},{\"name\":\"gb_coh_disqualified\",\"label\":\"UK Companies House Disqualified Directors\",\"count\":408},{\"name\":\"jp_mof_sanctions\",\"label\":\"Japan Economic Sanctions and List of Eligible People\",\"count\":381},{\"name\":\"tw_shtc\",\"label\":\"Taiwan Strategic High-Tech Commodities Entity List\",\"count\":376},{\"name\":\"ext_us_ofac_press_releases\",\"label\":\"US OFAC Press Releases\",\"count\":362},{\"name\":\"ext_ru_egrul\",\"label\":\"Russian Unified State Register of Legal Entities\",\"count\":292},{\"name\":\"everypolitician\",\"label\":\"MySociety""s EveryPolitician Legislators"",""count"":174},{""name"":""ua_war_sanctions"",""label"":""Ukraine War and Sanctions"",""count"":127},{""name"":""wd_oligarchs"",""label"":""Russian Oligarch/Billionaires Database"",""count"":52},{""name"":""eu_journal_sanctions"",""label"":""EU Council Official Journal Sanctioned Entities"",""count"":41},{""name"":""ru_dossier_center_poi"",""label"":""Russian Persons of Interest published by Dossier Center"",""count"":34},{""name"":"ru_billionaires_2021",""label"":"Forbes 2021 List of Russian Billionaires",""count"":32},{""name"":""permid"",""label"":""PermID Open Data"",""count"":20},{""name"":""lv_fiu_sanctions"",""label"":""Latvia FIU Sanctions and Asset Freezes"",""count"":19},{""name"":"ru_navalny35",""label"":"Navalny 35 List of Individuals for Sanctioning",""count"":17},{""name"":""ann_graph_topics"",""label"":""Graph-based entity tagging"",""count"":14},{""name"":""lt_magnitsky_amendments"",""label"":""Lithuania Designated Persons Under Magnitsky Amendments"",""count"":11},{""name"":""ext_gb_coh_psc"",""label"":""UK Companies House People with Significant Control"",""count"":10},{""name"":""eu_sanctions_map"",""label"":""EU Sanctions Map"",""count"":9},{""name"":""pl_mswia_sanctions"",""label"":""Polish List of Persons and Entities Subject to Sanctions"",""count"":7},{""name"":""ext_gleif"",""label"":""Legal Entity Identifier (LEI) Reference Data"",""count"":6},{""name"":""ru_nsd_isin"",""label"":""Russian National Settlement Depository (NSD",
+               "ISIN Assignment)"",""count"":6},{""name"":""ext_icij_offshoreleaks"",""label"":""ICIJ Offshore Leaks Database"",""count"":5},{""name"":""kp_rusi_reports"",""label"":""DPRK Reports"",""count"":5},{""name"":""us_cia_world_leaders"",""label"":""US CIA World Leaders"",""count"":5},{""name"":""ext_eu_esma_firds"",""label"":""EU Financial Instruments Reference Data System (FIRDS)"",""count"":4},{""name"":""gb_hmt_invbans"",""label"":""UK HMT/OFSI Investment Bans"",""count"":4},{""name"":""gem_energy_ownership"",""label"":""Global Energy Ownership Tracker"",""count"":4},{""name"":""ir_uani_business_registry"",""label"":""Iran UANI Business Registry"",""count"":4},{""name"":"iso9362_bic",""label"":""Business Identifier Code (BIC) Reference Data"",""count"":4},{""name"":""us_ofac_cons"",""label"":""US OFAC Consolidated (non-SDN) List"",""count"":4},{""name"":""cz_national_sanctions"",""label"":""Czech Republic National Sanctions"",""count"":3},{""name"":""ee_international_sanctions"",""label"":""Estonia International Sanctions Act List"",""count"":3},{""name"":""eu_esma_saris"",""label"":""EU ESMA Suspensions and Removals"",""count"":3},{""name"":""jp_meti_ru"",""label"":""Japan METI Russian List"",""count"":3},{""name"":""lt_fiu_freezes"",""label"":""Lithuanian International Sanctions"",""count"":3},{""name"":""lv_magnitsky_list"",""label"":""Latvia""'s Magnitsky Law Sanctions List\",\"count\":3},{\"name\":\"ru_cbr_banks\",\"label\":\"Russia Banking Registry\",\"count\":3},{\"name\":\"sg_terrorists\",\"label\":\"Singapore Targeted Financial Sanctions\",\"count\":3},{\"name\":\"ext_cy_companies\",\"label\":\"Cyprus Companies and Corporate Officers\",\"count\":2},{\"name\":\"ext_ror\",\"label\":\"Research Organizations Registry\",\"count\":2},{\"name\":\"ext_ua_edr\",\"label\":\"Ukraine Consolidated State Registry\",\"count\":2},{\"name\":\"jp_meti_eul\",\"label\":\"Japan METI End User List\",\"count\":2},{\"name\":\"md_rise_profiles\",\"label\":\"RISE Moldova People of interest\",\"count\":2},{\"name\":\"ext_gb_fca_firds\",\"label\":\"UK Financial Instruments Reference Data System (FIRDS)\",\"count\":1},{\"name\":\"ext_lv_business_register\",\"label\":\"Register of Enterprises of the Republic of Latvia (Uzņēmumu reģistrs)\",\"count\":1},{\"name\":\"in_sansad\",\"label\":\"India Lok and Rajya Sabha Members\",\"count\":1},{\"name\":\"ru_myrotvorets_wagner\",\"label\":\"Russian PMC Wagner mercenaries (Myrotvorets list)\",\"count\":1},{\"name\":\"un_ga_protocol\",\"label\":\"UN Heads of State, Heads of Government and Ministers for Foreign Affairs\",\"count\":1},{\"name\":\"us_cia_world_factbook\",\"label\":\"US CIA World Factbook Heads of State and Government\",\"count\":1},{\"name\":\"us_fbi_most_wanted\",\"label\":\"US FBI Most Wanted\",\"count\":1},{\"name\":\"us_ofac_enforcement_actions\",\"label\":\"US OFAC Enforcement Actions\",\"count\":1}]}}}"
