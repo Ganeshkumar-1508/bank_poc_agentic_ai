@@ -303,7 +303,7 @@ def create_aml_execution_tasks(agents, client_data_json: str):
             "- In your report, include a section 'OSINT – Social Media' listing each platform and URL found, or clearly state if none were found.\n\n"
 
             "STEP 4: News Check\n"
-            "- Search for sanctions/fraud news.\n\n"
+            "- Search for sanctions/Crime news.\n\n"
 
             "Compile an exhaustive report including:"
             "- Identity verification,"

@@ -9,7 +9,7 @@ import pandas as pd
 import streamlit as st
 from pathlib import Path
 from dotenv import load_dotenv
-from streamlit_echarts import st_echarts
+from streamlit_echarts import st_echarts, JsCode
 from datetime import datetime, timedelta
 from crews import run_crew, FixedDepositCrews
 from tools import extract_json_balanced, set_search_region, fetch_country_data
@@ -110,6 +110,9 @@ if "messages" not in st.session_state:
 if "last_analysis_data" not in st.session_state:
     st.session_state.last_analysis_data = None
 
+if "last_tenure_months" not in st.session_state:
+    st.session_state.last_tenure_months = 12
+
 def get_currency_symbol() -> str:
     return st.session_state.get("user_region", {}).get("currency_symbol", "")
 
@@ -119,6 +122,8 @@ def reset_session():
         del st.session_state["ONBOARDING_FLOW"]
     if "last_analysis_data" in st.session_state:
         del st.session_state["last_analysis_data"]
+    if "last_tenure_months" in st.session_state:
+        del st.session_state["last_tenure_months"]
     if "PENDING_AML_JSON" in st.session_state:
         del st.session_state["PENDING_AML_JSON"]
     # Reset Langfuse IDs on session reset
@@ -211,49 +216,99 @@ def run_crew_with_langfuse(
 @st.cache_data(ttl=3600)
 def get_dynamic_kyc_docs(country_name: str) -> tuple:
     """
-    Dynamically searches for KYC requirements based on country.
-    Returns a tuple (Doc1, Doc2).
-    """
-    default_docs = ("National ID", "Proof of Address")
-    
-    if not os.getenv("NVIDIA_API_KEY"):
-        return default_docs
+    Returns the two mandatory KYC documents for a given country.
 
+    Strategy (in order):
+      1. LLM direct knowledge  — fast, no search needed, works for every country.
+      2. LLM + web search      — fallback if step 1 returns unparseable output.
+      3. Generic labels        — only if both LLM calls fail entirely.
+
+    The cache key is `country_name`, so each country is fetched once per hour.
+    """
+    if not os.getenv("NVIDIA_API_KEY"):
+        return ("Government-issued Photo ID", "Proof of Address")
+
+    llm = ChatNVIDIA(model="meta/llama-3.1-8b-instruct")
+
+    def _parse_docs(text: str) -> tuple | None:
+        """Extract a (doc1, doc2) tuple from LLM output. Returns None on failure."""
+        text = text.strip()
+        # Strip markdown fences
+        for fence in ("```json", "```"):
+            if fence in text:
+                text = text.split(fence)[1].split("```")[0].strip()
+                break
+        # Find the JSON array anywhere in the response
+        import re as _re
+        match = _re.search(r'\[.*?\]', text, _re.DOTALL)
+        if match:
+            text = match.group(0)
+        try:
+            docs = json.loads(text)
+            if isinstance(docs, list) and len(docs) >= 2:
+                d1, d2 = str(docs[0]).strip(), str(docs[1]).strip()
+                # Reject obviously generic fallback values
+                generic = {"national id card", "proof of address",
+                           "government-issued photo id", "passport"}
+                if d1.lower() not in generic or d2.lower() not in generic:
+                    return (d1, d2)
+        except (json.JSONDecodeError, ValueError):
+            pass
+        return None
+
+    # ── Step 1: LLM direct knowledge ─────────────────────────────────────────
+    try:
+        direct_prompt = (
+            f"You are a banking compliance expert with deep knowledge of global KYC regulations.\n\n"
+            f"What are the TWO primary mandatory government-issued identity documents that banks in "
+            f"'{country_name}' require from customers for KYC (Know Your Customer) verification "
+            f"when opening a bank account?\n\n"
+            f"Rules:\n"
+            f"- Use the official local document name (e.g. 'Aadhaar Card', 'PAN Card', "
+            f"'Emirates ID', 'SSN', 'CNIC', 'CPF', etc.).\n"
+            f"- Do NOT return generic terms like 'National ID' or 'Proof of Address' — "
+            f"use the specific, country-issued document name.\n"
+            f"- Return ONLY a raw JSON array with exactly two strings. "
+            f"No explanation, no markdown, no extra text.\n"
+            f"Example for India: [\"Aadhaar Card\", \"PAN Card\"]\n"
+            f"Example for UAE:   [\"Emirates ID\", \"Passport\"]\n"
+            f"Now respond for: {country_name}"
+        )
+        response = llm.invoke(direct_prompt)
+        result = _parse_docs(response.content)
+        if result:
+            return result
+        print(f"[KYC] Step 1 unparseable for '{country_name}': {response.content[:120]}")
+    except Exception as e:
+        print(f"[KYC] Step 1 failed for '{country_name}': {e}")
+
+    # ── Step 2: LLM + web search ──────────────────────────────────────────────
     try:
         from tools import search_news
-        query = f"primary KYC documents required for bank account opening in {country_name}"
-        
+        query = f"mandatory KYC documents bank account opening {country_name} official government ID"
         search_context = search_news(query)
-        
-        # Use a small LLM to extract the document names
-        llm = ChatNVIDIA(model="meta/llama-3.1-8b-instruct")
-        
-        prompt = (
-            f"Analyze the following search results about bank KYC documents for {country_name}.\n\n"
+
+        search_prompt = (
+            f"You are a banking compliance expert. Based on the search results below, "
+            f"identify the TWO primary government-issued identity documents that banks in "
+            f"'{country_name}' require for KYC verification.\n\n"
             f"Search Results:\n{search_context}\n\n"
-            "Identify the TWO most important government-issued IDs/Documents required for KYC. "
-            "Examples: PAN Card, Aadhaar, SSN, Passport, Driver's License etc\n"
-            "Return ONLY a JSON list with exactly two strings. Example: [\"PAN Card\", \"Aadhaar Card\"]"
+            f"Rules:\n"
+            f"- Use the official local document name — not generic terms.\n"
+            f"- Return ONLY a raw JSON array with exactly two strings. No markdown.\n"
+            f"Example: [\"Aadhaar Card\", \"PAN Card\"]"
         )
-        
-        response = llm.invoke(prompt)
-        content = response.content.strip()
-        
-        # Clean and parse JSON
-        if "```json" in content:
-            content = content.split("```json")[1].split("```")[0].strip()
-        elif "```" in content:
-            content = content.split("```")[1].split("```")[0].strip()
-            
-        docs = json.loads(content)
-        
-        if isinstance(docs, list) and len(docs) >= 2:
-            return (docs[0], docs[1])
-            
+        response = llm.invoke(search_prompt)
+        result = _parse_docs(response.content)
+        if result:
+            return result
+        print(f"[KYC] Step 2 unparseable for '{country_name}': {response.content[:120]}")
     except Exception as e:
-        print(f"Dynamic KYC fetch failed: {e}")
-    
-    return default_docs
+        print(f"[KYC] Step 2 failed for '{country_name}': {e}")
+
+    # ── Step 3: hard fallback ─────────────────────────────────────────────────
+    print(f"[KYC] All steps failed for '{country_name}' — using generic fallback.")
+    return ("Government-issued Photo ID", "Proof of Address")
 
 # =============================================================================
 # TABS
@@ -283,28 +338,39 @@ def append_assistant(text: str, chart_options=None):
 # =============================================================================
 
 def parse_projection_table(text: str) -> pd.DataFrame:
-    """Parses the projection CSV output into a DataFrame."""
+    """Parses the projection CSV output into a DataFrame. Rows with all-NaN numerics are dropped."""
     try:
         import io
         clean = text.replace("```csv", " ").replace("```", " ").strip()
+        # Strip any leading non-CSV lines (agent preamble text)
+        lines = clean.splitlines()
+        header_idx = next(
+            (i for i, l in enumerate(lines) if "Provider" in l and "Rate" in l), 0
+        )
+        clean = "\n".join(lines[header_idx:])
+
         df = pd.read_csv(io.StringIO(clean))
         df.columns = [c.strip() for c in df.columns]
-        
+
         required = {
             "Provider", "General Rate (%)", "Senior Rate (%)",
             "General Maturity", "Senior Maturity",
             "General Interest", "Senior Interest"
         }
-        
+
         if not required.issubset(df.columns):
-            st.warning(f"Missing columns. Found: {list(df.columns)}")
+            st.warning(f"Missing columns in projection output. Found: {list(df.columns)}")
             return pd.DataFrame()
-        
-        for col in list(required - {"Provider"}):
+
+        numeric_cols = list(required - {"Provider"})
+        for col in numeric_cols:
             df[col] = pd.to_numeric(
-                df[col].astype(str).str.replace(",", ""), errors="coerce"
+                df[col].astype(str).str.replace(",", "").str.replace("N/A", "").str.strip(),
+                errors="coerce"
             )
-        
+
+        # Drop rows where ALL numeric columns are NaN (provider had no confirmed rates)
+        df = df.dropna(subset=numeric_cols, how="all").reset_index(drop=True)
         return df
     except Exception as e:
         st.warning(f"Parse error: {e}")
@@ -312,118 +378,86 @@ def parse_projection_table(text: str) -> pd.DataFrame:
 
 def render_bar_charts(df: pd.DataFrame):
     """
-    Renders 4 separate charts: General/Senior for Rates and Maturity.
-    Limited to Top 5 providers.
+    Renders 2 grouped bar charts side by side:
+      - General: Maturity Amount + Interest Earned
+      - Senior:  Maturity Amount + Interest Earned
+    Rows with NaN in any numeric column are silently dropped.
     """
+    numeric_cols = ["General Maturity", "Senior Maturity", "General Interest", "Senior Interest"]
+    df = df.dropna(subset=numeric_cols).head(10).copy()
 
-    df = df.head(10).copy()
-    
+    if df.empty:
+        st.warning(
+            "⚠️ No projection data with confirmed rates available to chart. "
+            "The providers found may not have publicly disclosed rates for this region. "
+            "Try a different region or tenure in your query."
+        )
+        return
+
     sym = get_currency_symbol()
     providers_list = df["Provider"].tolist()
-    
-    st.markdown("### Interest Rates Analysis (Top 5)")
+
+    fmt_js   = JsCode(f"function(v){{return '{sym}'+v.toLocaleString(undefined,{{maximumFractionDigits:0}});}}")
+    axis_fmt = JsCode(f"function(v){{return '{sym}'+(v/1000).toFixed(0)+'K';}}")
+    tooltip_fn = JsCode(
+        f"function(params){{"
+        f"var s=params[0].axisValue+'<br/>';"
+        f"params.forEach(function(p){{s+=p.marker+p.seriesName+': {sym}'+p.value.toLocaleString(undefined,{{maximumFractionDigits:0}})+'<br/>';}});"
+        f"return s;}}"
+    )
+
+    st.markdown("### Maturity & Interest Breakdown")
     col1, col2 = st.columns(2)
-    
-    # CHART 1: General Interest Rates
+
     with col1:
-        st.markdown("#### General Rates")
-        rate_option_general = {
-            "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-            "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": True},
+        st.markdown("#### General")
+        st_echarts(options={
+            "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}, "formatter": tooltip_fn},
+            "legend": {"data": ["Maturity Amount", "Interest Earned"], "bottom": 0},
+            "grid": {"left": "3%", "right": "4%", "bottom": "15%", "containLabel": True},
             "xAxis": {
-                "type": "category",
-                "data": providers_list,
-                "axisLabel": {"rotate": 30, "interval": 0, "fontSize": 10}
+                "type": "category", "data": providers_list,
+                "axisLabel": {"rotate": 35, "interval": 0, "fontSize": 10}
             },
-            "yAxis": {"type": "value", "name": "Rate (%)"},
-            "series": [{
-                "name": "General",
-                "type": "bar",
-                "data": df["General Rate (%)"].round(2).tolist(),
-                "itemStyle": {"color": "#3B82F6"},
-                "label": {"show": True, "position": "top", "formatter": "{c}%"}
-            }]
-        }
-        st_echarts(options=rate_option_general, height="350px", key="ec_gen_rate")
+            "yAxis": {
+                "type": "value",
+                "name": f"Amount ({sym})" if sym else "Amount",
+                "axisLabel": {"formatter": axis_fmt}
+            },
+            "series": [
+                {"name": "Maturity Amount", "type": "bar",
+                 "data": df["General Maturity"].round(0).tolist(),
+                 "itemStyle": {"color": "#3B82F6"}},
+                {"name": "Interest Earned", "type": "bar",
+                 "data": df["General Interest"].round(0).tolist(),
+                 "itemStyle": {"color": "#93C5FD"}},
+            ]
+        }, height="380px", key="ec_general")
 
-    # CHART 2: Senior Interest Rates
     with col2:
-        st.markdown("#### Senior Citizen Rates")
-        rate_option_senior = {
-            "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}},
-            "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": True},
+        st.markdown("#### Senior Citizen")
+        st_echarts(options={
+            "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}, "formatter": tooltip_fn},
+            "legend": {"data": ["Maturity Amount", "Interest Earned"], "bottom": 0},
+            "grid": {"left": "3%", "right": "4%", "bottom": "15%", "containLabel": True},
             "xAxis": {
-                "type": "category",
-                "data": providers_list,
-                "axisLabel": {"rotate": 30, "interval": 0, "fontSize": 10}
-            },
-            "yAxis": {"type": "value", "name": "Rate (%)"},
-            "series": [{
-                "name": "Senior",
-                "type": "bar",
-                "data": df["Senior Rate (%)"].round(2).tolist(),
-                "itemStyle": {"color": "#EF4444"},
-                "label": {"show": True, "position": "top", "formatter": "{c}%"}
-            }]
-        }
-        st_echarts(options=rate_option_senior, height="350px", key="ec_sen_rate")
-
-    st.markdown("---")
-    st.markdown("### Maturity Amounts Analysis (Top 5)")
-    col3, col4 = st.columns(2)
-    
-    fmt_js = f"function(v){{ return '{sym}' + v.toLocaleString(undefined, {{maximumFractionDigits:0}}); }}"
-    axis_fmt = f"function(v){{ return '{sym}' + (v/1000).toFixed(0) + 'K'; }}"
-
-    # CHART 3: General Maturity
-    with col3:
-        st.markdown("#### General Maturity")
-        mat_option_general = {
-            "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}, "valueFormatter": fmt_js},
-            "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": True},
-            "xAxis": {
-                "type": "category",
-                "data": providers_list,
-                "axisLabel": {"rotate": 30, "interval": 0, "fontSize": 10}
+                "type": "category", "data": providers_list,
+                "axisLabel": {"rotate": 35, "interval": 0, "fontSize": 10}
             },
             "yAxis": {
                 "type": "value",
                 "name": f"Amount ({sym})" if sym else "Amount",
                 "axisLabel": {"formatter": axis_fmt}
             },
-            "series": [{
-                "name": "General Maturity",
-                "type": "bar",
-                "data": df["General Maturity"].round(0).tolist(),
-                "itemStyle": {"color": "#10B981"}
-            }]
-        }
-        st_echarts(options=mat_option_general, height="350px", key="ec_gen_mat")
-
-    # CHART 4: Senior Maturity
-    with col4:
-        st.markdown("#### Senior Citizen Maturity")
-        mat_option_senior = {
-            "tooltip": {"trigger": "axis", "axisPointer": {"type": "shadow"}, "valueFormatter": fmt_js},
-            "grid": {"left": "3%", "right": "4%", "bottom": "3%", "containLabel": True},
-            "xAxis": {
-                "type": "category",
-                "data": providers_list,
-                "axisLabel": {"rotate": 30, "interval": 0, "fontSize": 10}
-            },
-            "yAxis": {
-                "type": "value",
-                "name": f"Amount ({sym})" if sym else "Amount",
-                "axisLabel": {"formatter": axis_fmt}
-            },
-            "series": [{
-                "name": "Senior Maturity",
-                "type": "bar",
-                "data": df["Senior Maturity"].round(0).tolist(),
-                "itemStyle": {"color": "#F59E0B"}
-            }]
-        }
-        st_echarts(options=mat_option_senior, height="350px", key="ec_sen_mat")
+            "series": [
+                {"name": "Maturity Amount", "type": "bar",
+                 "data": df["Senior Maturity"].round(0).tolist(),
+                 "itemStyle": {"color": "#EF4444"}},
+                {"name": "Interest Earned", "type": "bar",
+                 "data": df["Senior Interest"].round(0).tolist(),
+                 "itemStyle": {"color": "#FCA5A5"}},
+            ]
+        }, height="380px", key="ec_senior")
 
 def export_analysis_data():
     if st.session_state.get("last_analysis_data") is not None:
@@ -514,7 +548,17 @@ with tab1:
                 elif hasattr(result, "tasks_output") and len(result.tasks_output) >= 5:
                     st.markdown(result.raw)
                     projection_output = result.tasks_output[4].raw
-                    
+
+                    # Extract tenure from the parse task output (task index 0)
+                    # Format: "Type: FD, Amount: 100000, Tenure: 24, Compounding: quarterly"
+                    try:
+                        parse_raw = result.tasks_output[0].raw
+                        tenure_match = re.search(r"Tenure:\s*(\d+)", parse_raw, re.IGNORECASE)
+                        if tenure_match:
+                            st.session_state.last_tenure_months = int(tenure_match.group(1))
+                    except Exception:
+                        pass  # keep previous value
+
                     df = parse_projection_table(projection_output)
                     
                     if not df.empty:
@@ -576,7 +620,7 @@ with tab2:
         df = st.session_state.last_analysis_data
         available_banks = df["Provider"].unique().tolist()
         default_selection = available_banks[:3] if len(available_banks) > 3 else available_banks
-        
+
         tickers = st.multiselect(
             "Banks to Compare",
             options=available_banks,
@@ -589,179 +633,265 @@ with tab2:
             st.stop()
 
         st.markdown("---")
+
+        # ── Tenure: default to what the user queried, allow override ────────
+        actual_tenure = st.session_state.get("last_tenure_months", 12)
+
+        # Build pill options that always include the actual tenure
+        _base_options = {12: "1 Year", 24: "2 Years", 36: "3 Years", 60: "5 Years"}
+        horizon_map: dict[str, int] = {}
+        # Insert actual tenure first if it's not already a standard option
+        if actual_tenure not in _base_options:
+            label = f"{actual_tenure} Months (your query)"
+            horizon_map[label] = actual_tenure
+        for months_val, lbl in _base_options.items():
+            horizon_map[lbl] = months_val
+
+        actual_label = next(
+            (lbl for lbl, m in horizon_map.items() if m == actual_tenure),
+            list(horizon_map.keys())[0]
+        )
+
         st.markdown("### Simulation Horizon")
-        
-        horizon_map = {"1 Year": 12, "2 Years": 24, "3 Years": 36, "5 Years": 60}
-        horizon = st.pills("Time Horizon", options=list(horizon_map.keys()), default="2 Years")
+        horizon = st.pills(
+            "Time Horizon",
+            options=list(horizon_map.keys()),
+            default=actual_label,
+        )
         selected_tenure_months = horizon_map[horizon]
 
+        # ── Principal ────────────────────────────────────────────────────────
         if "General Maturity" in df.columns and "General Interest" in df.columns:
             principal = df.iloc[0]["General Maturity"] - df.iloc[0]["General Interest"]
         else:
-            principal = 100000
+            principal = 100_000
 
+        # ── Build growth data ────────────────────────────────────────────────
         start_date = datetime.now()
-        months = list(range(0, selected_tenure_months + 1))
+        month_range = list(range(0, selected_tenure_months + 1))
         growth_records = []
 
         for _, row in df.iterrows():
             bank_name = row["Provider"]
             rate = row["General Rate (%)"] / 100.0
-            
-            for m in months:
-                current_date = start_date + timedelta(days=30*m)
-                n = 4
-                t = m / 12
-                balance = principal * (1 + rate/n) ** (n*t)
-                interest_earned = balance - principal
-                
+            for m in month_range:
+                t = m / 12.0
+                n = 4  # quarterly compounding
+                balance = principal * (1 + rate / n) ** (n * t)
                 growth_records.append({
-                    "Date": current_date,
                     "Month": m,
                     "Bank": bank_name,
-                    "Balance": balance,
-                    "Interest": interest_earned
+                    "Balance": round(balance, 2),
+                    "Interest": round(balance - principal, 2),
                 })
 
         growth_df = pd.DataFrame(growth_records)
-        selected_growth_df = growth_df[growth_df["Bank"].isin(tickers)]
+        selected_growth_df = growth_df[growth_df["Bank"].isin(tickers)].copy()
 
+        # ── Summary metrics ──────────────────────────────────────────────────
         final_month_data = selected_growth_df[selected_growth_df["Month"] == selected_tenure_months]
-        
         if not final_month_data.empty:
-            best_bank = final_month_data.loc[final_month_data["Balance"].idxmax()]
+            best_bank  = final_month_data.loc[final_month_data["Balance"].idxmax()]
             worst_bank = final_month_data.loc[final_month_data["Balance"].idxmin()]
+            best_pct   = ((best_bank["Balance"]  - principal) / principal) * 100
+            worst_pct  = ((worst_bank["Balance"] - principal) / principal) * 100
 
-            best_pct = ((best_bank["Balance"] - principal) / principal) * 100
-            worst_pct = ((worst_bank["Balance"] - principal) / principal) * 100
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                st.metric("Best Performer",   best_bank["Bank"],  delta=f"+{best_pct:.1f}%")
+            with col_m2:
+                st.metric("Lowest Performer", worst_bank["Bank"], delta=f"+{worst_pct:.1f}%")
 
-            col_metrics = st.columns(2)
-            with col_metrics[0]:
-                st.metric("Best Performer", best_bank["Bank"], delta=f"+ {best_pct:.1f}%", delta_color="normal")
-            with col_metrics[1]:
-                st.metric("Lowest Performer", worst_bank["Bank"], delta=f"+ {worst_pct:.1f}%", delta_color="normal")
-
-        sym = get_currency_symbol()
+        # ── Shared ECharts helpers ───────────────────────────────────────────
+        sym      = get_currency_symbol()
         sym_label = f" ({sym})" if sym else ""
-        fmt_js = f"function(v){{ return '{sym}' + v.toLocaleString(undefined, {{maximumFractionDigits:0}}); }}"
-        axis_fmt = f"function(v){{ return '{sym}' + (v/1000).toFixed(0) + 'K'; }}"
 
-        st.markdown(f"### Growth Trajectory (Principal: {sym}{principal:,.0f})")
-        selected_growth_df = selected_growth_df.sort_values("Date")
+        fmt_js   = JsCode(f"function(v){{return '{sym}'+v.toLocaleString(undefined,{{maximumFractionDigits:0}});}}")
+        axis_fmt = JsCode(f"function(v){{return '{sym}'+(v/1000).toFixed(0)+'K';}}")
 
-        date_labels = (
-            selected_growth_df[selected_growth_df["Bank"] == tickers[0]]["Date"]
-            .dt.strftime("%b '%y")
-            .tolist()
-        )
-        
-        trajectory_series = []
         palette = ["#3B82F6", "#EF4444", "#10B981", "#F59E0B", "#8B5CF6",
                    "#EC4899", "#06B6D4", "#84CC16", "#F97316", "#6366F1"]
-        
-        for idx, bank in enumerate(tickers):
-            bank_data = selected_growth_df[selected_growth_df["Bank"] == bank].sort_values("Date")
+
+        # ── Month labels (shared x-axis) ─────────────────────────────────────
+        # Use plain "Month N" strings — avoids any datetime conversion issues
+        month_labels = [f"M{m}" for m in month_range]
+
+        # ── Growth Trajectory chart ──────────────────────────────────────────
+        st.markdown(f"### Growth Trajectory — Principal: {sym}{principal:,.0f}")
+
+        trajectory_series = []
+        for i, bank in enumerate(tickers):
+            bank_rows = selected_growth_df[selected_growth_df["Bank"] == bank].sort_values("Month")
             trajectory_series.append({
                 "name": bank,
                 "type": "line",
                 "smooth": True,
-                "data": bank_data["Balance"].round(2).tolist(),
-                "itemStyle": {"color": palette[idx % len(palette)]},
-                "emphasis": {"focus": "series"}
+                "data": bank_rows["Balance"].tolist(),
+                "itemStyle": {"color": palette[i % len(palette)]},
+                "emphasis": {"focus": "series"},
+                "symbol": "none",
             })
 
-        trajectory_option = {
-            "tooltip": {"trigger": "axis", "valueFormatter": fmt_js},
-            "legend": {"data": tickers, "bottom": 0, "type": "scroll"},
-            "grid": {"left": "3%", "right": "4%", "bottom": "12%", "containLabel": True},
-            "xAxis": {
-                "type": "category",
-                "data": date_labels,
-                "boundaryGap": False,
-                "axisLabel": {"rotate": 30}
+        st_echarts(
+            options={
+                "tooltip": {
+                    "trigger": "axis",
+                    "formatter": JsCode(
+                        f"function(params){{"
+                        f"  var s=params[0].axisValue+'<br/>';"
+                        f"  params.forEach(function(p){{"
+                        f"    s+=p.marker+p.seriesName+': {sym}'+p.value.toLocaleString(undefined,{{maximumFractionDigits:0}})+'<br/>';"
+                        f"  }});"
+                        f"  return s;"
+                        f"}}"
+                    ),
+                },
+                "legend": {"data": tickers, "bottom": 0, "type": "scroll"},
+                "grid": {"left": "3%", "right": "4%", "bottom": "12%", "containLabel": True},
+                "xAxis": {
+                    "type": "category",
+                    "data": month_labels,
+                    "boundaryGap": False,
+                    "axisLabel": {
+                        "formatter": JsCode("function(v,i){return i%3===0?v:''}"),
+                        "rotate": 0,
+                    },
+                },
+                "yAxis": {
+                    "type": "value",
+                    "name": f"Balance{sym_label}",
+                    "axisLabel": {"formatter": axis_fmt},
+                    "scale": True,
+                },
+                "series": trajectory_series,
             },
-            "yAxis": {
-                "type": "value",
-                "name": f"Balance{sym_label}",
-                "axisLabel": {"formatter": axis_fmt},
-                "scale": True
-            },
-            "series": trajectory_series
-        }
-        st_echarts(options=trajectory_option, height="420px", key="ec_trajectory")
+            height="420px",
+            key="ec_trajectory",
+        )
 
+        # ── Individual vs Peer Average ───────────────────────────────────────
         st.markdown("---")
         st.markdown("### Individual Banks vs Peer Average")
 
         if len(tickers) <= 1:
-            st.info("Select at least 2 banks to see the Peer Comparison analysis.")
+            st.info("Select at least 2 banks to see peer comparison.")
         else:
-            pivot_df = selected_growth_df.pivot(index="Date", columns="Bank", values="Balance")
-            peer_date_labels = [d.strftime("%b '%y") for d in pivot_df.index]
+            # Build pivot: rows = months, columns = banks
+            pivot_df = (
+                selected_growth_df
+                .pivot(index="Month", columns="Bank", values="Balance")
+                .sort_index()
+            )
+            # Ensure all selected tickers are present
+            pivot_df = pivot_df.reindex(columns=tickers)
+            peer_month_labels = [f"M{m}" for m in pivot_df.index.tolist()]
 
             chart_pairs = []
-            for idx, bank in enumerate(tickers):
+            for i, bank in enumerate(tickers):
                 other_banks = [b for b in tickers if b != bank]
-                peer_avg = pivot_df[other_banks].mean(axis=1).round(2).tolist()
                 bank_vals = pivot_df[bank].round(2).tolist()
-                bank_color = palette[idx % len(palette)]
+                peer_avg  = pivot_df[other_banks].mean(axis=1).round(2).tolist()
+                delta_vals = [round(b - p, 2) for b, p in zip(bank_vals, peer_avg)]
+                bank_color = palette[i % len(palette)]
+
+                tooltip_fmt = JsCode(
+                    f"function(params){{"
+                    f"  var s=params[0].axisValue+'<br/>';"
+                    f"  params.forEach(function(p){{"
+                    f"    s+=p.marker+p.seriesName+': {sym}'+p.value.toLocaleString(undefined,{{maximumFractionDigits:0}})+'<br/>';"
+                    f"  }});"
+                    f"  return s;"
+                    f"}}"
+                )
 
                 line_option = {
                     "title": {"text": f"{bank} vs Peer Avg", "textStyle": {"fontSize": 13}},
-                    "tooltip": {"trigger": "axis", "valueFormatter": fmt_js},
+                    "tooltip": {"trigger": "axis", "formatter": tooltip_fmt},
                     "legend": {"data": [bank, "Peer Avg"], "bottom": 0},
                     "grid": {"left": "3%", "right": "4%", "bottom": "15%", "containLabel": True},
-                    "xAxis": {"type": "category", "data": peer_date_labels, "boundaryGap": False,
-                              "axisLabel": {"rotate": 30, "fontSize": 10}},
-                    "yAxis": {"type": "value", "scale": True,
-                              "axisLabel": {"formatter": axis_fmt, "fontSize": 10}},
+                    "xAxis": {
+                        "type": "category",
+                        "data": peer_month_labels,
+                        "boundaryGap": False,
+                        "axisLabel": {
+                            "formatter": JsCode("function(v,i){return i%3===0?v:''}"),
+                        },
+                    },
+                    "yAxis": {
+                        "type": "value",
+                        "scale": True,
+                        "axisLabel": {"formatter": axis_fmt, "fontSize": 10},
+                    },
                     "series": [
                         {"name": bank, "type": "line", "smooth": True, "data": bank_vals,
-                         "itemStyle": {"color": bank_color}, "lineStyle": {"width": 2}},
+                         "itemStyle": {"color": bank_color}, "lineStyle": {"width": 2}, "symbol": "none"},
                         {"name": "Peer Avg", "type": "line", "smooth": True, "data": peer_avg,
-                         "itemStyle": {"color": "#94A3B8"}, "lineStyle": {"width": 2, "type": "dashed"}}
-                    ]
+                         "itemStyle": {"color": "#94A3B8"},
+                         "lineStyle": {"width": 2, "type": "dashed"}, "symbol": "none"},
+                    ],
                 }
 
-                delta_vals = [round(b - p, 2) for b, p in zip(bank_vals, peer_avg)]
+                delta_tooltip = JsCode(
+                    f"function(params){{"
+                    f"  var p=params[0];"
+                    f"  return p.axisValue+'<br/>Delta: {sym}'+p.value.toLocaleString(undefined,{{maximumFractionDigits:0}});"
+                    f"}}"
+                )
+
                 delta_option = {
-                    "title": {"text": f"{bank} - Peer Avg", "textStyle": {"fontSize": 13}},
-                    "tooltip": {"trigger": "axis", "valueFormatter": fmt_js},
+                    "title": {"text": f"{bank} − Peer Avg", "textStyle": {"fontSize": 13}},
+                    "tooltip": {"trigger": "axis", "formatter": delta_tooltip},
                     "grid": {"left": "3%", "right": "4%", "bottom": "15%", "containLabel": True},
-                    "xAxis": {"type": "category", "data": peer_date_labels, "boundaryGap": False,
-                              "axisLabel": {"rotate": 30, "fontSize": 10}},
-                    "yAxis": {"type": "value", "scale": True,
-                              "axisLabel": {"formatter": axis_fmt, "fontSize": 10}},
+                    "xAxis": {
+                        "type": "category",
+                        "data": peer_month_labels,
+                        "boundaryGap": False,
+                        "axisLabel": {
+                            "formatter": JsCode("function(v,i){return i%3===0?v:''}"),
+                        },
+                    },
+                    "yAxis": {
+                        "type": "value",
+                        "scale": True,
+                        "axisLabel": {"formatter": axis_fmt, "fontSize": 10},
+                    },
                     "visualMap": {
-                        "show": False, "type": "piecewise", "seriesIndex": 0,
-                        "pieces": [{"gte": 0, "color": "#2563EB"}, {"lt": 0, "color": "#EF4444"}]
+                        "show": False,
+                        "type": "piecewise",
+                        "seriesIndex": 0,
+                        "pieces": [{"gte": 0, "color": "#2563EB"}, {"lt": 0, "color": "#EF4444"}],
                     },
                     "series": [{
-                        "type": "line", "smooth": True, "data": delta_vals,
-                        "areaStyle": {"opacity": 0.5}, "lineStyle": {"width": 1.5}, "symbol": "none"
-                    }]
+                        "type": "line",
+                        "smooth": True,
+                        "data": delta_vals,
+                        "areaStyle": {"opacity": 0.4},
+                        "lineStyle": {"width": 1.5},
+                        "symbol": "none",
+                    }],
                 }
 
                 chart_pairs.append((line_option, delta_option, bank))
 
-            for i in range(0, len(chart_pairs), 2):
-                col1, col2 = st.columns(2, gap="medium")
-                with col1:
+            for j in range(0, len(chart_pairs), 2):
+                c1, c2 = st.columns(2, gap="medium")
+                with c1:
                     with st.container(border=True):
-                        st_echarts(options=chart_pairs[i][0], height="300px", key=f"ec_line_{chart_pairs[i][2]}")
-                        st_echarts(options=chart_pairs[i][1], height="220px", key=f"ec_delta_{chart_pairs[i][2]}")
-                if i + 1 < len(chart_pairs):
-                    with col2:
+                        st_echarts(options=chart_pairs[j][0], height="300px", key=f"ec_line_{chart_pairs[j][2]}")
+                        st_echarts(options=chart_pairs[j][1], height="220px", key=f"ec_delta_{chart_pairs[j][2]}")
+                if j + 1 < len(chart_pairs):
+                    with c2:
                         with st.container(border=True):
-                            st_echarts(options=chart_pairs[i+1][0], height="300px", key=f"ec_line_{chart_pairs[i+1][2]}")
-                            st_echarts(options=chart_pairs[i+1][1], height="220px", key=f"ec_delta_{chart_pairs[i+1][2]}")
+                            st_echarts(options=chart_pairs[j+1][0], height="300px", key=f"ec_line_{chart_pairs[j+1][2]}")
+                            st_echarts(options=chart_pairs[j+1][1], height="220px", key=f"ec_delta_{chart_pairs[j+1][2]}")
 
+        # ── Raw data table ───────────────────────────────────────────────────
         st.markdown("---")
         st.markdown("### Raw Data Comparison")
-        
-        display_cols = ["Provider", "General Rate (%)", "General Maturity", "General Interest"]
-        valid_cols = [col for col in display_cols if col in df.columns]
-        
+        display_cols = ["Provider", "General Rate (%)", "Senior Rate (%)",
+                        "General Maturity", "General Interest",
+                        "Senior Maturity", "Senior Interest"]
+        valid_cols = [c for c in display_cols if c in df.columns]
         st.dataframe(df[df["Provider"].isin(tickers)][valid_cols], use_container_width=True)
 
 # =============================================================================
@@ -795,10 +925,55 @@ with tab3:
             break
     
     # Dynamic KYC Fetch
-    with st.spinner("Fetching country-specific KYC requirements..."):
+    _GENERIC = {"Government-issued Photo ID", "Proof of Address"}
+    _kyc_cache_key = f"kyc_{selected_country_name}"
+
+    # Bust the in-memory cache for this country if the user hits Refresh
+    if st.button("🔄 Refresh KYC Documents", key="kyc_refresh"):
+        get_dynamic_kyc_docs.clear()
+        st.rerun()
+
+    with st.spinner(f"Fetching KYC requirements for {selected_country_name}..."):
         doc1, doc2 = get_dynamic_kyc_docs(selected_country_name)
-    
-    st.info(f"Required KYC Documents for {selected_country_name}: **{doc1}** and **{doc2}**")
+
+    _is_generic = doc1 in _GENERIC or doc2 in _GENERIC
+
+    if _is_generic:
+        st.warning(
+            f"⚠️ Could not retrieve specific KYC documents for **{selected_country_name}**. "
+            f"Showing generic placeholders — click **Refresh KYC Documents** to retry, "
+            f"or enter the document type manually below.",
+            icon=None,
+        )
+        badge_bg, badge_color, header_bg, header_border, header_color = (
+            "#FEF3C7", "#92400E", "#FFFBEB", "#FDE68A", "#92400E"
+        )
+    else:
+        badge_bg, badge_color, header_bg, header_border, header_color = (
+            "#DBEAFE", "#1D4ED8", "#EFF6FF", "#BFDBFE", "#1E40AF"
+        )
+
+    st.markdown(
+        f"""
+        <div style="background:{header_bg};border:1px solid {header_border};
+                    border-radius:8px;padding:12px 16px;margin-bottom:12px">
+          <span style="font-size:0.85rem;color:{header_color};font-weight:600">
+            🪪 Required KYC Documents — {selected_country_name}
+          </span><br>
+          <span style="display:inline-block;background:{badge_bg};color:{badge_color};
+                       border-radius:4px;padding:4px 10px;margin:6px 4px 0 0;
+                       font-size:0.92rem;font-weight:500">
+            1. {doc1}
+          </span>
+          <span style="display:inline-block;background:{badge_bg};color:{badge_color};
+                       border-radius:4px;padding:4px 10px;margin:6px 0 0;
+                       font-size:0.92rem;font-weight:500">
+            2. {doc2}
+          </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     with st.form("onboarding_form"):
         st.markdown("#### Applicant Information")

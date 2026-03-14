@@ -2,295 +2,245 @@
 import os
 from crewai import Agent
 from langchain_nvidia import NVIDIA
+from langfuse_instrumentation import instrument_crewai, get_langfuse_client, get_langfuse_callback_handler
+from dotenv import load_dotenv
 from tools import (
-    search_news, 
-    fd_projection, 
-    FDInvoicePDFTool, 
-    EmailSenderTool, 
-    FixedDepositCreationTool, 
+    search_news,
+    calculate_deposit,
+    MarkdownPDFTool,
+    EmailSenderTool,
+    UniversalDepositCreationTool,
     BankDatabaseTool,
-    # AML Tools
-    SelfHealingNeo4jTool, 
-    YenteEntitySearchTool, 
-    AMLReportPDFTool,
+    Neo4jQueryTool,
+    YenteEntitySearchTool,
     WikidataOSINTTool,
 )
 
-# --- LLM Setup ---
+load_dotenv()
+
+instrument_crewai()
+langfuse = get_langfuse_client()
+_lf_callbacks = [cb for cb in [get_langfuse_callback_handler()] if cb is not None]
+
 def get_llm():
-    return NVIDIA(model="qwen/qwen3-next-80b-a3b-instruct") 
+    return NVIDIA(
+        model="qwen/qwen3-next-80b-a3b-instruct",
+        callbacks=_lf_callbacks,
+    )
 
-def get_llm_2():
-    return NVIDIA(model="qwen/qwen3-next-80b-a3b-instruct")
+def get_llm_powerful():
+    return NVIDIA(
+        model="qwen/qwen3-next-80b-a3b-instruct",
+        callbacks=_lf_callbacks,
+    )
 
-# --- Tool Instances ---
 db_tool = BankDatabaseTool()
-fd_creation_tool = FixedDepositCreationTool()
-pdf_tool = FDInvoicePDFTool()
+deposit_creation_tool = UniversalDepositCreationTool()
+pdf_tool = MarkdownPDFTool()
 email_tool = EmailSenderTool()
-
-# AML Tool Instances
-neo4j_tool = SelfHealingNeo4jTool() # Using the new raw executor
-yente_tool = YenteEntitySearchTool() 
-aml_pdf_tool = AMLReportPDFTool()
-
-# --- Agents ---
+neo4j_tool = Neo4jQueryTool()
+yente_tool = YenteEntitySearchTool()
+wikidata_tool = WikidataOSINTTool()
 
 def create_agents():
     llm = get_llm()
-    llm_2 = get_llm_2()
-    
-    # --- ORIGINAL ANALYSIS / RESEARCH AGENTS ---
+    llm_powerful = get_llm_powerful()
 
     query_parser_agent = Agent(
         role="Financial Query Analyzer",
-        goal="Extract specific investment amount and tenure from natural language user queries.",
-        backstory="You are an expert at understanding user intent and extracting structured financial data.",
-        llm=llm_2,
-        verbose=True
+        goal="Extract investment type (FD/RD), amount, tenure, and compounding preference from user queries.",
+        backstory="Expert at parsing user intent for Fixed and Recurring Deposit requests.",
+        llm=llm, verbose=True
     )
 
     search_agent = Agent(
-        role="Fixed Deposit Rate Researcher",
-        goal="Find the top fixed deposit providers with the highest interest rates for specific tenures.",
-        backstory="You are an expert at searching the web for financial products.",
-        tools=[search_news], 
-        llm=llm_2,
-        verbose=True
+        role="Deposit Rate Researcher",
+        goal="Find top FD or RD interest rates for specific tenures.",
+        backstory="Expert at searching the web for current financial product rates.",
+        tools=[search_news],
+        llm=llm, verbose=True
     )
 
     research_agent = Agent(
         role="Financial Researcher",
-        goal="Gather detailed information and recent news for each fixed deposit provider.",
-        backstory="You are skilled at researching financial institutions and finding recent articles.",
-        tools=[search_news], 
-        llm=llm_2,
-        verbose=True
+        goal="Gather credit ratings and news for each deposit provider.",
+        backstory="Skilled at researching financial institutions for rates and safety data.",
+        tools=[search_news],
+        llm=llm, verbose=True
     )
 
     safety_agent = Agent(
         role="Risk Analyst",
-        goal="Categorize each fixed deposit provider by safety based on credit ratings and news.",
-        backstory="You have expertise in assessing the safety of financial institutions.",
-        tools=[search_news], 
-        llm=llm,
-        verbose=True
+        goal="Categorize providers as Safe, Moderate, or Risky based on credit ratings and news.",
+        backstory="Expert in assessing the safety of financial institutions using public ratings.",
+        tools=[search_news],
+        llm=llm, verbose=True
     )
 
     projection_agent = Agent(
-        role="Financial Calculator",
-        goal="Calculate projected maturity amounts for both General and Senior Citizen categories.",
-        backstory="You are precise in financial calculations and can handle multiple scenarios.",
-        tools=[fd_projection],
-        llm=llm_2,
-        verbose=True
-    )
-
-    osint_agent = Agent(
-        role="Open Source Intelligence (OSINT) Specialist",
-        goal="Enrich AML findings with OSINT data from Wikidata, especially social media profiles linked to the entity.",
-        backstory=(
-            "You are an OSINT specialist. You receive structured Yente/OpenSanctions profiles "
-            "and use a Wikidata OSINT tool to find associated social media accounts (Facebook, Instagram, LinkedIn, X/Twitter, YouTube). "
-            "You summarize the findings clearly and flag any concerning patterns (e.g., multiple profiles under different names)."
-        ),
-        tools=[WikidataOSINTTool()],  # import it or pass the instance from tools
-        llm=llm,  # or llm_2 depending on your preference
-        verbose=True
+        role="Deposit Projection Specialist",
+        goal="Calculate projected maturity amounts for FD and RD with dynamic compounding.",
+        backstory="Expert financial calculator for both Fixed and Recurring Deposits.",
+        tools=[calculate_deposit],
+        llm=llm, verbose=True
     )
 
     summary_agent = Agent(
         role="Senior Investment Strategist",
-        goal="Synthesize raw financial data, market news, safety ratings, and projections into a professional, exhaustive investment thesis.",
-        backstory=(
-            "You are a veteran Chief Investment Strategist at a leading wealth management firm. "
-            "You specialize in Fixed Income portfolios. You excel at connecting the dots between "
-            "quantitative data (interest rates, maturity amounts) and qualitative factors (market news, credit ratings). "
-            "Your reports are known for being detailed, objective, and highly actionable."
-        ),
-        llm=llm,
-        verbose=True
+        goal="Synthesize financial data and projections into a professional Markdown investment thesis.",
+        backstory="Veteran Chief Investment Strategist with expertise in FD/RD product analysis.",
+        llm=llm_powerful, verbose=True
     )
 
+    # --- Research Pipeline ---
     provider_search_agent = Agent(
         role="Market Scanner",
-        goal="Identify the top 10 most popular and reliable Fixed Deposit providers in the current market.",
-        backstory="You have a broad view of the financial market and know how to identify leading institutions.",
+        goal="Identify top Fixed Deposit providers in the current market.",
+        backstory="Broad view of the financial market for scanning top FD/RD providers.",
         tools=[search_news],
-        llm=llm_2,
-        verbose=True
+        llm=llm, verbose=True
     )
 
     deep_research_agent = Agent(
         role="Senior Financial Investigator",
-        goal="Conduct exhaustive research on specific financial institutions to find credit ratings, recent news, and financial health.",
-        backstory="You are an investigative journalist specializing in finance.",
+        goal="Conduct exhaustive research on financial institutions including rates, ratings, and news.",
+        backstory="Investigative specialist in finance with deep research skills.",
         tools=[search_news],
-        llm=llm,
-        verbose=True
+        llm=llm, verbose=True
     )
 
     research_compilation_agent = Agent(
         role="Research Editor",
-        goal="Compile detailed findings into a structured, exhaustive report.",
-        backstory="You are an editor who ensures all critical details are presented clearly.",
-        llm=llm,
-        verbose=True
+        goal="Compile detailed findings into a structured, complete Markdown report.",
+        backstory="Editor who ensures all critical details are clearly presented.",
+        llm=llm, verbose=True
     )
 
+    # --- Database Pipeline ---
     db_agent = Agent(
         role="Bank Database Administrator",
-        goal="Answer questions about bank data by generating accurate SQL queries and analyzing the results.",
-        backstory=(
-            "You are an expert SQL developer with full read-only access to the bank's internal SQLite database."
-        ),
+        goal="Answer questions about bank data by generating and executing accurate SQL queries.",
+        backstory="Expert SQL developer with read-only access to the bank database.",
         tools=[db_tool],
-        llm=llm,
+        llm=llm, verbose=True
+    )
+
+    # --- Visualization ---
+    data_visualizer_agent = Agent(
+        role="Research & Visualization Expert",
+        goal="Fetch data and convert it into valid Apache ECharts JSON configuration.",
+        backstory=(
+            "Master data analyst specialized in Apache ECharts. "
+            "You have access to a search tool to find external benchmarks (like Repo Rate or Inflation) if needed. "
+            "You ALWAYS output a valid JSON list of chart configurations. Never output plain text."
+        ),
+        tools=[search_news],
+        llm=llm, 
         verbose=True
     )
 
-    # --- NEW AML / ONBOARDING AGENTS ---
-
+    # --- Onboarding Pipeline ---
     onboarding_data_agent = Agent(
         role="Client Data Coordinator",
-        goal="Collect KYC details (Name, Email, Address, PIN, Mobile, PAN, Aadhaar, FD Amount, Tenure, Bank). Ask ONE question at a time.",
+        goal="Collect all KYC and Deposit Preference details by asking one question at a time.",
         backstory=(
-            "You are the friendly face of the bank. You gather data efficiently. "
-            "You check the conversation history to see what is missing. "
-            "You ask questions one by one. You do not perform AML checks; you only collect information."
+            "Friendly bank interface. Determines FD vs RD, collects Amount, Tenure, Compounding, "
+            "Name, Email, Address, PIN, Mobile, KYC documents, and Bank Name. Does NOT run AML checks."
         ),
-        tools=[],
-        llm=llm_2,
-        verbose=True
+        tools=[search_news],
+        llm=llm, verbose=True
     )
-
-    # NEW: Cypher Generator Agent
     cypher_generator_agent = Agent(
-        role="Neo4j Schema-Aware Query Writer",
-        goal="Analyze the provided database schema and generate optimized Cypher queries.",
-        backstory=(
-            "You are a senior Neo4j architect. You are given a specific database schema every time you work. "
-            "You do not guess property names or node labels; you strictly use what is defined in the schema provided in the task. "
-            "You know that scanning large datasets with `CONTAINS` is bad practice, so you prefer `STARTS WITH` for string matching. "
-            "You output ONLY the Cypher query string, ready for execution."
-        ),
-        tools=[], 
-        llm=llm,
-        verbose=True
+        role="Neo4j Client Network Mapper",
+        goal="Generate a Cypher query to find a client's network using their full name.",
+        backstory="Neo4j expert. Extracts first_name and last_name from JSON and builds case-insensitive Cypher queries.",
+        tools=[],
+        llm=llm, verbose=True
     )
 
     ubo_investigator_agent = Agent(
         role="Ultimate Beneficial Owner (UBO) Specialist",
         goal="Identify hidden owners, shareholders, and controllers behind corporate entities.",
-        backstory=(
-            "You are a forensic accountant specializing in corporate veil piercing. "
-            "When presented with a company, you don't just look at the name; you look for the people pulling the strings. "
-            "You identify directors, shareholders, and family members who might be the real UBOs."
-        ),
-        tools=[
-            YenteEntitySearchTool(), 
-            search_news
-        ],
-        llm=llm,
-        verbose=True
+        backstory="Forensic accountant specializing in corporate veil piercing and UBO identification.",
+        tools=[yente_tool, search_news],
+        llm=llm, verbose=True
     )
 
     aml_investigator_agent = Agent(
         role="Forensic AML Investigator",
-        goal="Perform deep checks using Neo4j, Local Yente/OpenSanctions, and OSINT. Find hidden UBOs and risks.",
-        backstory=(
-            "You are a digital detective. You receive a Cypher query from your expert colleague, execute it using the Raw Query tool, "
-            "and then perform the rest of the analysis."
-        ),
-        tools=[
-            SelfHealingNeo4jTool(), 
-            YenteEntitySearchTool(), 
-             WikidataOSINTTool(),
-            search_news
-        ],
-        llm=llm,
-        verbose=True
+        goal="Perform deep checks using Neo4j, Yente/OpenSanctions, and OSINT. Include graph image path in output.",
+        backstory="Digital detective querying Neo4j and OpenSanctions, producing clean Markdown AML reports.",
+        tools=[neo4j_tool, yente_tool, search_news, wikidata_tool],
+        llm=llm, verbose=True
     )
-
-    data_visualizer_agent = Agent(
-        role="Research & Visualization Expert",
-        goal="Fetch data from the web or provided context and convert it into valid Apache ECharts JSON configuration.",
-        backstory=(
-            "You are a master data analyst and visualizer. You understand the Apache ECharts library deeply. "
-            "You are equipped with a web search tool. "
-            "When a user asks for a chart (e.g., 'Show me a line chart for top banks'), you first check the provided data. "
-            "If the data is missing or insufficient, you perform a web search to find the specific numbers (e.g., interest rates, statistics). "
-            "You extract the numeric data from the search results and intelligently map them to X and Y axes. "
-            "You output ONLY a valid JSON string representing the ECharts 'option' object. "
-            "Do not include markdown code blocks."
-        ),
-        tools=[search_news], # <--- ADDED WEB SEARCH CAPABILITY
-        llm=llm, 
-        verbose=True
-    )
-
 
     risk_scoring_agent = Agent(
         role="Chief Risk Officer",
-        goal="Analyze findings and assign a Risk Score (1-100). Generate an exhaustive text report.",
-        backstory=(
-            "You decide the fate of applications. 1-20 is Low Risk. 21-40 is Medium. "
-            "41-60 is High Risk (Review). 61-100 is Critical (Reject). "
-            "You write detailed reports explaining the score and listing graph data."
+        goal=(
+            "Analyze all AML investigation findings and produce a single, definitive, court-ready "
+            "Markdown compliance report with a precise numeric risk score. "
+            "Actively use search and sanctions tools to enrich every section with live evidence — "
+            "every factual claim must be backed by a hyperlink or tool citation. "
+            "The report must include the client's full name, the exact current date and time, "
+            "and preserve every data point verbatim — nothing may be summarised away."
         ),
-        tools=[],
-        llm=llm,
-        verbose=True
+        backstory=(
+            "20-year veteran Chief Risk Officer and compliance documentation specialist. "
+            "You combine forensic financial analysis with court-ready report writing. "
+            "Score bands you enforce: 1-20 Low, 21-40 Medium, 41-60 High, 61-100 Critical. "
+            "You are renowned for exhaustive, citation-rich Markdown reports that merge "
+            "graph intelligence, live sanctions data, OSINT, and media findings into one immutable record. "
+            "Regulators, FIUs, and board risk committees rely on your output directly."
+        ),
+        tools=[search_news, yente_tool, wikidata_tool],
+        llm=llm_powerful, verbose=True
     )
 
     fd_processor_agent = Agent(
         role="Transaction Processor",
-        goal="Create the FD if Risk Score is PASS.",
-        backstory="You execute the transaction in the database using the FD Creator tool.",
-        tools=[fd_creation_tool,search_news],
-        llm=llm_2,
-        verbose=True
+        goal="Create the FD or RD in the database if the risk decision is PASS.",
+        backstory="Executes deposit transactions using the Deposit Creator tool after confirming PASS status.",
+        tools=[deposit_creation_tool, search_news],
+        llm=llm, verbose=True
     )
 
     success_handler_agent = Agent(
         role="Success Specialist",
-        goal="Generate Invoice PDF and AML Report PDF, then email them to the user.",
+        goal="Read the compliance decision, then generate the correct PDF and send exactly one email.",
         backstory=(
-            "You ensure the client gets their receipt and the compliance report. "
-            "You use the PDF generators and Email dispatcher tools."
+            "Final handler. Sends a success email (with deposit details) on PASS/APPROVE, "
+            "or a rejection email on FAIL/REJECT. Never sends both."
         ),
-        tools=[pdf_tool, aml_pdf_tool, email_tool],
-        llm=llm_2,
-        verbose=True
+        tools=[pdf_tool, email_tool, deposit_creation_tool, search_news],
+        llm=llm, verbose=True
     )
 
     rejection_handler_agent = Agent(
         role="Rejection Specialist",
-        goal="Generate the AML Report PDF and send a polite rejection email.",
-        backstory=(
-            "You handle declined applications with professionalism. "
-            "You generate the rejection report and email it to the applicant."
-        ),
-        tools=[aml_pdf_tool, email_tool],
-        llm=llm_2,
-        verbose=True
+        goal="Generate a rejection PDF and send a polite decline email.",
+        backstory="Handles declined applications with professionalism.",
+        tools=[pdf_tool, email_tool],
+        llm=llm, verbose=True
     )
 
-    # --- MANAGER AGENT ---
-    
     manager_agent = Agent(
         role="Workflow Manager",
-        goal=(
-            "Identify the user's intent and delegate the task to the appropriate team. "
-            "If the intent is onboarding, you will manage the complex AML workflow."
+        goal="Identify user intent and delegate to the appropriate team member using exact role names.",
+        backstory=(
+            "Senior manager at a financial firm. Delegates to these exact role names:\n"
+            "1. 'Neo4j Client Network Mapper'\n"
+            "2. 'Forensic AML Investigator'\n"
+            "3. 'Ultimate Beneficial Owner (UBO) Specialist'\n"
+            "4. 'Chief Risk Officer'\n"
+            "5. 'Transaction Processor'\n"
+            "6. 'Success Specialist'\n"
+            "7. 'Rejection Specialist'\n"
+            "8. 'Client Data Coordinator'"
         ),
-        backstory="You are a senior manager at a financial firm ensuring compliance and efficiency.",
-        llm=llm,
-        verbose=True
+        llm=llm, verbose=True
     )
 
     return {
-        # Original Agents
         "query_parser_agent": query_parser_agent,
         "search_agent": search_agent,
         "research_agent": research_agent,
@@ -300,10 +250,8 @@ def create_agents():
         "provider_search_agent": provider_search_agent,
         "deep_research_agent": deep_research_agent,
         "research_compilation_agent": research_compilation_agent,
-        "db_agent": db_agent, 
+        "db_agent": db_agent,
         "data_visualizer_agent": data_visualizer_agent,
-        
-        # New AML/Onboarding Agents
         "onboarding_data_agent": onboarding_data_agent,
         "aml_investigator_agent": aml_investigator_agent,
         "risk_scoring_agent": risk_scoring_agent,
@@ -312,7 +260,5 @@ def create_agents():
         "ubo_investigator_agent": ubo_investigator_agent,
         "rejection_handler_agent": rejection_handler_agent,
         "cypher_generator_agent": cypher_generator_agent,
-        
-        # Manager
-        "manager_agent": manager_agent
+        "manager_agent": manager_agent,
     }
