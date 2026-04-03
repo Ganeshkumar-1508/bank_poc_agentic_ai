@@ -25,9 +25,9 @@ from typing import Optional
 
 import requests
 
-NVIDIA_INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
-JUDGE_MODEL_FAST   = "meta/llama-3.1-8b-instruct"    # binary criteria — fast, low latency
-JUDGE_MODEL_STRONG = "meta/llama-3.3-70b-instruct"   # holistic score  — better reasoning, no thinking overhead
+NVIDIA_INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions" # https://integrate.api.nvidia.com/v1 , https://integrate.api.nvidia.com/v1/chat/completions
+JUDGE_MODEL_FAST   = "mistralai/mistral-small-4-119b-2603"    
+JUDGE_MODEL_STRONG = "mistralai/mistral-small-4-119b-2603"  
 
 
 def call_judge(system_prompt: str, user_prompt: str, model: str, timeout: int = 90) -> str:
@@ -70,10 +70,6 @@ def call_judge(system_prompt: str, user_prompt: str, model: str, timeout: int = 
             raise
     return ""
 
-
-# ---------------------------------------------------------------------------
-# Criteria definitions
-# ---------------------------------------------------------------------------
 
 CUSTOM_CRITERIA: dict[str, str] = {
     "financial_accuracy": (
@@ -137,9 +133,6 @@ CREW_EVAL_PLAN: dict[str, list[str]] = {
     ],
 }
 
-# ---------------------------------------------------------------------------
-# Prompt templates
-# ---------------------------------------------------------------------------
 
 CRITERIA_SYSTEM = """\
 You are a strict evaluator of AI-generated financial assistant responses.

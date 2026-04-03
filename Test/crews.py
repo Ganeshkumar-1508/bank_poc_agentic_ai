@@ -9,7 +9,7 @@ from tasks import (
     create_aml_execution_tasks,
     create_visualization_task,
     create_routing_task,
-    create_compliance_investigation_tasks,
+    create_credit_risk_tasks, 
 )
 
 
@@ -18,7 +18,7 @@ class FixedDepositCrews:
         self.agents = create_agents()
 
     def get_router_crew(self, user_query: str):
-        """Minimal sequential crew for routing — just the manager."""
+        """Single-task crew for routing — just the manager."""
         routing_task = create_routing_task(self.agents, user_query)
         return Crew(
             agents=[self.agents["manager_agent"]],
@@ -29,41 +29,32 @@ class FixedDepositCrews:
 
     def get_aml_execution_crew(self, client_data_json: str):
         """
-        PHASE 2: Sequential AML crew.
-        Performs AML checks, risk scoring, and deposit creation + single conditional email.
-        Sequential is correct here — create_aml_execution_tasks already encodes the full
-        execution order via context=[] dependencies on each task, so a hierarchical manager
-        adds no value and causes role-name lookup failures when delegating.
+        Sequential AML crew — 9 single-responsibility agents.
+
+        Each agent owns exactly one concern:
+
+          1  neo4j_agent       — search graph by first_name/last_name (direct, no schema read)
+          2  sanctions_agent   — Yente/OpenSanctions        [yente_tool]
+          3  osint_agent       — Wikidata + news            [wikidata_tool, search_news]
+          4  ubo_investigator  — UBO tracing                [yente_tool, search_news]
+          5  live_enrichment   — re-enrich flagged entities [yente_tool, wikidata_tool]
+          6  risk_scoring      — compile report + news URLs [search_news]
+          7  fd_processor      — create deposit on PASS     [deposit_creation_tool, search_news]
+          8  pdf_generator     — render PDF (with images, social media, relatives, biography) [pdf_tool]
+          9  email_sender      — dispatch email             [email_tool]
         """
         tasks = create_aml_execution_tasks(self.agents, client_data_json)
         return Crew(
             agents=[
-                self.agents["cypher_generator_agent"],
-                self.agents["aml_investigator_agent"],
+                self.agents["neo4j_agent"],
+                self.agents["sanctions_agent"],
+                self.agents["osint_agent"],
                 self.agents["ubo_investigator_agent"],
+                self.agents["live_enrichment_agent"],
                 self.agents["risk_scoring_agent"],
                 self.agents["fd_processor_agent"],
-                self.agents["success_handler_agent"],
-            ],
-            tasks=tasks,
-            process=Process.sequential,
-            verbose=True,
-        )
-
-    def get_compliance_investigation_crew(self, client_data_json: str):
-        """
-        Sequential compliance investigation: Identity → Graph → OSINT → Report → Decision.
-        Sequential is sufficient — each task has explicit context dependencies.
-        """
-        tasks = create_compliance_investigation_tasks(self.agents, client_data_json)
-        return Crew(
-            agents=[
-                self.agents["identity_agent"],
-                self.agents["graph_analyst_agent"],
-                self.agents["osint_specialist_agent"],
-                self.agents["compliance_reporter_agent"],
-                self.agents["fd_processor_agent"],
-                self.agents["success_handler_agent"],
+                self.agents["pdf_generator_agent"],
+                self.agents["email_sender_agent"],
             ],
             tasks=tasks,
             process=Process.sequential,
@@ -72,18 +63,19 @@ class FixedDepositCrews:
 
     def get_analysis_crew(self, user_query: str, region: str = "India"):
         """
-        OPTIMIZED: Sequential instead of hierarchical.
-        Task context=[...] dependencies already encode the correct execution order.
-        Saves manager planning tokens on every task step.
+        Sequential analysis crew.
+        Task order: parse -> search -> projection -> research -> safety -> summary.
+        Projection is placed before research so it starts as soon as search finishes,
+        without waiting for the 10-provider rating search to complete.
         """
         tasks = create_analysis_tasks(self.agents, user_query, region=region)
         return Crew(
             agents=[
                 self.agents["query_parser_agent"],
                 self.agents["search_agent"],
+                self.agents["projection_agent"],
                 self.agents["research_agent"],
                 self.agents["safety_agent"],
-                self.agents["projection_agent"],
                 self.agents["summary_agent"],
             ],
             tasks=tasks,
@@ -92,10 +84,7 @@ class FixedDepositCrews:
         )
 
     def get_research_crew(self, user_query: str, region: str = "India"):
-        """
-        OPTIMIZED: Sequential instead of hierarchical.
-        Three-step linear chain needs no manager overhead.
-        """
+        """Three-step sequential research crew."""
         tasks = create_research_tasks(self.agents, user_query, region=region)
         return Crew(
             agents=[
@@ -109,10 +98,7 @@ class FixedDepositCrews:
         )
 
     def get_database_crew(self, user_query: str):
-        """
-        OPTIMIZED: Sequential instead of hierarchical.
-        Single-agent crew — hierarchical adds zero value here.
-        """
+        """Single-agent sequential crew for SQL queries."""
         tasks = create_database_tasks(self.agents, user_query)
         return Crew(
             agents=[self.agents["db_agent"]],
@@ -124,8 +110,8 @@ class FixedDepositCrews:
     def get_data_collection_crew(self, conversation_history: str, country_name: str,
                                   kyc_doc1: str = "", kyc_doc2: str = ""):
         """
-        PHASE 1: Lightweight sequential crew.
-        kyc_doc1/kyc_doc2 are pre-fetched by app.py (cached) to avoid a search on every turn.
+        Phase 1 onboarding: single-agent sequential crew.
+        kyc_doc1/kyc_doc2 are pre-fetched by app.py to avoid a search on every turn.
         """
         task = create_data_collection_task(
             self.agents, conversation_history, country_name, kyc_doc1, kyc_doc2
@@ -146,16 +132,34 @@ class FixedDepositCrews:
             process=Process.sequential,
             verbose=True,
         )
+    def get_credit_risk_crew(self, borrower_json: str = "{}"):
+        """
+        Two-agent sequential crew for US credit-risk scoring.
+        Only invoked when user region is US.
+        """
+        tasks = create_credit_risk_tasks(self.agents, borrower_json)
+        return Crew(
+            agents=[
+                self.agents["credit_risk_collector_agent"],
+                self.agents["credit_risk_analyst_agent"],
+            ],
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=True,
+        )
 
-
-# --- HELPER FUNCTION ---
+# ---------------------------------------------------------------------------
+# HELPER FUNCTION (imported by app.py)
+# ---------------------------------------------------------------------------
 
 def run_crew(user_query: str, region: str = "India"):
-    """
-    Routes the query to the appropriate crew.
-    Imported by app.py.
-    """
+    """Routes the query to the appropriate crew."""
     crews = FixedDepositCrews()
+    _CR_KW = ["credit risk", "credit score", "default probability", "loan risk",
+              "borrower risk", "risk grade", "implied grade", "credit assessment",
+              "will i default", "default chance", "credit check", "creditworthiness"]
+    if region.upper() in ("US", "UNITED STATES", "USA") and any(k in user_query.lower() for k in _CR_KW):
+        return crews.get_credit_risk_crew().kickoff()
 
     router_crew = crews.get_router_crew(user_query)
     route_result = router_crew.kickoff()
@@ -168,4 +172,10 @@ def run_crew(user_query: str, region: str = "India"):
     elif "ONBOARDING" in decision:
         return type("obj", (object,), {"raw": "ONBOARDING"})()
     else:
+        import warnings
+        warnings.warn(
+            f"run_crew: unrecognised routing decision '{decision}'. "
+            "Falling back to research crew.",
+            stacklevel=2,
+        )
         return crews.get_research_crew(user_query, region=region).kickoff()
