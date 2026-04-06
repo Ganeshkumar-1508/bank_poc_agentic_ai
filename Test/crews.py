@@ -10,6 +10,7 @@ from tasks import (
     create_visualization_task,
     create_routing_task,
     create_credit_risk_tasks, 
+    create_loan_creation_tasks,
 )
 
 
@@ -142,6 +143,26 @@ class FixedDepositCrews:
             agents=[
                 self.agents["credit_risk_collector_agent"],
                 self.agents["credit_risk_analyst_agent"],
+            ],
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=True,
+        )
+
+    def get_loan_creation_crew(self, risk_assessment_result: str, borrower_data: dict,
+                                borrower_email: str = ""):
+        """
+        Two-agent sequential crew for 3-category loan decision and notification.
+        Classifies into: LOAN_APPROVED, NEEDS_VERIFY, or REJECTED.
+        Sends email notification to the borrower.
+        """
+        tasks = create_loan_creation_tasks(
+            self.agents, risk_assessment_result, borrower_data, borrower_email
+        )
+        return Crew(
+            agents=[
+                self.agents["loan_creation_agent"],
+                self.agents["loan_notification_agent"],
             ],
             tasks=tasks,
             process=Process.sequential,

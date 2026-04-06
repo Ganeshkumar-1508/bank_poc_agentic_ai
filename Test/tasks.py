@@ -2,6 +2,7 @@
 from crewai import Task
 from datetime import datetime
 import hashlib
+import json
 
 _CURRENT_YEAR = datetime.now().year
 
@@ -949,6 +950,89 @@ def create_credit_risk_tasks(agents, borrower_json: str = "{}"):
     )
 
     return [collect_task, analysis_task]
+
+
+# ---------------------------------------------------------------------------
+# Loan creation pipeline (3-category decision)
+# ---------------------------------------------------------------------------
+
+_LOAN_DECISION_RULES = """
+Loan Decision Classification Rules (based on ML model output):
+- LOAN_APPROVED: Grade A or B (default_probability < 0.10, risk_level: Low or Low-Medium)
+  → Auto-approve with standard terms. No additional conditions.
+  → Rationale: Borrower presents low default risk per model assessment.
+  
+- NEEDS_VERIFY: Grade C, D, or E (0.10 ≤ default_probability < 0.25, risk_level: Medium, Medium-High, or High)
+  → Flag for manual verification and enhanced due diligence.
+  → Conditions: enhanced documentation, additional income verification, possible collateral requirement,
+    quarterly monitoring, consider reduced amount or shorter term.
+  → Rationale: Borrower presents moderate default risk; human review required for final decision.
+  
+- REJECTED: Grade F or G (default_probability ≥ 0.25, risk_level: Very High or Critical)
+  → Auto-reject application.
+  → Rationale: Borrower presents unacceptably high default risk per model assessment.
+  → Next steps: Provide adverse action notice; reapplication considered after 12 months with improved profile.
+"""
+
+def create_loan_creation_tasks(agents, risk_assessment_result: str, borrower_data: dict, borrower_email: str = ""):
+    """Create tasks for the 3-category loan decision pipeline."""
+
+    loan_decision_task = Task(
+        description=(
+            f"Borrower Email: {borrower_email}\n\n"
+            f"ML Risk Assessment Result:\n{risk_assessment_result}\n\n"
+            f"Borrower Data:\n{json.dumps(borrower_data, indent=2, default=str)}\n\n"
+            f"{_LOAN_DECISION_RULES}\n\n"
+            "STEP 1 — Extract from the risk assessment: default_probability, implied_grade, risk_level.\n\n"
+            "STEP 2 — Classify into EXACTLY ONE category: LOAN_APPROVED, NEEDS_VERIFY, or REJECTED\n"
+            "using the rules above.\n\n"
+            "STEP 3 — Produce a structured decision output:\n"
+            "DECISION: [LOAN_APPROVED / NEEDS_VERIFY / REJECTED]\n"
+            "GRADE: [A through G]\n"
+            "DEFAULT_PROBABILITY: [value]\n"
+            "RISK_LEVEL: [Low through Critical]\n"
+            "RATIONALE: [2-3 sentences explaining the decision]\n"
+            "CONDITIONS: [semicolon-separated list of conditions, or 'None']\n"
+            "NEXT_STEPS: [semicolon-separated list of next steps for the borrower]\n"
+        ),
+        expected_output=(
+            "Structured loan decision with category (LOAN_APPROVED/NEEDS_VERIFY/REJECTED), "
+            "grade, probability, risk level, rationale, conditions, and next steps."
+        ),
+        agent=agents["loan_creation_agent"],
+    )
+
+    loan_notification_task = Task(
+        description=(
+            f"Borrower Email: {borrower_email}\n\n"
+            "Read the loan decision from the previous task context.\n\n"
+            "Compose a professional email notification to the borrower:\n\n"
+            "Email Structure:\n"
+            "Subject: [Loan Application Decision — Approved / Verification Required / Update on Your Application]\n"
+            "Body:\n"
+            "- Greeting (Dear [Borrower Name] or Dear Applicant)\n"
+            "- Decision announcement (clear, prominent)\n"
+            "- Key metrics: Grade, Default Probability, Risk Level\n"
+            "- Rationale summary\n"
+            "- Conditions (if any)\n"
+            "- Next steps\n"
+            "- Closing and contact information\n\n"
+            "TONE RULES:\n"
+            "- LOAN_APPROVED: Congratulatory, professional. Include loan terms summary.\n"
+            "- NEEDS_VERIFY: Neutral, informative. Request specific additional documents.\n"
+            "- REJECTED: Respectful, empathetic. Include adverse action notice and reapplication guidance.\n\n"
+            f"Send the email using 'Email Sender' or 'Gmail Sender' tool to: {borrower_email}\n"
+            "If no email is provided, output the email text without sending."
+        ),
+        expected_output=(
+            "Professional email notification sent (or prepared) for the borrower "
+            "with decision, rationale, and next steps."
+        ),
+        agent=agents["loan_notification_agent"],
+        context=[loan_decision_task],
+    )
+
+    return [loan_decision_task, loan_notification_task]
 
 
 # ---------------------------------------------------------------------------
