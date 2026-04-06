@@ -14,3 +14,5 @@ plotly
 dotenv
 python-dotenv
 pydantic
+xgboost
+pycountry
