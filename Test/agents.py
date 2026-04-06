@@ -515,44 +515,39 @@ def create_agents():
     # ── Loan creation pipeline ──────────────────────────────────────────
 
     loan_creation_agent = Agent(
-        role="Loan Creation Decision Agent",
+        role="Loan Creation Decision Officer",
         goal=(
-            "Classify the loan application into exactly one of three categories based on the "
-            "ML credit risk model output: LOAN_APPROVED, NEEDS_VERIFY, or REJECTED. "
-            "Classification rules: Grade A/B (default_prob < 0.10) → LOAN_APPROVED; "
-            "Grade C/D/E (0.10 ≤ default_prob < 0.25) → NEEDS_VERIFY; "
-            "Grade F/G (default_prob ≥ 0.25) → REJECTED. "
-            "Output a structured decision with category, rationale, conditions if applicable, "
-            "and recommended next steps."
+            "Evaluate a borrower's credit profile and produce a loan decision "
+            "(LOAN_APPROVED, NEEDS_VERIFY, or REJECTED) with clear rationale, "
+            "conditions, and next steps."
         ),
         backstory=(
-            "Senior loan officer who translates ML model risk predictions into formal loan decisions. "
-            "Follows bank policy: low-risk borrowers (grades A/B) are auto-approved with standard terms; "
-            "medium-risk borrowers (grades C/D/E) are flagged for manual verification with enhanced conditions; "
-            "high-risk borrowers (grades F/G) are automatically rejected with adverse action details. "
-            "Every decision includes a clear rationale and next steps for the applicant."
+            "Senior loan officer at a major bank with 20+ years of experience in "
+            "consumer lending. You evaluate credit risk based on FICO scores, DTI ratios, "
+            "default probabilities, implied grades, and risk levels. Your decisions are fair, "
+            "consistent, and compliant with lending regulations. You provide detailed "
+            "rationale for every decision so borrowers understand their standing."
         ),
-        tools=[credit_risk_tool],
         llm=llm_powerful, verbose=True,
     )
 
-    loan_notification_agent = Agent(
-        role="Loan Notification Officer",
+    loan_summary_agent = Agent(
+        role="Borrower Summary & Advisory Specialist",
         goal=(
-            "Compose a professional email notification to the borrower based on the loan decision. "
-            "The email must clearly state: decision category (Approved / Needs Verification / Rejected), "
-            "key risk metrics (grade, probability, risk level), rationale, and next steps. "
-            "Use the Email Sender tool to dispatch the notification."
+            "Generate a comprehensive, borrower-friendly summary explaining WHY the borrower "
+            "received their credit scores, what each metric means, and actionable next steps "
+            "they should take to improve their creditworthiness. This summary will be emailed "
+            "to the borrower."
         ),
         backstory=(
-            "Client communications specialist for the loan department. "
-            "Composes clear, empathetic, and professional emails for each loan decision category. "
-            "For approvals: congratulatory tone with terms summary. "
-            "For verification requests: neutral tone requesting additional documents. "
-            "For rejections: respectful tone with adverse action notice per regulation and reapplication guidance."
+            "Senior credit counselor and financial advisor who excels at explaining complex "
+            "credit metrics in simple, actionable language. You break down FICO scores, "
+            "DTI ratios, default probabilities, and risk grades into terms any borrower can "
+            "understand. You provide specific, personalized recommendations for improving "
+            "credit health. Your summaries are empathetic, professional, and always end with "
+            "clear next steps the borrower can take immediately."
         ),
-        tools=[email_tool, gmail_send_tool],
-        llm=llm, verbose=True,
+        llm=llm_powerful, verbose=True,
     )
 
     # ── Routing ───────────────────────────────────────────────────────────
@@ -599,7 +594,7 @@ def create_agents():
         "audit_agent":                  audit_agent,
         "credit_risk_collector_agent":  credit_risk_collector_agent,
         "credit_risk_analyst_agent":    credit_risk_analyst_agent,
-        "loan_creation_agent":       loan_creation_agent,
-        "loan_notification_agent":   loan_notification_agent,
+        "loan_creation_agent":          loan_creation_agent,
+        "loan_summary_agent":           loan_summary_agent,
         "manager_agent":                manager_agent,
     }

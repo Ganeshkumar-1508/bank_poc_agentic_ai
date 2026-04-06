@@ -9,7 +9,7 @@ from tasks import (
     create_aml_execution_tasks,
     create_visualization_task,
     create_routing_task,
-    create_credit_risk_tasks, 
+    create_credit_risk_tasks,
     create_loan_creation_tasks,
 )
 
@@ -149,20 +149,17 @@ class FixedDepositCrews:
             verbose=True,
         )
 
-    def get_loan_creation_crew(self, risk_assessment_result: str, borrower_data: dict,
-                                borrower_email: str = ""):
+    def get_loan_creation_crew(self, borrower_context: str = ""):
         """
-        Two-agent sequential crew for 3-category loan decision and notification.
-        Classifies into: LOAN_APPROVED, NEEDS_VERIFY, or REJECTED.
-        Sends email notification to the borrower.
+        Two-agent crew for loan decision + borrower summary.
+        Agent 1 (loan_creation_agent): Evaluates credit profile → JSON decision.
+        Agent 2 (loan_summary_agent): Generates borrower-friendly email summary.
         """
-        tasks = create_loan_creation_tasks(
-            self.agents, risk_assessment_result, borrower_data, borrower_email
-        )
+        tasks = create_loan_creation_tasks(self.agents, borrower_context)
         return Crew(
             agents=[
                 self.agents["loan_creation_agent"],
-                self.agents["loan_notification_agent"],
+                self.agents["loan_summary_agent"],
             ],
             tasks=tasks,
             process=Process.sequential,
