@@ -3,6 +3,7 @@ import os
 import re
 import sqlite3
 import json
+import markdown
 import plotly.graph_objects as go
 import numpy as np
 import math
@@ -104,60 +105,6 @@ DECISION_COLORS = {
     "REJECT": ("#FEE2E2", "#991B1B"),
 }
 
-LOAN_DECISION_CONFIG = {
-    "LOAN_APPROVED": {
-        "bg": "#DCFCE7", "fg": "#166534", "border": "#22C55E",
-        "icon": "✅", "label": "LOAN APPROVED", "badge_bg": "#16A34A",
-        "banner_bg": "#F0FDF4", "banner_border": "#86EFAC",
-    },
-    "NEEDS_VERIFY": {
-        "bg": "#FEF9C3", "fg": "#854D0E", "border": "#EAB308",
-        "icon": "⚠️", "label": "NEEDS VERIFICATION & APPROVAL", "badge_bg": "#CA8A04",
-        "banner_bg": "#FFFBEB", "banner_border": "#FDE68A",
-    },
-    "REJECTED": {
-        "bg": "#FEE2E2", "fg": "#991B1B", "border": "#EF4444",
-        "icon": "❌", "label": "LOAN REJECTED", "badge_bg": "#DC2626",
-        "banner_bg": "#FEF2F2", "banner_border": "#FECACA",
-    },
-}
-
-def classify_loan_decision(implied_grade: str, default_probability: float) -> str:
-    """Classify loan into 3 categories based on ML model output."""
-    grade = implied_grade.upper() if implied_grade else "E"
-    if grade in ("A", "B"):
-        return "LOAN_APPROVED"
-    elif grade in ("C", "D", "E"):
-        return "NEEDS_VERIFY"
-    else:  # F, G or unknown
-        return "REJECTED"
-
-
-def _parse_llm_decision(llm_text: str) -> dict:
-    """Parse LLM-generated loan decision text into structured dict."""
-    if not llm_text:
-        return {}
-    parsed = {}
-    keys = ["DECISION", "GRADE", "DEFAULT_PROBABILITY", "RISK_LEVEL", "RATIONALE", "CONDITIONS", "NEXT_STEPS"]
-    lines = llm_text.strip().split("\n")
-    current_key = None
-    current_value = []
-    for line in lines:
-        found_key = None
-        for key in keys:
-            if line.upper().startswith(f"{key}:"):
-                if current_key:
-                    parsed[current_key] = "\n".join(current_value).strip()
-                found_key = key
-                current_key = key
-                current_value = [line.split(":", 1)[1].strip()]
-                break
-        if found_key is None and current_key:
-            current_value.append(line.strip())
-    if current_key:
-        parsed[current_key] = "\n".join(current_value).strip()
-    return parsed
-
 # =============================================================================
 # DB HELPERS
 # =============================================================================
@@ -193,6 +140,404 @@ def db_execute(sql: str, params=()):
     except Exception as e:
         st.error(f"DB error: {e}")
         return None
+    finally:
+        conn.close()
+
+
+# ---------- LLM decision parser ----------
+def _parse_llm_decision(raw_output: str) -> dict:
+    """Parse the LLM crew output into a structured decision dict.
+    Expected keys: loan_decision, rationale, conditions (list), next_steps (list).
+    Falls back gracefully if parsing fails.
+    """
+    if not raw_output:
+        return {}
+    try:
+        # Try JSON extraction from the raw text
+        text = raw_output.strip()
+        for fence in ("```json", "```"):
+            if fence in text:
+                text = text.split(fence)[-1].split("```")[0].strip()
+                break
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return {
+                "loan_decision": parsed.get("loan_decision", ""),
+                "rationale": parsed.get("rationale", parsed.get("decision_rationale", "")),
+                "conditions": parsed.get("conditions", []),
+                "next_steps": parsed.get("next_steps", []),
+            }
+    except (json.JSONDecodeError, ValueError):
+        pass
+    # Fallback: try regex extraction
+    decision_match = re.search(r'(LOAN_APPROVED|NEEDS_VERIFY|REJECTED)', raw_output, re.IGNORECASE)
+    return {
+        "loan_decision": decision_match.group(1).upper() if decision_match else "",
+        "rationale": raw_output[:500],
+        "conditions": [],
+        "next_steps": [],
+    }
+
+
+# ---------- Markdown to safe HTML ----------
+def _md_to_html(md_text: str) -> str:
+    """Convert Markdown to clean HTML with inline styles for email compatibility."""
+    if not md_text:
+        return ""
+    # Strip markdown code fences if present
+    text = md_text.strip()
+    for fence in ("```markdown", "```html", "```"):
+        if fence in text:
+            text = text.split(fence)[-1].split("```")[0].strip()
+            break
+    # Use markdown library for proper conversion
+    html = markdown.markdown(
+        text,
+        extensions=["tables", "fenced_code", "nl2br"]
+    )
+    # Wrap in styled container for email
+    html = f"""<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.7;color:#333;font-size:14px;">
+{html}
+</div>"""
+    return html
+
+
+def _build_email_html(rec_icon, rec_decision, rec_color, grade, prob_pct,
+                       risk_level, borrower, rec_text, conditions, next_steps,
+                       llm_summary_html=""):
+    """Build a complete, professional HTML email for loan decisions."""
+    summary_section = ""
+    if llm_summary_html:
+        summary_section = f"""
+        <hr style="margin:24px 0;border:none;border-top:2px solid #E2E8F0;">
+        <h2 style="color:#1E3A8A;font-size:18px;margin:0 0 12px 0;">
+            📋 Detailed Borrower Summary
+        </h2>
+        {llm_summary_html}
+        """
+    conditions_html = "".join(
+        f'<li style="margin-bottom:6px;">{c}</li>' for c in conditions
+    )
+    next_steps_html = "".join(
+        f'<li style="margin-bottom:6px;">{s}</li>' for s in next_steps
+    )
+    return f"""
+<html><head><meta charset="utf-8"></head>
+<body style="font-family:Arial,Helvetica,sans-serif;color:#333;background:#F8FAFC;margin:0;padding:20px;">
+<div style="max-width:680px;margin:0 auto;background:#FFFFFF;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);overflow:hidden;">
+
+    <!-- Header -->
+    <div style="background:{rec_color};padding:24px 28px;">
+        <h1 style="margin:0;color:#FFFFFF;font-size:22px;font-weight:700;">
+            {rec_icon} Loan Application — {rec_decision}
+        </h1>
+        <p style="margin:6px 0 0 0;color:rgba(255,255,255,0.85);font-size:13px;">
+            Generated on {datetime.now().strftime('%B %d, %Y at %H:%M')}
+        </p>
+    </div>
+
+    <!-- Decision Summary -->
+    <div style="padding:24px 28px;">
+        <table style="width:100%;border-collapse:collapse;font-size:14px;">
+            <tr style="background:#F1F5F9;">
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-weight:600;width:40%;">Decision</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-size:16px;font-weight:700;color:{rec_color};">{rec_decision}</td>
+            </tr>
+            <tr>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-weight:600;">Grade</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;"><strong>{grade}</strong></td>
+            </tr>
+            <tr style="background:#F1F5F9;">
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-weight:600;">Default Probability</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;">{prob_pct}</td>
+            </tr>
+            <tr>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-weight:600;">Risk Level</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;">{risk_level}</td>
+            </tr>
+            <tr style="background:#F1F5F9;">
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-weight:600;">Loan Amount</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;">${borrower.get('loan_amnt', 0):,}</td>
+            </tr>
+            <tr>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-weight:600;">Term</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;">{borrower.get('term', 0)} months</td>
+            </tr>
+            <tr style="background:#F1F5F9;">
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-weight:600;">Interest Rate</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;">{borrower.get('int_rate', 0):.2f}%</td>
+            </tr>
+            <tr>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-weight:600;">FICO Score</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;">{borrower.get('fico_score', 0)}</td>
+            </tr>
+            <tr style="background:#F1F5F9;">
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-weight:600;">DTI Ratio</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;">{borrower.get('dti', 0):.1f}%</td>
+            </tr>
+            <tr>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;font-weight:600;">Annual Income</td>
+                <td style="padding:10px 12px;border-bottom:1px solid #E2E8F0;">${borrower.get('annual_inc', 0):,}</td>
+            </tr>
+        </table>
+
+        <!-- Rationale -->
+        <h3 style="color:#1E3A8A;font-size:16px;margin:24px 0 8px 0;border-bottom:2px solid #E2E8F0;padding-bottom:6px;">Rationale</h3>
+        <p style="margin:0;color:#475569;line-height:1.6;">{rec_text}</p>
+
+        <!-- Conditions -->
+        <h3 style="color:#1E3A8A;font-size:16px;margin:24px 0 8px 0;border-bottom:2px solid #E2E8F0;padding-bottom:6px;">Conditions</h3>
+        <ul style="margin:0;padding-left:20px;color:#475569;line-height:1.6;">{conditions_html}</ul>
+
+        <!-- Next Steps -->
+        <h3 style="color:#1E3A8A;font-size:16px;margin:24px 0 8px 0;border-bottom:2px solid #E2E8F0;padding-bottom:6px;">Next Steps</h3>
+        <ul style="margin:0;padding-left:20px;color:#475569;line-height:1.6;">{next_steps_html}</ul>
+
+        {summary_section}
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#F1F5F9;padding:16px 28px;font-size:12px;color:#94A3B8;text-align:center;">
+        This decision was generated by our AI-powered credit risk assessment system using an XGBoost model trained on US Lending Club data (2007-2018).<br>
+        For questions, please contact your loan officer or reply to this email.
+    </div>
+</div>
+</body></html>"""
+
+
+# ---------- save loan application ----------
+def _ensure_loan_tables_exist():
+    """Auto-create loan_applications & loan_disbursements tables if missing.
+    This is a safety net in case create_db.py was not re-run after schema update.
+    """
+    conn = get_db_connection()
+    if conn is None:
+        return False
+    try:
+        # Check if loan_applications table exists
+        table_check = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='loan_applications'"
+        ).fetchone()
+        if not table_check:
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS loan_applications (
+                    application_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id           INTEGER,
+                    applicant_email   TEXT    NOT NULL,
+                    loan_amnt         REAL    NOT NULL,
+                    term              INTEGER NOT NULL,
+                    int_rate          REAL,
+                    purpose           TEXT,
+                    annual_inc        REAL,
+                    fico_score        INTEGER,
+                    dti               REAL,
+                    home_ownership    TEXT,
+                    default_prob      REAL,
+                    implied_grade     TEXT,
+                    risk_level        TEXT,
+                    loan_decision     TEXT    NOT NULL DEFAULT 'NEEDS_VERIFY',
+                    decision_rationale TEXT,
+                    conditions        TEXT,
+                    next_steps        TEXT,
+                    notification_sent INTEGER NOT NULL DEFAULT 0,
+                    created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+                    updated_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+                );
+                CREATE TABLE IF NOT EXISTS loan_disbursements (
+                    disbursement_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                    application_id    INTEGER NOT NULL,
+                    user_id           INTEGER,
+                    account_id        INTEGER,
+                    sanctioned_amount REAL    NOT NULL,
+                    disbursement_status TEXT   NOT NULL DEFAULT 'PENDING',
+                    disbursed_at      TEXT,
+                    remarks           TEXT,
+                    created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+                );
+            """)
+            conn.commit()
+        return True
+    except Exception as e:
+        st.error(f"DB table creation failed: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def save_loan_application(
+    applicant_email: str,
+    borrower: dict,
+    result: dict,
+    loan_decision: str,
+    rationale: str,
+    conditions: list,
+    next_steps: list,
+    user_id: int = None,
+) -> int:
+    """Save loan application with 3-condition logic:
+    Condition 1 (LOAN_APPROVED): Insert into loan_applications + loan_disbursements.
+    Condition 2 (NEEDS_VERIFY):  Insert into loan_applications only (review needed).
+    Condition 3 (REJECTED):      Insert into loan_applications only (rejected).
+    """
+    # Safety net: ensure tables exist before inserting
+    if not _ensure_loan_tables_exist():
+        return None
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Use direct connection for better error visibility
+    conn = get_db_connection()
+    if conn is None:
+        st.error("❌ Database not found. Run `python create_db.py` first.")
+        return None
+
+    try:
+        cur = conn.execute(
+            """INSERT INTO loan_applications
+               (user_id, applicant_email, loan_amnt, term, int_rate, purpose,
+                annual_inc, fico_score, dti, home_ownership,
+                default_prob, implied_grade, risk_level,
+                loan_decision, decision_rationale, conditions, next_steps,
+                notification_sent, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)""",
+            (
+                user_id, applicant_email,
+                borrower.get("loan_amnt", 0),
+                borrower.get("term", 0),
+                borrower.get("int_rate", 0),
+                borrower.get("purpose", ""),
+                borrower.get("annual_inc", 0),
+                borrower.get("fico_score", 0),
+                borrower.get("dti", 0),
+                borrower.get("home_ownership", ""),
+                result.get("default_probability", 0),
+                result.get("implied_grade", ""),
+                result.get("risk_level", ""),
+                loan_decision,
+                rationale,
+                json.dumps(conditions) if isinstance(conditions, list) else str(conditions),
+                json.dumps(next_steps) if isinstance(next_steps, list) else str(next_steps),
+                now, now,
+            ),
+        )
+        conn.commit()
+        app_id = cur.lastrowid
+
+        # Create disbursement record for ALL decisions with status based on risk model
+        if app_id:
+            _disb_status = {
+                "LOAN_APPROVED": "PENDING_DISBURSEMENT",
+                "NEEDS_VERIFY":  "PENDING_VERIFICATION",
+                "REJECTED":      "CANCELLED",
+            }.get(loan_decision, "PENDING")
+            _disb_remarks = {
+                "LOAN_APPROVED": "Auto-approved by credit risk model — awaiting disbursement",
+                "NEEDS_VERIFY":  "Flagged by credit risk model — additional verification required",
+                "REJECTED":      "Auto-rejected by credit risk model",
+            }.get(loan_decision, "")
+            conn.execute(
+                """INSERT INTO loan_disbursements
+                   (application_id, user_id, sanctioned_amount, disbursement_status, remarks, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (app_id, user_id, borrower.get("loan_amnt", 0), _disb_status, _disb_remarks, now),
+            )
+            conn.commit()
+
+        return app_id
+    except Exception as e:
+        st.error(f"❌ Failed to save loan application: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def get_loan_applications(user_id: int = None, loan_decision: str = None) -> pd.DataFrame:
+    """Fetch loan applications with optional filters. Returns newest-first."""
+    conn = get_db_connection()
+    if conn is None:
+        return pd.DataFrame()
+    try:
+        conditions = []
+        params = []
+        if user_id:
+            conditions.append("la.user_id = ?")
+            params.append(user_id)
+        if loan_decision:
+            conditions.append("la.loan_decision = ?")
+            params.append(loan_decision)
+        where = " WHERE " + " AND ".join(conditions) if conditions else ""
+        df = pd.read_sql_query(
+            f"""SELECT la.*, u.first_name, u.last_name, u.email AS user_email
+                FROM loan_applications la
+                LEFT JOIN users u ON la.user_id = u.user_id
+                {where}
+                ORDER BY la.created_at DESC""",
+            conn, params=tuple(params) if params else ()
+        )
+        return df
+    except Exception as e:
+        st.error(f"DB query error: {e}")
+        return pd.DataFrame()
+    finally:
+        conn.close()
+
+
+def update_loan_status(application_id: int, new_decision: str,
+                       rationale: str = None, reviewer_notes: str = None) -> bool:
+    """Update loan_decision from PENDING/NEEDS_VERIFY to LOAN_APPROVED or REJECTED.
+    Also updates updated_at timestamp and optionally creates/cancels disbursement.
+    """
+    if new_decision not in ("LOAN_APPROVED", "NEEDS_VERIFY", "REJECTED"):
+        st.error(f"Invalid decision: {new_decision}")
+        return False
+    conn = get_db_connection()
+    if conn is None:
+        st.error("Database not found.")
+        return False
+    try:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Update the loan decision
+        conn.execute(
+            """UPDATE loan_applications
+               SET loan_decision = ?,
+                   decision_rationale = COALESCE(?, decision_rationale),
+                   updated_at = ?
+               WHERE application_id = ?""",
+            (new_decision, rationale, now, application_id),
+        )
+        conn.commit()
+        # If approved, create disbursement if not exists
+        if new_decision == "LOAN_APPROVED":
+            existing = conn.execute(
+                "SELECT disbursement_id FROM loan_disbursements WHERE application_id = ?",
+                (application_id,)
+            ).fetchone()
+            if not existing:
+                app = conn.execute(
+                    "SELECT user_id, loan_amnt FROM loan_applications WHERE application_id = ?",
+                    (application_id,)
+                ).fetchone()
+                if app:
+                    conn.execute(
+                        """INSERT INTO loan_disbursements
+                           (application_id, user_id, sanctioned_amount, disbursement_status, created_at)
+                           VALUES (?, ?, ?, 'PENDING', ?)""",
+                        (application_id, app[0], app[1], now),
+                    )
+                    conn.commit()
+        # If rejected, cancel any pending disbursement
+        elif new_decision == "REJECTED":
+            conn.execute(
+                """UPDATE loan_disbursements
+                   SET disbursement_status = 'CANCELLED', remarks = 'Loan rejected'
+                   WHERE application_id = ? AND disbursement_status = 'PENDING'""",
+                (application_id,),
+            )
+            conn.commit()
+        return True
+    except Exception as e:
+        st.error(f"❌ Failed to update loan status: {e}")
+        return False
     finally:
         conn.close()
 
@@ -321,115 +666,6 @@ def log_audit(user_id: int, case_id, event_type: str, detail: str, performed_by:
         (user_id, case_id, event_type, detail, performed_by,
          datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
     )
-
-
-# ---------- loan applications ----------
-def init_loan_applications_table():
-    """Create loan_applications and loan_disbursements tables if they don't exist."""
-    db_execute("""
-        CREATE TABLE IF NOT EXISTS loan_applications (
-            application_id   INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id          INTEGER,
-            applicant_email  TEXT    NOT NULL,
-            loan_amnt        REAL    NOT NULL,
-            term             INTEGER NOT NULL,
-            int_rate         REAL,
-            purpose          TEXT,
-            annual_inc       REAL,
-            fico_score       INTEGER,
-            dti              REAL,
-            home_ownership   TEXT,
-            default_prob     REAL,
-            implied_grade    TEXT,
-            risk_level       TEXT,
-            loan_decision    TEXT    NOT NULL DEFAULT 'NEEDS_VERIFY',
-            decision_rationale TEXT,
-            conditions       TEXT,
-            next_steps       TEXT,
-            notification_sent  INTEGER DEFAULT 0,
-            created_at       TEXT DEFAULT (datetime('now')),
-            updated_at       TEXT DEFAULT (datetime('now'))
-        )
-    """)
-    db_execute("""
-        CREATE TABLE IF NOT EXISTS loan_disbursements (
-            disbursement_id     INTEGER PRIMARY KEY AUTOINCREMENT,
-            application_id      INTEGER NOT NULL REFERENCES loan_applications(application_id),
-            user_id             INTEGER,
-            account_id          INTEGER,
-            sanctioned_amount   REAL    NOT NULL,
-            disbursement_status TEXT    NOT NULL DEFAULT 'PENDING',
-            disbursed_at        TEXT,
-            remarks             TEXT,
-            created_at          TEXT DEFAULT (datetime('now'))
-        )
-    """)
-
-
-def save_loan_application(applicant_email: str, borrower_data: dict, cr_result: dict,
-                          loan_decision: str, rationale: str, conditions: str,
-                          next_steps: str, notification_sent: int = 0) -> int:
-    """
-    Save loan application to DB with 3-condition logic:
-
-    Condition 1 (LOAN_APPROVED):  Insert application + create disbursement record
-                                  with sanctioned_amount = loan_amnt (PENDING status).
-    Condition 2 (NEEDS_VERIFY):    Insert application as review/verification required.
-    Condition 3 (REJECTED):         Insert application as rejected.
-    """
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    linked_user = get_linked_user(applicant_email)
-    user_id = linked_user.get("user_id") if linked_user else None
-
-    app_id = db_execute(
-        """INSERT INTO loan_applications
-           (user_id, applicant_email, loan_amnt, term, int_rate, purpose,
-            annual_inc, fico_score, dti, home_ownership,
-            default_prob, implied_grade, risk_level,
-            loan_decision, decision_rationale, conditions, next_steps,
-            notification_sent, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (user_id, applicant_email,
-         borrower_data.get("loan_amnt", 0), borrower_data.get("term", 0),
-         borrower_data.get("int_rate"), borrower_data.get("purpose"),
-         borrower_data.get("annual_inc"), borrower_data.get("fico_score"),
-         borrower_data.get("dti"), borrower_data.get("home_ownership"),
-         cr_result.get("default_probability", 0),
-         cr_result.get("implied_grade", "N/A"),
-         cr_result.get("risk_level", "UNKNOWN"),
-         loan_decision, rationale, conditions, next_steps,
-         notification_sent, now, now),
-    )
-
-    # Condition 1: LOAN_APPROVED → create disbursement record
-    if loan_decision == "LOAN_APPROVED" and app_id:
-        db_execute(
-            """INSERT INTO loan_disbursements
-               (application_id, user_id, sanctioned_amount, disbursement_status, remarks, created_at)
-               VALUES (?, ?, ?, 'PENDING', ?, ?)""",
-            (app_id, user_id, borrower_data.get("loan_amnt", 0),
-             f"Auto-approved via ML risk model. Grade: {cr_result.get('implied_grade', 'N/A')}", now),
-        )
-
-    return app_id
-
-
-def get_loan_applications(email: str = None) -> pd.DataFrame:
-    if email:
-        return db_query(
-            "SELECT * FROM loan_applications WHERE applicant_email=? ORDER BY created_at DESC",
-            (email,),
-        )
-    return db_query("SELECT * FROM loan_applications ORDER BY created_at DESC")
-
-
-def get_loan_disbursements(application_id: int = None) -> pd.DataFrame:
-    if application_id:
-        return db_query(
-            "SELECT * FROM loan_disbursements WHERE application_id=? ORDER BY created_at DESC",
-            (application_id,),
-        )
-    return db_query("SELECT * FROM loan_disbursements ORDER BY created_at DESC")
 
 
 # ---------- transactions ----------
@@ -652,92 +888,6 @@ def send_digest_email(recipient: str, maturing_df: pd.DataFrame) -> bool:
         return False
 
 
-def send_loan_decision_email(recipient: str, loan_decision: str, grade: str,
-                              prob_pct: str, risk_level: str, rationale: str,
-                              conditions: list, next_steps: list,
-                              borrower_data: dict) -> bool:
-    """Send loan decision notification email to the borrower."""
-    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USER", "")
-    smtp_pass = os.getenv("SMTP_PASSWORD", "")
-    if not smtp_user or not smtp_pass or not recipient:
-        return False
-
-    # Color and icon per decision
-    decision_config = {
-        "LOAN_APPROVED": {"icon": "✅", "title": "APPROVED", "color": "#166534", "bg": "#DCFCE7"},
-        "NEEDS_VERIFY":  {"icon": "⚠️", "title": "VERIFICATION REQUIRED", "color": "#854D0E", "bg": "#FEF9C3"},
-        "REJECTED":      {"icon": "❌", "title": "NOT APPROVED", "color": "#991B1B", "bg": "#FEE2E2"},
-    }
-    cfg = decision_config.get(loan_decision, decision_config["NEEDS_VERIFY"])
-
-    conditions_html = "".join(f"<li>{c}</li>" for c in conditions) if conditions else "<li>None</li>"
-    next_steps_html = "".join(f"<li>{s}</li>" for s in next_steps) if next_steps else "<li>None</li>"
-
-    loan_amount = borrower_data.get("loan_amnt", 0)
-    loan_term = borrower_data.get("term", 0)
-    loan_purpose = borrower_data.get("purpose", "N/A").replace("_", " ").title()
-
-    html = f"""<html><body style="font-family: Arial, sans-serif; color: #333;">
-    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: #1E3A8A; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-            <h1 style="margin: 0;">Loan Application Decision</h1>
-        </div>
-        <div style="background: {cfg['bg']}; padding: 20px; border-left: 4px solid {cfg['color']};">
-            <h2 style="color: {cfg['color']}; margin: 0;">{cfg['icon']} Your Loan Application Has Been {cfg['title']}</h2>
-        </div>
-        <div style="background: #F8FAFC; padding: 20px; border: 1px solid #E2E8F0;">
-            <h3 style="color: #1E3A8A;">Application Details</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr><td style="padding: 8px; border-bottom: 1px solid #E2E8F0;"><strong>Loan Amount:</strong></td>
-                    <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">${loan_amount:,.0f}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #E2E8F0;"><strong>Term:</strong></td>
-                    <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">{loan_term} months</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #E2E8F0;"><strong>Purpose:</strong></td>
-                    <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">{loan_purpose}</td></tr>
-                <tr><td style="padding: 8px; border-bottom: 1px solid #E2E8F0;"><strong>Risk Grade:</strong></td>
-                    <td style="padding: 8px; border-bottom: 1px solid #E2E8F0;">{grade} ({risk_level})</td></tr>
-                <tr><td style="padding: 8px;"><strong>Default Probability:</strong></td>
-                    <td style="padding: 8px;">{prob_pct}</td></tr>
-            </table>
-        </div>
-        <div style="padding: 20px; border: 1px solid #E2E8F0; border-top: none;">
-            <h3 style="color: #1E3A8A;">Decision Rationale</h3>
-            <p>{rationale}</p>
-            <h3 style="color: #1E3A8A;">Conditions</h3>
-            <ul>{conditions_html}</ul>
-            <h3 style="color: #1E3A8A;">Next Steps</h3>
-            <ul>{next_steps_html}</ul>
-        </div>
-        <div style="background: #F1F5F9; padding: 15px; border-radius: 0 0 8px 8px; font-size: 12px; color: #64748B; text-align: center;">
-            <p>This decision was generated by our AI-powered credit risk assessment system using an XGBoost model trained on US Lending Club data (2007-2018).</p>
-            <p>For questions, please contact your loan officer or reply to this email.</p>
-        </div>
-    </div>
-    </body></html>"""
-
-    subject_map = {
-        "LOAN_APPROVED": f"✅ Your Loan Application Has Been APPROVED — ${loan_amount:,.0f}",
-        "NEEDS_VERIFY":  f"⚠️ Action Required — Additional Verification Needed for Your Loan Application",
-        "REJECTED":      f"Update on Your Loan Application — Reference #{datetime.now().strftime('%Y%m%d%H%M')}",
-    }
-
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject_map.get(loan_decision, "Loan Application Decision")
-        msg["From"] = smtp_user
-        msg["To"] = recipient
-        msg.attach(MIMEText(html, "html"))
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.sendmail(smtp_user, recipient, msg.as_string())
-        return True
-    except Exception:
-        return False
-
-
 # =============================================================================
 # GEOLOCATION & REGION
 # =============================================================================
@@ -780,9 +930,6 @@ if "langfuse_user_id" not in st.session_state:
 # logged_in_user: {session_id, display_name, email, country_code} or None
 if "logged_in_user" not in st.session_state:
     st.session_state.logged_in_user = None
-
-# Initialize loan applications table on startup
-init_loan_applications_table()
 
 # =============================================================================
 # PAGE CONFIG
@@ -1515,34 +1662,45 @@ with tab3:
                     result = _cr_predict(borrower_data)
                     result["_borrower_data"] = borrower_data
 
-                # Use LLM (loan_creation_agent via CrewAI) to generate decision response
-                _nvidia_key = os.getenv("NVIDIA_NIM_API_KEY", "") or os.getenv("NVIDIA_API_KEY", "")
-                if not _nvidia_key:
-                    result["_llm_decision"] = None
-                    result["_llm_error"] = "NVIDIA_NIM_API_KEY not set. Add it to your .env file."
-                else:
-                    with st.spinner("Loan Creation Agent generating decision via LLM..."):
+                    # --- LLM Decision via CrewAI ---
+                    llm_decision_raw = None
+                    nvidia_key = os.getenv("NVIDIA_NIM_API_KEY", "") or os.getenv("NVIDIA_API_KEY", "")
+                    if nvidia_key:
                         try:
-                            _crews_instance = FixedDepositCrews()
-                            _risk_summary = (
+                            from crews import FixedDepositCrews
+                            crews_instance = FixedDepositCrews()
+                            prompt_context = (
+                                f"Loan Amount: ${borrower_data.get('loan_amnt', 0):,}\n"
+                                f"Term: {borrower_data.get('term', 0)} months\n"
+                                f"Interest Rate: {borrower_data.get('int_rate', 0):.2f}%\n"
+                                f"Annual Income: ${borrower_data.get('annual_inc', 0):,}\n"
+                                f"FICO Score: {borrower_data.get('fico_score', 0)}\n"
+                                f"DTI: {borrower_data.get('dti', 0):.1f}%\n"
+                                f"Default Probability: {result.get('default_probability_pct', '0%')}\n"
+                                f"Risk Level: {result.get('risk_level', 'UNKNOWN')}\n"
                                 f"Grade: {result.get('implied_grade', 'N/A')}\n"
-                                f"Default Probability: {result.get('default_probability_pct', 'N/A')}\n"
-                                f"Risk Level: {result.get('risk_level', 'N/A')}\n"
-                                f"Top Features: {json.dumps(result.get('top_features', []))}\n"
+                                f"Purpose: {borrower_data.get('purpose', '')}\n"
+                                f"Home Ownership: {borrower_data.get('home_ownership', '')}"
                             )
-                            _borrower_email = st.session_state.logged_in_user.get("email", "") if st.session_state.logged_in_user else ""
-                            _loan_crew = _crews_instance.get_loan_creation_crew(
-                                risk_assessment_result=_risk_summary,
-                                borrower_data=borrower_data,
-                                borrower_email=_borrower_email,
-                            )
-                            _crew_result = _loan_crew.kickoff()
-                            result["_llm_decision"] = _crew_result.raw
-                        except Exception as _crew_err:
-                            result["_llm_decision"] = None
-                            result["_llm_error"] = str(_crew_err)
+                            llm_result = crews_instance.get_loan_creation_crew(prompt_context).kickoff()
+                            # Task 0 = decision (JSON), Task 1 = summary (Markdown for email)
+                            if hasattr(llm_result, 'tasks_output') and len(llm_result.tasks_output) >= 2:
+                                result["_llm_decision_raw"] = llm_result.tasks_output[0].raw
+                                result["_llm_summary_raw"] = llm_result.tasks_output[1].raw
+                            else:
+                                raw = llm_result.raw if hasattr(llm_result, 'raw') else str(llm_result)
+                                result["_llm_decision_raw"] = raw
+                                result["_llm_summary_raw"] = None
+                        except Exception as e:
+                            st.warning(f"⚠️ LLM Call Failed — using rule-based fallback. Error: {e}")
+                            result["_llm_decision_raw"] = None
+                            result["_llm_summary_raw"] = None
+                    else:
+                        st.info("ℹ️ NVIDIA API key not set — using rule-based decision (no LLM).")
+                        result["_llm_decision_raw"] = None
+                        result["_llm_summary_raw"] = None
 
-                st.session_state.cr_results = result
+                    st.session_state.cr_results = result
         
         with cr_results_col:
             if st.session_state.cr_results is None:
@@ -1574,7 +1732,7 @@ with tab3:
             else:
                 result = st.session_state.cr_results
                 borrower = result.get("_borrower_data", {})
-                borrower_data = borrower  # Ensure borrower_data is available for downstream usage (email, save, export)
+                borrower_data = borrower  # Fix: make available for notify button scope
                 
                 if "error" in result:
                     st.error(f"Model Error: {result['error']}")
@@ -1748,271 +1906,219 @@ with tab3:
                             st.markdown(f"**{label}:** {value}")
 
                     st.markdown("---")
-                    st.markdown("#### Credit Committee Recommendation")
-                    
-                    if risk_level.upper() == "LOW":
-                        rec_decision = "APPROVE"
+                    st.markdown("#### Loan Creation Agent — Decision")
+
+                    # --- 3-Category Decision Logic ---
+                    grade = result.get("implied_grade", "N/A")
+                    risk_level = result.get("risk_level", "UNKNOWN")
+                    llm_raw = result.get("_llm_decision_raw")
+
+                    # Parse LLM output if available
+                    llm_parsed = _parse_llm_decision(llm_raw) if llm_raw else {}
+
+                    # Rule-based fallback mapping: grade → category
+                    def _grade_to_decision(g):
+                        if g in ("A", "B"):
+                            return "LOAN_APPROVED"
+                        elif g in ("C", "D", "E"):
+                            return "NEEDS_VERIFY"
+                        else:
+                            return "REJECTED"
+
+                    # Determine final decision
+                    if llm_parsed.get("loan_decision"):
+                        loan_decision = llm_parsed["loan_decision"].upper()
+                    else:
+                        loan_decision = _grade_to_decision(grade)
+
+                    # Validate decision against grade (sanity check)
+                    if loan_decision not in ("LOAN_APPROVED", "NEEDS_VERIFY", "REJECTED"):
+                        loan_decision = _grade_to_decision(grade)
+
+                    # Build decision details
+                    if loan_decision == "LOAN_APPROVED":
+                        rec_decision = "LOAN APPROVED"
                         rec_color = "#166534"
                         rec_bg = "#DCFCE7"
-                        rec_text = "Borrower presents low default risk. Recommend standard approval with standard terms."
-                        conditions = ["No additional conditions required", "Standard monitoring protocols apply"]
-                    elif risk_level.upper() == "MEDIUM":
-                        rec_decision = "CONDITIONAL APPROVAL"
+                        rec_icon = "✅"
+                        if llm_parsed.get("rationale"):
+                            rec_text = llm_parsed["rationale"]
+                        else:
+                            rec_text = (f"Borrower presents low default risk (Grade {grade}, {prob_pct} default probability). "
+                                        "The loan is approved at standard terms.")
+                        conditions = llm_parsed.get("conditions") or [
+                            "No additional conditions required",
+                            "Standard monitoring protocols apply",
+                        ]
+                        next_steps = llm_parsed.get("next_steps") or [
+                            "Loan amount will be disbursed to borrower's account",
+                            "Monthly EMI schedule will be generated",
+                            "Welcome kit sent to registered email",
+                        ]
+                    elif loan_decision == "NEEDS_VERIFY":
+                        rec_decision = "NEED TO VERIFY & APPROVE"
                         rec_color = "#854D0E"
                         rec_bg = "#FEF9C3"
-                        rec_text = "Borrower presents moderate default risk. Recommend approval with enhanced conditions."
-                        conditions = [
+                        rec_icon = "⚠️"
+                        if llm_parsed.get("rationale"):
+                            rec_text = llm_parsed["rationale"]
+                        else:
+                            rec_text = (f"Borrower presents moderate risk (Grade {grade}, {prob_pct} default probability). "
+                                        "Additional verification required before final approval.")
+                        conditions = llm_parsed.get("conditions") or [
                             "Enhanced documentation verification required",
                             "Quarterly monitoring of DTI ratio",
                             "Consider reduced loan amount or shorter term",
-                            "Obtain additional income verification"
+                            "Obtain additional income verification",
                         ]
-                    elif risk_level.upper() == "HIGH":
-                        rec_decision = "REVIEW REQUIRED"
+                        next_steps = llm_parsed.get("next_steps") or [
+                            "Verification officer assigned to review application",
+                            "Additional documents requested from borrower",
+                            "Committee review scheduled within 5 business days",
+                        ]
+                    else:  # REJECTED
+                        rec_decision = "LOAN REJECTED"
                         rec_color = "#991B1B"
                         rec_bg = "#FEE2E2"
-                        rec_text = "Borrower presents elevated default risk. Requires senior committee review."
-                        conditions = [
-                            "Escalate to senior credit committee",
-                            "Require collateral or guarantor",
-                            "Mandatory income verification",
-                            "Consider significant rate premium if approved"
-                        ]
-                    else:
-                        rec_decision = "DECLINE"
-                        rec_color = "#991B1B"
-                        rec_bg = "#FEE2E2"
-                        rec_text = "Borrower presents unacceptably high default risk. Recommend decline."
-                        conditions = [
-                            "Application does not meet credit policy",
+                        rec_icon = "🔴"
+                        if llm_parsed.get("rationale"):
+                            rec_text = llm_parsed["rationale"]
+                        else:
+                            rec_text = (f"Borrower presents unacceptably high default risk (Grade {grade}, {prob_pct} default probability). "
+                                        "Application does not meet credit policy requirements.")
+                        conditions = llm_parsed.get("conditions") or [
+                            "Application does not meet minimum credit policy",
                             "Reapplication considered after 12 months with improved profile",
-                            "Provide adverse action notice per regulation"
+                            "Adverse action notice issued per regulation",
                         ]
-                    
+                        next_steps = llm_parsed.get("next_steps") or [
+                            "Adverse action notice sent to borrower",
+                            "Application archived for compliance records",
+                            "Borrower may reapply after credit improvement period",
+                        ]
+
+                    # Store for DB save & notify
+                    st.session_state._loan_decision = loan_decision
+                    st.session_state._loan_rationale = rec_text
+                    st.session_state._loan_conditions = conditions
+                    st.session_state._loan_next_steps = next_steps
+
                     st.markdown(f"""
                     <div style="background:{rec_bg}; border-left:4px solid {rec_color}; border-radius:0 8px 8px 0; padding:16px; margin-bottom:16px;">
-                        <div style="font-size:18px; font-weight:700; color:{rec_color}; margin-bottom:8px;">
-                            {rec_decision}
+                        <div style="font-size:20px; font-weight:700; color:{rec_color}; margin-bottom:8px;">
+                            {rec_icon} {rec_decision}
                         </div>
                         <p style="color:{rec_color}; margin:0; font-size:14px;">{rec_text}</p>
                     </div>
                     """, unsafe_allow_html=True)
-                    
+
+                    # LLM attribution
+                    if llm_raw and llm_parsed.get("loan_decision"):
+                        st.caption("🤖 Decision generated by AI Loan Creation Agent (LLM)")
+                    else:
+                        st.caption("📊 Decision generated by rule-based engine (XGBoost scoring)")
+
                     if conditions:
                         st.markdown("**Conditions:**")
                         for cond in conditions:
                             st.markdown(f"- {cond}")
+
+                    if next_steps:
+                        st.markdown("**Next Steps:**")
+                        for step in next_steps:
+                            st.markdown(f"- {step}")
                     
-                    # ── 3-Category Loan Decision ──
                     st.markdown("---")
-                    st.markdown("#### Loan Creation — Decision Classification")
 
-                    # Step 1: Initial classification from XGBoost model output
-                    loan_decision = classify_loan_decision(grade, prob)
-
-                    # Step 2: Parse LLM-generated decision if available
-                    llm_decision_raw = result.get("_llm_decision", "")
-                    llm_parsed = _parse_llm_decision(llm_decision_raw) if llm_decision_raw else {}
-                    llm_error = result.get("_llm_error", "")
-
-                    # Step 3: If LLM returned a valid decision category, use it
-                    if llm_parsed.get("DECISION"):
-                        _llm_cat = llm_parsed["DECISION"].upper().strip()
-                        if _llm_cat in ("LOAN_APPROVED", "NEEDS_VERIFY", "REJECTED"):
-                            loan_decision = _llm_cat
-
-                    ldc = LOAN_DECISION_CONFIG.get(loan_decision, LOAN_DECISION_CONFIG["NEEDS_VERIFY"])
-
-                    # Show LLM status indicator
-                    if llm_decision_raw:
-                        st.info("🤖 **LLM-Generated Decision** — The Loan Creation Agent (LLM) has analyzed the XGBoost model output and generated this decision.")
-                    elif llm_error:
-                        st.warning(f"⚠️ LLM decision unavailable ({llm_error}). Using rule-based fallback.")
-
-                    # Prominent decision banner
-                    st.markdown(f"""
-                    <div style="background:{ldc['banner_bg']}; border:2px solid {ldc['border']}; 
-                                border-radius:12px; padding:24px; margin-bottom:16px; text-align:center;">
-                        <div style="font-size:48px; margin-bottom:8px;">{ldc['icon']}</div>
-                        <div style="font-size:22px; font-weight:800; color:{ldc['fg']}; letter-spacing:1px;">
-                            {ldc['label']}
-                        </div>
-                        <div style="font-size:14px; color:{ldc['fg']}; opacity:0.8; margin-top:4px;">
-                            Grade: {grade} | Default Probability: {prob_pct} | Risk: {risk_level}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    # Decision-specific details (hardcoded fallback)
-                    if loan_decision == "LOAN_APPROVED":
-                        decision_rationale = (
-                            f"Borrower's credit profile (Grade {grade}, {prob_pct} default probability) "
-                            f"meets the bank's low-risk threshold. The XGBoost model indicates strong "
-                            f"repayment capacity based on FICO score ({borrower.get('fico_score', 0)}), "
-                            f"DTI ratio ({borrower.get('dti', 0):.1f}%), and income profile. "
-                            f"Standard loan terms are approved."
-                        )
-                        decision_conditions = "No additional conditions required; standard monitoring protocols apply"
-                        decision_next_steps = (
-                            "Loan agreement will be generated; "
-                            "expect disbursement within 3-5 business days; "
-                            "monitor your email for loan documents"
-                        )
-                        st.success("🎉 Congratulations! The loan has been auto-approved based on the ML risk assessment.")
-
-                    elif loan_decision == "NEEDS_VERIFY":
-                        decision_rationale = (
-                            f"Borrower's credit profile (Grade {grade}, {prob_pct} default probability) "
-                            f"falls in the moderate-risk zone. While the profile shows some positive indicators, "
-                            f"additional verification is required before a final decision can be made. "
-                            f"Key risk factors should be reviewed by the credit committee."
-                        )
-                        decision_conditions = (
-                            "Enhanced documentation verification required; "
-                            "Quarterly monitoring of DTI ratio; "
-                            "Consider reduced loan amount or shorter term; "
-                            "Obtain additional income verification"
-                        )
-                        decision_next_steps = (
-                            "Submit requested documents within 10 business days; "
-                            "A credit committee member will review your application; "
-                            "Expect a decision within 5-7 business days after document submission"
-                        )
-                        st.warning("⚠️ Additional verification is required before the loan can be approved.")
-
-                    else:  # REJECTED
-                        decision_rationale = (
-                            f"Borrower's credit profile (Grade {grade}, {prob_pct} default probability) "
-                            f"exceeds the bank's acceptable risk threshold. The ML model identifies "
-                            f"significant default risk factors including elevated DTI ({borrower.get('dti', 0):.1f}%), "
-                            f"FICO score below threshold ({borrower.get('fico_score', 0)}), and other risk indicators. "
-                            f"Application does not meet current credit policy requirements."
-                        )
-                        decision_conditions = "Application does not meet credit policy"
-                        decision_next_steps = (
-                            "Adverse action notice has been recorded per regulation; "
-                            "Reapplication may be considered after 12 months with improved credit profile; "
-                            "Contact a financial advisor for credit improvement guidance"
-                        )
-                        st.error("❌ The loan application has been rejected based on the ML risk assessment.")
-
-                    # Step 4: Override with LLM-generated rationale/conditions/next_steps if available
-                    if llm_parsed.get("RATIONALE"):
-                        decision_rationale = llm_parsed["RATIONALE"]
-                    if llm_parsed.get("CONDITIONS"):
-                        decision_conditions = llm_parsed["CONDITIONS"]
-                    if llm_parsed.get("NEXT_STEPS"):
-                        decision_next_steps = llm_parsed["NEXT_STEPS"]
-
-                    # Show rationale
-                    st.markdown("**Decision Rationale:**")
-                    st.markdown(decision_rationale)
-
-                    # Show conditions
-                    st.markdown("**Conditions:**")
-                    for cond in decision_conditions.split("; "):
-                        st.markdown(f"- {cond}")
-
-                    # Show next steps
-                    st.markdown("**Next Steps:**")
-                    for step in decision_next_steps.split("; "):
-                        st.markdown(f"- {step}")
-
-                    # ── Save to DB (3-condition logic) ──
-                    try:
-                        app_id = save_loan_application(
-                            applicant_email=st.session_state.logged_in_user.get("email", "") if st.session_state.logged_in_user else "",
-                            borrower_data=borrower_data,
-                            cr_result=result,
+                    # ── Auto-save to DB ──
+                    llm_summary_md = result.get("_llm_summary_raw", "")
+                    _auto_save_done = st.session_state.get("_loan_auto_saved_id")
+                    if not _auto_save_done:
+                        logged = st.session_state.get("logged_in_user") or {}
+                        _uid = logged.get("user_id") if logged else None
+                        _email = logged.get("email", "") if logged else "guest@demo.com"
+                        _aid = save_loan_application(
+                            applicant_email=_email,
+                            borrower=borrower_data,
+                            result=result,
                             loan_decision=loan_decision,
-                            rationale=decision_rationale,
-                            conditions=decision_conditions,
-                            next_steps=decision_next_steps,
+                            rationale=rec_text,
+                            conditions=conditions,
+                            next_steps=next_steps,
+                            user_id=_uid,
                         )
-                        if app_id:
-                            st.caption(f"Application #{app_id} saved to database.")
-                            if loan_decision == "LOAN_APPROVED":
-                                st.success(f"💰 Loan amount ${borrower_data.get('loan_amnt', 0):,.0f} recorded for disbursement (PENDING).")
-                            elif loan_decision == "NEEDS_VERIFY":
-                                st.info("📋 Application flagged for review — verification required before processing.")
-                            else:
-                                st.info("🚫 Application recorded as REJECTED — no disbursement created.")
-                    except Exception as e:
-                        st.caption(f"Note: Could not save to database: {e}")
+                        if _aid:
+                            st.session_state._loan_auto_saved_id = _aid
+                            st.toast(f"✅ Auto-saved as Application #{_aid}")
 
-                    # ── Email Notification ──
-                    st.markdown("---")
-                    st.markdown("#### Notify Borrower")
-                    notify_col1, notify_col2 = st.columns([1, 2])
-                    with notify_col1:
-                        borrower_email_input = st.text_input(
-                            "Borrower Email",
-                            value=st.session_state.logged_in_user.get("email", "") if st.session_state.logged_in_user else "",
-                            key="loan_notify_email",
-                            help="Email address to send the loan decision notification"
-                        )
-                        if st.button("📧 Send Decision Email", type="primary", use_container_width=True, key="send_loan_email_btn"):
-                            if borrower_email_input:
-                                with st.spinner("Sending email notification..."):
-                                    email_sent = send_loan_decision_email(
-                                        recipient=borrower_email_input,
-                                        loan_decision=loan_decision,
-                                        grade=grade,
-                                        prob_pct=prob_pct,
-                                        risk_level=risk_level,
-                                        rationale=decision_rationale,
-                                        conditions=decision_conditions.split("; "),
-                                        next_steps=decision_next_steps.split("; "),
-                                        borrower_data=borrower_data,
-                                    )
-                                if email_sent:
-                                    st.success(f"✅ Decision notification sent to {borrower_email_input}")
-                                    # Update notification_sent in DB
-                                    try:
-                                        db_execute(
-                                            "UPDATE loan_applications SET notification_sent=1, updated_at=? WHERE applicant_email=? ORDER BY created_at DESC LIMIT 1",
-                                            (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), borrower_email_input),
-                                        )
-                                    except Exception:
-                                        pass
-                                else:
-                                    st.error("Failed to send email. Check SMTP configuration (SMTP_HOST, SMTP_USER, SMTP_PASSWORD).")
-                            else:
-                                st.warning("Please enter a valid email address.")
-                    with notify_col2:
-                        st.markdown("""
-                        <div style="background:#F1F5F9; border-radius:8px; padding:16px; border-left:4px solid #3B82F6;">
-                            <h4 style="margin:0 0 8px 0; color:#1E3A8A;">Email Notification</h4>
-                            <p style="color:#475569; margin:0; font-size:13px;">
-                                The borrower will receive a professionally formatted email with the loan decision,
-                                risk metrics, rationale, conditions, and next steps. The email is styled according
-                                to the decision category (green for approved, yellow for verification, red for rejected).
-                            </p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    # Prepare export data
+                    export_data = {
+                        "assessment_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "loan_decision": loan_decision,
+                        "borrower_data": {k: v for k, v in borrower.items() if v is not None},
+                        "results": {
+                            "default_probability": result.get("default_probability"),
+                            "default_probability_pct": result.get("default_probability_pct"),
+                            "implied_grade": result.get("implied_grade"),
+                            "risk_level": result.get("risk_level"),
+                            "recommendation": rec_decision,
+                            "top_features": valid_features[:5]
+                        }
+                    }
 
-                    st.markdown("---")
-                    btn_col1, btn_col2, btn_col3 = st.columns([1, 1, 1])
+                    # ── Build plain-text report for TXT export & email ──
+                    report_text = f"""LOAN APPLICATION REPORT
+{'='*50}
+Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+
+DECISION: {rec_decision}
+Grade: {grade}
+Default Probability: {prob_pct}
+Risk Level: {risk_level}
+
+BORROWER DETAILS
+{'-'*50}
+Loan Amount: ${borrower.get('loan_amnt', 0):,}
+Term: {borrower.get('term', 'N/A')}
+Interest Rate: {borrower.get('int_rate', 'N/A')}%
+Purpose: {borrower.get('purpose', 'N/A')}
+Annual Income: ${borrower.get('annual_inc', 0):,}
+FICO Score: {borrower.get('fico_score', 0)}
+DTI Ratio: {borrower.get('dti', 0):.1f}%
+Home Ownership: {borrower.get('home_ownership', 'N/A')}
+
+RATIONALE
+{'-'*50}
+{rec_text}
+
+CONDITIONS
+{'-'*50}
+""" + '\n'.join(f'  • {c}' for c in conditions) + f"""
+
+NEXT STEPS
+{'-'*50}
+""" + '\n'.join(f'  • {s}' for s in next_steps)
+
+                    if llm_summary_md:
+                        report_text += f"""
+
+DETAILED BORROWER SUMMARY
+{'-'*50}
+{llm_summary_md}
+"""
+
+                    report_text += f"\n{'='*50}\nGenerated by AI Loan Creation Agent | {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
+
+                    # ── Button Row 1: Actions ──
+                    btn_row1 = st.columns([1, 1, 1, 1])
                     
-                    with btn_col1:
+                    with btn_row1[0]:
                         if st.button("Reset Assessment", use_container_width=True):
                             st.session_state.cr_results = None
+                            st.session_state._loan_auto_saved_id = None
                             st.rerun()
                     
-                    with btn_col2:
-                        export_data = {
-                            "assessment_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "borrower_data": {k: v for k, v in borrower.items() if v is not None},
-                            "results": {
-                                "default_probability": result.get("default_probability"),
-                                "default_probability_pct": result.get("default_probability_pct"),
-                                "implied_grade": result.get("implied_grade"),
-                                "risk_level": result.get("risk_level"),
-                                "recommendation": rec_decision,
-                                "loan_decision": loan_decision,
-                                "top_features": valid_features[:5]
-                            }
-                        }
+                    with btn_row1[1]:
                         st.download_button(
                             "Export Report (JSON)",
                             data=json.dumps(export_data, indent=2, default=str).encode("utf-8"),
@@ -2021,49 +2127,218 @@ with tab3:
                             use_container_width=True
                         )
                     
-                    with btn_col3:
-                        report_text = f"""
-CREDIT RISK ASSESSMENT REPORT
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-LOAN DECISION: {loan_decision}
-GRADE: {grade}
-DEFAULT PROBABILITY: {prob_pct}
-RISK LEVEL: {risk_level}
-
-BORROWER PROFILE:
-- Loan Amount: ${borrower.get('loan_amnt', 0):,}
-- Term: {borrower.get('term', 0)} months
-- Interest Rate: {borrower.get('int_rate', 0):.2f}%
-- Annual Income: ${borrower.get('annual_inc', 0):,}
-- FICO Score: {borrower.get('fico_score', 0)}
-- DTI: {borrower.get('dti', 0):.1f}%
-- Purpose: {borrower.get('purpose', '')}
-
-TOP RISK DRIVERS:
-"""
-                        for i, feat in enumerate(valid_features[:5], 1):
-                            report_text += f"{i}. {feat['feature'].replace('_', ' ').title()}: {feat.get('importance_pct', 0)}% importance\n"
-                        
-                        report_text += f"\nRECOMMENDATION:\n{rec_text}\n\nLOAN DECISION: {loan_decision}\n\nCONDITIONS:\n"
-                        for cond in conditions:
-                            report_text += f"- {cond}\n"
-                        
-                        report_text += "\n---\nModel: XGBoost Classifier (US Lending Club 2007-2018)\nThis report is AI-generated for informational purposes only."
-                        
+                    with btn_row1[2]:
                         st.download_button(
                             "Export Report (TXT)",
                             data=report_text.encode("utf-8"),
-                            file_name=f"credit_risk_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                            file_name=f"loan_decision_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                             mime="text/plain",
                             use_container_width=True
                         )
+                    
+                    with btn_row1[3]:
+                        if st.button("📧 Notify Borrower", use_container_width=True, key="notify_borrower_btn"):
+                            smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+                            smtp_port = int(os.getenv("SMTP_PORT", "587"))
+                            smtp_user = os.getenv("SMTP_USER", "")
+                            smtp_pass = os.getenv("SMTP_PASSWORD", "")
+                            _logged = st.session_state.get("logged_in_user") or {}
+                            recipient = _logged.get("email", "")
+                            if not recipient:
+                                st.warning("Please log in first to send notifications.")
+                            elif not smtp_user or not smtp_pass:
+                                st.warning("Email not configured. Set SMTP credentials in .env")
+                            else:
+                                # Convert LLM summary markdown to clean HTML
+                                _summary_html = _md_to_html(llm_summary_md) if llm_summary_md else ""
+                                html_body = _build_email_html(
+                                    rec_icon, rec_decision, rec_color, grade, prob_pct,
+                                    risk_level, borrower, rec_text, conditions, next_steps,
+                                    llm_summary_html=_summary_html,
+                                )
+                                # Build subject based on decision
+                                subject_map = {
+                                    "LOAN APPROVED": "✅ Your Loan Has Been Approved",
+                                    "NEED TO VERIFY & APPROVE": "⚠️ Action Required — Additional Verification Needed for Your Loan Application",
+                                    "LOAN REJECTED": "🔴 Your Loan Application Status",
+                                }
+                                email_subject = subject_map.get(rec_decision, f"Loan Application Status: {rec_decision}")
+                                try:
+                                    msg = MIMEMultipart("alternative")
+                                    msg["Subject"] = email_subject
+                                    msg["From"] = smtp_user
+                                    msg["To"] = recipient
+                                    msg.attach(MIMEText(html_body, "html"))
+                                    with smtplib.SMTP(smtp_host, smtp_port) as server:
+                                        server.starttls()
+                                        server.login(smtp_user, smtp_pass)
+                                        server.sendmail(smtp_user, recipient, msg.as_string())
+                                    # Update notification_sent flag in DB
+                                    _saved_id = st.session_state.get("_loan_auto_saved_id")
+                                    if _saved_id:
+                                        _conn = get_db_connection()
+                                        if _conn:
+                                            _conn.execute(
+                                                "UPDATE loan_applications SET notification_sent=1 WHERE application_id=?",
+                                                (_saved_id,),
+                                            )
+                                            _conn.commit()
+                                            _conn.close()
+                                    st.success(f"📧 Notification sent to {recipient}!")
+                                except Exception as e:
+                                    st.error(f"Failed to send email: {e}")
 
+                    # ── Email Input + Send Report Section ──
+                    st.markdown("---")
+                    st.markdown("#### 📬 Send Report to Any Email")
+                    email_col1, email_col2 = st.columns([3, 1])
+                    with email_col1:
+                        report_email = st.text_input(
+                            "Enter recipient email address",
+                            value="",
+                            key="report_recipient_email",
+                            placeholder="borrower@email.com"
+                        )
+                    with email_col2:
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        send_report_btn = st.button("Send Report", type="primary", use_container_width=True, key="send_report_email_btn")
+                    
+                    if send_report_btn:
+                        if not report_email or "@" not in report_email:
+                            st.warning("Please enter a valid email address.")
+                        else:
+                            smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+                            smtp_port = int(os.getenv("SMTP_PORT", "587"))
+                            smtp_user = os.getenv("SMTP_USER", "")
+                            smtp_pass = os.getenv("SMTP_PASSWORD", "")
+                            if not smtp_user or not smtp_pass:
+                                st.warning("Email not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASSWORD in .env")
+                            else:
+                                # Convert LLM summary markdown to clean HTML
+                                _summary_html = _md_to_html(llm_summary_md) if llm_summary_md else ""
+                                report_html = _build_email_html(
+                                    rec_icon, rec_decision, rec_color, grade, prob_pct,
+                                    risk_level, borrower, rec_text, conditions, next_steps,
+                                    llm_summary_html=_summary_html,
+                                )
+                                try:
+                                    msg = MIMEMultipart("alternative")
+                                    msg["Subject"] = f"Your Loan Application Report — {rec_decision}"
+                                    msg["From"] = smtp_user
+                                    msg["To"] = report_email
+                                    msg.attach(MIMEText(report_html, "html"))
+                                    with smtplib.SMTP(smtp_host, smtp_port) as server:
+                                        server.starttls()
+                                        server.login(smtp_user, smtp_pass)
+                                        server.sendmail(smtp_user, report_email, msg.as_string())
+                                    st.success(f"✅ Report sent to {report_email}!")
+                                except Exception as e:
+                                    st.error(f"❌ Failed to send report: {e}")
+
+        # ── Loan Applications History & Status Management ──
+        st.markdown("---")
+        st.markdown("#### 📋 Loan Applications History")
+        st.caption("View all loan applications. Update status from PENDING/NEEDS_VERIFY to APPROVED or REJECTED.")
+
+        _filter_col1, _filter_col2 = st.columns([1, 1])
+        with _filter_col1:
+            _status_filter = st.selectbox(
+                "Filter by Status",
+                options=["ALL", "LOAN_APPROVED", "NEEDS_VERIFY", "REJECTED"],
+                format_func=lambda x: {
+                    "ALL": "All Statuses",
+                    "LOAN_APPROVED": "✅ Approved",
+                    "NEEDS_VERIFY": "⚠️ Pending / Need to Verify",
+                    "REJECTED": "🔴 Rejected",
+                }.get(x, x),
+                key="loan_history_filter",
+            )
+        with _filter_col2:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🔄 Refresh", key="refresh_loan_history"):
+                st.rerun()
+
+        _loan_df = get_loan_applications(
+            loan_decision=_status_filter if _status_filter != "ALL" else None
+        )
+
+        if _loan_df.empty:
+            st.info("No loan applications found.")
+        else:
+            # Display status counts
+            _counts = _loan_df["loan_decision"].value_counts()
+            _c1, _c2, _c3 = st.columns(3)
+            with _c1:
+                st.metric("✅ Approved", int(_counts.get("LOAN_APPROVED", 0)))
+            with _c2:
+                st.metric("⚠️ Pending", int(_counts.get("NEEDS_VERIFY", 0)))
+            with _c3:
+                st.metric("🔴 Rejected", int(_counts.get("REJECTED", 0)))
+
+            st.markdown("---")
+
+            for _, row in _loan_df.iterrows():
+                _app_id = row.get("application_id", 0)
+                _decision = row.get("loan_decision", "NEEDS_VERIFY")
+                _created = row.get("created_at", "")
+                _email_addr = row.get("applicant_email", row.get("user_email", ""))
+                _grade_val = row.get("implied_grade", "N/A")
+                _risk_val = row.get("risk_level", "UNKNOWN")
+                _prob_val = row.get("default_prob", 0)
+                _loan_amt = row.get("loan_amnt", 0)
+                _fico_val = row.get("fico_score", 0)
+                _rationale_val = row.get("decision_rationale", "")
+
+                # Color config per decision
+                _dc = {
+                    "LOAN_APPROVED": {"bg": "#DCFCE7", "fg": "#166534", "icon": "✅", "label": "LOAN APPROVED"},
+                    "NEEDS_VERIFY":  {"bg": "#FEF9C3", "fg": "#854D0E", "icon": "⚠️", "label": "PENDING — NEED TO VERIFY"},
+                    "REJECTED":      {"bg": "#FEE2E2", "fg": "#991B1B", "icon": "🔴", "label": "LOAN REJECTED"},
+                }.get(_decision, {"bg": "#F1F5F9", "fg": "#475569", "icon": "❓", "label": _decision})
+
+                with st.expander(f"{_dc['icon']} Application #{_app_id} — {_dc['label']} — {_created}", expanded=False):
+                    st.markdown(f"""
+                    <div style="background:{_dc['bg']}; border-left:4px solid {_dc['fg']}; border-radius:0 8px 8px 0; padding:12px; margin-bottom:12px;">
+                        <div style="font-size:16px; font-weight:700; color:{_dc['fg']};">
+                            {_dc['icon']} {_dc['label']}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    _info_col1, _info_col2 = st.columns(2)
+                    with _info_col1:
+                        st.markdown(f"**Application ID:** #{_app_id}")
+                        st.markdown(f"**Email:** {_email_addr}")
+                        st.markdown(f"**Loan Amount:** ${_loan_amt:,.0f}" if _loan_amt else "**Loan Amount:** N/A")
+                        st.markdown(f"**FICO Score:** {_fico_val}")
+                    with _info_col2:
+                        st.markdown(f"**Grade:** {_grade_val}")
+                        st.markdown(f"**Risk Level:** {_risk_val}")
+                        st.markdown(f"**Default Prob:** {_prob_val:.2%}" if _prob_val else "**Default Prob:** N/A")
+                        st.markdown(f"**Created:** {_created}")
+                    if _rationale_val:
+                        st.markdown(f"**Rationale:** {_rationale_val}")
+
+                    # Status update buttons (only for PENDING/NEEDS_VERIFY)
+                    if _decision in ("NEEDS_VERIFY",):
+                        st.markdown("---")
+                        st.markdown("**Update Loan Status:**")
+                        _upd_col1, _upd_col2 = st.columns(2)
+                        with _upd_col1:
+                            if st.button(f"✅ Approve #{_app_id}", type="primary", key=f"approve_{_app_id}"):
+                                _reviewer_notes = f"Manually approved on {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                                if update_loan_status(_app_id, "LOAN_APPROVED", reviewer_notes=_reviewer_notes):
+                                    st.success(f"Application #{_app_id} updated to LOAN APPROVED ✅")
+                                    st.rerun()
+                        with _upd_col2:
+                            if st.button(f"🔴 Reject #{_app_id}", type="secondary", key=f"reject_{_app_id}"):
+                                _reviewer_notes = f"Manually rejected on {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                                if update_loan_status(_app_id, "REJECTED", reviewer_notes=_reviewer_notes):
+                                    st.success(f"Application #{_app_id} updated to REJECTED 🔴")
+                                    st.rerun()
 
 # =============================================================================
 
-# =============================================================================
-# TAB 4: FINANCIAL NEWS
 # =============================================================================
 with tab4:
     st.markdown("## Financial News")

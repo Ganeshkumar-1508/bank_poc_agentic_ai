@@ -2,7 +2,6 @@
 from crewai import Task
 from datetime import datetime
 import hashlib
-import json
 
 _CURRENT_YEAR = datetime.now().year
 
@@ -953,86 +952,67 @@ def create_credit_risk_tasks(agents, borrower_json: str = "{}"):
 
 
 # ---------------------------------------------------------------------------
-# Loan creation pipeline (3-category decision)
+# Loan creation pipeline (Module 3 — Credit Risk Assessment)
 # ---------------------------------------------------------------------------
 
-_LOAN_DECISION_RULES = """
-Loan Decision Classification Rules (based on ML model output):
-- LOAN_APPROVED: Grade A or B (default_probability < 0.10, risk_level: Low or Low-Medium)
-  → Auto-approve with standard terms. No additional conditions.
-  → Rationale: Borrower presents low default risk per model assessment.
-  
-- NEEDS_VERIFY: Grade C, D, or E (0.10 ≤ default_probability < 0.25, risk_level: Medium, Medium-High, or High)
-  → Flag for manual verification and enhanced due diligence.
-  → Conditions: enhanced documentation, additional income verification, possible collateral requirement,
-    quarterly monitoring, consider reduced amount or shorter term.
-  → Rationale: Borrower presents moderate default risk; human review required for final decision.
-  
-- REJECTED: Grade F or G (default_probability ≥ 0.25, risk_level: Very High or Critical)
-  → Auto-reject application.
-  → Rationale: Borrower presents unacceptably high default risk per model assessment.
-  → Next steps: Provide adverse action notice; reapplication considered after 12 months with improved profile.
-"""
+def create_loan_creation_tasks(agents, borrower_context: str = ""):
 
-def create_loan_creation_tasks(agents, risk_assessment_result: str, borrower_data: dict, borrower_email: str = ""):
-    """Create tasks for the 3-category loan decision pipeline."""
-
-    loan_decision_task = Task(
+    decision_task = Task(
         description=(
-            f"Borrower Email: {borrower_email}\n\n"
-            f"ML Risk Assessment Result:\n{risk_assessment_result}\n\n"
-            f"Borrower Data:\n{json.dumps(borrower_data, indent=2, default=str)}\n\n"
-            f"{_LOAN_DECISION_RULES}\n\n"
-            "STEP 1 — Extract from the risk assessment: default_probability, implied_grade, risk_level.\n\n"
-            "STEP 2 — Classify into EXACTLY ONE category: LOAN_APPROVED, NEEDS_VERIFY, or REJECTED\n"
-            "using the rules above.\n\n"
-            "STEP 3 — Produce a structured decision output:\n"
-            "DECISION: [LOAN_APPROVED / NEEDS_VERIFY / REJECTED]\n"
-            "GRADE: [A through G]\n"
-            "DEFAULT_PROBABILITY: [value]\n"
-            "RISK_LEVEL: [Low through Critical]\n"
-            "RATIONALE: [2-3 sentences explaining the decision]\n"
-            "CONDITIONS: [semicolon-separated list of conditions, or 'None']\n"
-            "NEXT_STEPS: [semicolon-separated list of next steps for the borrower]\n"
+            f"Borrower Credit Profile:\n{borrower_context}\n\n"
+            "Evaluate this borrower and produce a loan decision.\n\n"
+            "OUTPUT FORMAT (strict JSON — no markdown fences):\n"
+            "{\n"
+            '  "loan_decision": "LOAN_APPROVED" | "NEEDS_VERIFY" | "REJECTED",\n'
+            '  "rationale": "2-3 sentences explaining the decision",\n'
+            '  "conditions": ["condition1", "condition2"],\n'
+            '  "next_steps": ["step1", "step2"]\n'
+            "}\n\n"
+            "DECISION CRITERIA:\n"
+            "- LOAN_APPROVED: Grade A or B, FICO ≥ 740, DTI < 30%, default prob < 10%\n"
+            "- NEEDS_VERIFY: Grade C/D/E, FICO 660-739, DTI 30-45%, default prob 10-25%\n"
+            "- REJECTED: Grade F/G, FICO < 660, DTI > 45%, default prob > 25%\n"
+            "For borderline cases, lean toward NEEDS_VERIFY rather than flat rejection."
         ),
-        expected_output=(
-            "Structured loan decision with category (LOAN_APPROVED/NEEDS_VERIFY/REJECTED), "
-            "grade, probability, risk level, rationale, conditions, and next steps."
-        ),
+        expected_output="JSON with loan_decision, rationale, conditions, next_steps",
         agent=agents["loan_creation_agent"],
     )
 
-    loan_notification_task = Task(
+    summary_task = Task(
         description=(
-            f"Borrower Email: {borrower_email}\n\n"
-            "Read the loan decision from the previous task context.\n\n"
-            "Compose a professional email notification to the borrower:\n\n"
-            "Email Structure:\n"
-            "Subject: [Loan Application Decision — Approved / Verification Required / Update on Your Application]\n"
-            "Body:\n"
-            "- Greeting (Dear [Borrower Name] or Dear Applicant)\n"
-            "- Decision announcement (clear, prominent)\n"
-            "- Key metrics: Grade, Default Probability, Risk Level\n"
-            "- Rationale summary\n"
-            "- Conditions (if any)\n"
-            "- Next steps\n"
-            "- Closing and contact information\n\n"
-            "TONE RULES:\n"
-            "- LOAN_APPROVED: Congratulatory, professional. Include loan terms summary.\n"
-            "- NEEDS_VERIFY: Neutral, informative. Request specific additional documents.\n"
-            "- REJECTED: Respectful, empathetic. Include adverse action notice and reapplication guidance.\n\n"
-            f"Send the email using 'Email Sender' or 'Gmail Sender' tool to: {borrower_email}\n"
-            "If no email is provided, output the email text without sending."
+            f"Borrower Credit Profile:\n{borrower_context}\n\n"
+            "Using the loan decision from context, generate a comprehensive, borrower-friendly "
+            "email summary. This will be sent directly to the borrower.\n\n"
+            "REQUIRED SECTIONS:\n\n"
+            "## Your Credit Assessment Summary\n\n"
+            "### What Your Scores Mean\n"
+            "Explain each metric in simple terms:\n"
+            "- FICO Score: what it is, where they stand (poor/fair/good/excellent), impact\n"
+            "- DTI Ratio: what it measures, why it matters, how theirs compares\n"
+            "- Default Probability: what it means in plain English\n"
+            "- Risk Grade: explain the grade scale (A=safest, G=highest risk)\n\n"
+            "### Why You Received This Decision\n"
+            "Detailed explanation of the factors that led to the decision. "
+            "Reference specific numbers from their profile. Be empathetic but honest.\n\n"
+            "### What You Can Do Next\n"
+            "Specific, actionable steps tailored to their profile:\n"
+            "- If APPROVED: what to expect, timeline, documents needed\n"
+            "- If NEEDS_VERIFY: what additional documents/info to provide, timeline\n"
+            "- If REJECTED: how to improve credit score, when to reapply, specific targets\n\n"
+            "### Tips to Improve Your Credit Health\n"
+            "3-5 personalized tips based on their weakest metrics.\n\n"
+            "TONE: Professional, empathetic, encouraging. Avoid jargon. "
+            "Write as if speaking directly to the borrower."
         ),
         expected_output=(
-            "Professional email notification sent (or prepared) for the borrower "
-            "with decision, rationale, and next steps."
+            "Borrower-friendly Markdown summary with all 4 sections. "
+            "Empathetic tone, no jargon, specific actionable advice."
         ),
-        agent=agents["loan_notification_agent"],
-        context=[loan_decision_task],
+        agent=agents["loan_summary_agent"],
+        context=[decision_task],
     )
 
-    return [loan_decision_task, loan_notification_task]
+    return [decision_task, summary_task]
 
 
 # ---------------------------------------------------------------------------
