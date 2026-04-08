@@ -952,6 +952,70 @@ def create_credit_risk_tasks(agents, borrower_json: str = "{}"):
 
 
 # ---------------------------------------------------------------------------
+# Loan creation pipeline (Module 3 — Credit Risk Assessment)
+# ---------------------------------------------------------------------------
+
+def create_loan_creation_tasks(agents, borrower_context: str = ""):
+
+    decision_task = Task(
+        description=(
+            f"Borrower Credit Profile:\n{borrower_context}\n\n"
+            "Evaluate this borrower and produce a loan decision.\n\n"
+            "OUTPUT FORMAT (strict JSON — no markdown fences):\n"
+            "{\n"
+            '  "loan_decision": "LOAN_APPROVED" | "NEEDS_VERIFY" | "REJECTED",\n'
+            '  "rationale": "2-3 sentences explaining the decision",\n'
+            '  "conditions": ["condition1", "condition2"],\n'
+            '  "next_steps": ["step1", "step2"]\n'
+            "}\n\n"
+            "DECISION CRITERIA:\n"
+            "- LOAN_APPROVED: Grade A or B, FICO ≥ 740, DTI < 30%, default prob < 10%\n"
+            "- NEEDS_VERIFY: Grade C/D/E, FICO 660-739, DTI 30-45%, default prob 10-25%\n"
+            "- REJECTED: Grade F/G, FICO < 660, DTI > 45%, default prob > 25%\n"
+            "For borderline cases, lean toward NEEDS_VERIFY rather than flat rejection."
+        ),
+        expected_output="JSON with loan_decision, rationale, conditions, next_steps",
+        agent=agents["loan_creation_agent"],
+    )
+
+    summary_task = Task(
+        description=(
+            f"Borrower Credit Profile:\n{borrower_context}\n\n"
+            "Using the loan decision from context, generate a comprehensive, borrower-friendly "
+            "email summary. This will be sent directly to the borrower.\n\n"
+            "REQUIRED SECTIONS:\n\n"
+            "## Your Credit Assessment Summary\n\n"
+            "### What Your Scores Mean\n"
+            "Explain each metric in simple terms:\n"
+            "- FICO Score: what it is, where they stand (poor/fair/good/excellent), impact\n"
+            "- DTI Ratio: what it measures, why it matters, how theirs compares\n"
+            "- Default Probability: what it means in plain English\n"
+            "- Risk Grade: explain the grade scale (A=safest, G=highest risk)\n\n"
+            "### Why You Received This Decision\n"
+            "Detailed explanation of the factors that led to the decision. "
+            "Reference specific numbers from their profile. Be empathetic but honest.\n\n"
+            "### What You Can Do Next\n"
+            "Specific, actionable steps tailored to their profile:\n"
+            "- If APPROVED: what to expect, timeline, documents needed\n"
+            "- If NEEDS_VERIFY: what additional documents/info to provide, timeline\n"
+            "- If REJECTED: how to improve credit score, when to reapply, specific targets\n\n"
+            "### Tips to Improve Your Credit Health\n"
+            "3-5 personalized tips based on their weakest metrics.\n\n"
+            "TONE: Professional, empathetic, encouraging. Avoid jargon. "
+            "Write as if speaking directly to the borrower."
+        ),
+        expected_output=(
+            "Borrower-friendly Markdown summary with all 4 sections. "
+            "Empathetic tone, no jargon, specific actionable advice."
+        ),
+        agent=agents["loan_summary_agent"],
+        context=[decision_task],
+    )
+
+    return [decision_task, summary_task]
+
+
+# ---------------------------------------------------------------------------
 # Routing
 # ---------------------------------------------------------------------------
 

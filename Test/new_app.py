@@ -178,6 +178,36 @@ def _parse_llm_decision(raw_output: str) -> dict:
         "next_steps": [],
     }
 
+# ---------- Grade sanitization ( prevent LLM grade hallucination) ----------
+
+def _sanitize_grade_in_text(text: str, correct_grade: str) -> str:
+    """Post-process LLM output to replace any hallucinated credit grades with the
+    correct XGBoost model grade.  The LLM may occasionally mention a different grade
+    than what the model computed — this function catches and corrects those references
+    so the email and on-screen rationale always display the authoritative grade.
+    """
+    if not text or not correct_grade or correct_grade == "N/A":
+        return text
+
+    grade = correct_grade.upper().strip()
+
+    # Patterns that match grade mentions in LLM output (case-insensitive)
+    _patterns = [
+        (r'\bGrade\s*:?\s*[A-Ga-g]\b',            f'Grade {grade}'),
+        (r'\bgrade\s*:?\s*[A-Ga-g]\b',            f'grade {grade}'),
+        (r'\bCredit Grade\s*:?\s*[A-Ga-g]\b',     f'Credit Grade {grade}'),
+        (r'\bcredit grade\s*:?\s*[A-Ga-g]\b',     f'credit grade {grade}'),
+        (r'\bRisk Grade\s*:?\s*[A-Ga-g]\b',       f'Risk Grade {grade}'),
+        (r'\brisk grade\s*:?\s*[A-Ga-g]\b',       f'risk grade {grade}'),
+        (r'\bimplied grade\s*:?\s*[A-Ga-g]\b',    f'implied grade {grade}'),
+        (r'\bImplied Grade\s*:?\s*[A-Ga-g]\b',    f'Implied Grade {grade}'),
+    ]
+
+    for pattern, replacement in _patterns:
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+
+    return text
+
 
 # ---------- Markdown to safe HTML ----------
 def _md_to_html(md_text: str) -> str:
@@ -426,7 +456,7 @@ def save_loan_application(
         # Create disbursement record for ALL decisions with status based on risk model
         if app_id:
             _disb_status = {
-                "LOAN_APPROVED": "PENDING_DISBURSEMENT",
+                "LOAN_APPROVED": "APPROVE_DISBURSEMENT",
                 "NEEDS_VERIFY":  "PENDING_VERIFICATION",
                 "REJECTED":      "CANCELLED",
             }.get(loan_decision, "PENDING")
@@ -484,8 +514,13 @@ def get_loan_applications(user_id: int = None, loan_decision: str = None) -> pd.
 
 def update_loan_status(application_id: int, new_decision: str,
                        rationale: str = None, reviewer_notes: str = None) -> bool:
-    """Update loan_decision from PENDING/NEEDS_VERIFY to LOAN_APPROVED or REJECTED.
-    Also updates updated_at timestamp and optionally creates/cancels disbursement.
+    """Update loan_decision to LOAN_APPROVED, NEEDS_VERIFY, or REJECTED.
+
+    Updates BOTH loan_applications and loan_disbursements tables:
+      - LOAN_APPROVED:  set disbursement_status = 'APPROVE_DISBURSEMENT'
+      - NEEDS_VERIFY:   set disbursement_status = 'PENDING_VERIFICATION'
+      - REJECTED:       set disbursement_status = 'CANCELLED'
+    Creates a disbursement record if one does not exist yet.
     """
     if new_decision not in ("LOAN_APPROVED", "NEEDS_VERIFY", "REJECTED"):
         st.error(f"Invalid decision: {new_decision}")
@@ -496,44 +531,77 @@ def update_loan_status(application_id: int, new_decision: str,
         return False
     try:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # Update the loan decision
+
+        # Build reviewer rationale
+        _rationale = rationale
+        if reviewer_notes and not _rationale:
+            _rationale = reviewer_notes
+        elif reviewer_notes and _rationale:
+            _rationale = f"{_rationale}\n\n[Reviewer] {reviewer_notes}"
+
+        # 1. Update the loan_decision in loan_applications
         conn.execute(
             """UPDATE loan_applications
                SET loan_decision = ?,
                    decision_rationale = COALESCE(?, decision_rationale),
                    updated_at = ?
                WHERE application_id = ?""",
-            (new_decision, rationale, now, application_id),
+            (new_decision, _rationale, now, application_id),
         )
         conn.commit()
-        # If approved, create disbursement if not exists
-        if new_decision == "LOAN_APPROVED":
-            existing = conn.execute(
-                "SELECT disbursement_id FROM loan_disbursements WHERE application_id = ?",
+
+        # 2. Map decision to disbursement status and remarks
+        _disb_map = {
+            "LOAN_APPROVED": {
+                "status":  "APPROVE_DISBURSEMENT",
+                "remarks": "Loan approved — awaiting disbursement",
+            },
+            "NEEDS_VERIFY": {
+                "status":  "PENDING_VERIFICATION",
+                "remarks": "Loan flagged — additional verification required",
+            },
+            "REJECTED": {
+                "status":  "CANCELLED",
+                "remarks": "Loan rejected",
+            },
+        }
+        _disb_info = _disb_map[new_decision]
+
+        # 3. Check if a disbursement record already exists
+        existing = conn.execute(
+            "SELECT disbursement_id, disbursement_status FROM loan_disbursements WHERE application_id = ?",
+            (application_id,)
+        ).fetchone()
+
+        if existing:
+            # Update existing disbursement status for all 3 categories
+            # Skip updating if already DISBURSED (irreversible terminal state)
+            if existing[1] != "DISBURSED":
+                conn.execute(
+                    """UPDATE loan_disbursements
+                       SET disbursement_status = ?,
+                           remarks = COALESCE(?, remarks),
+                           disbursed_at = CASE WHEN ? = 'CANCELLED' OR ? = 'PENDING_VERIFICATION' THEN NULL ELSE disbursed_at END
+                       WHERE application_id = ?""",
+                    (_disb_info["status"], _disb_info["remarks"],
+                     new_decision, new_decision, application_id),
+                )
+                conn.commit()
+        else:
+            # Create a new disbursement record
+            app = conn.execute(
+                "SELECT user_id, loan_amnt FROM loan_applications WHERE application_id = ?",
                 (application_id,)
             ).fetchone()
-            if not existing:
-                app = conn.execute(
-                    "SELECT user_id, loan_amnt FROM loan_applications WHERE application_id = ?",
-                    (application_id,)
-                ).fetchone()
-                if app:
-                    conn.execute(
-                        """INSERT INTO loan_disbursements
-                           (application_id, user_id, sanctioned_amount, disbursement_status, created_at)
-                           VALUES (?, ?, ?, 'PENDING', ?)""",
-                        (application_id, app[0], app[1], now),
-                    )
-                    conn.commit()
-        # If rejected, cancel any pending disbursement
-        elif new_decision == "REJECTED":
-            conn.execute(
-                """UPDATE loan_disbursements
-                   SET disbursement_status = 'CANCELLED', remarks = 'Loan rejected'
-                   WHERE application_id = ? AND disbursement_status = 'PENDING'""",
-                (application_id,),
-            )
-            conn.commit()
+            if app:
+                conn.execute(
+                    """INSERT INTO loan_disbursements
+                       (application_id, user_id, sanctioned_amount, disbursement_status, remarks, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (application_id, app[0], app[1], _disb_info["status"], _disb_info["remarks"], now),
+                )
+                conn.commit()
+
         return True
     except Exception as e:
         st.error(f"❌ Failed to update loan status: {e}")
@@ -1669,18 +1737,26 @@ with tab3:
                         try:
                             from crews import FixedDepositCrews
                             crews_instance = FixedDepositCrews()
+                            # Build rich context with full ML model data for crew agents
+                            _top_feats = result.get("top_features", [])
+                            _top_feats_text = ""
+                            if _top_feats:
+                                _top_feats_text = "\n\nTop Features by Importance (from XGBoost model):\n"
+                                for _tf in _top_feats[:8]:
+                                    _top_feats_text += (
+                                        f"  - {_tf.get('feature', 'N/A')}: "
+                                        f"Value={_tf.get('value', 'N/A')}, "
+                                        f"Importance={_tf.get('importance_pct', 0)}%, "
+                                        f"Interpretation: {_tf.get('rationale', 'N/A')}\n"
+                                    )
                             prompt_context = (
-                                f"Loan Amount: ${borrower_data.get('loan_amnt', 0):,}\n"
-                                f"Term: {borrower_data.get('term', 0)} months\n"
-                                f"Interest Rate: {borrower_data.get('int_rate', 0):.2f}%\n"
-                                f"Annual Income: ${borrower_data.get('annual_inc', 0):,}\n"
-                                f"FICO Score: {borrower_data.get('fico_score', 0)}\n"
-                                f"DTI: {borrower_data.get('dti', 0):.1f}%\n"
-                                f"Default Probability: {result.get('default_probability_pct', '0%')}\n"
-                                f"Risk Level: {result.get('risk_level', 'UNKNOWN')}\n"
-                                f"Grade: {result.get('implied_grade', 'N/A')}\n"
-                                f"Purpose: {borrower_data.get('purpose', '')}\n"
-                                f"Home Ownership: {borrower_data.get('home_ownership', '')}"
+                                f"Borrower Application Data (JSON):\n"
+                                f"{json.dumps({k: v for k, v in borrower_data.items() if v is not None}, default=str, indent=2)}\n\n"
+                                f"XGBoost Credit Risk Model Results:\n"
+                                f"  Default Probability: {result.get('default_probability_pct', '0%')}\n"
+                                f"  Implied Grade: {result.get('implied_grade', 'N/A')}\n"
+                                f"  Risk Level: {result.get('risk_level', 'UNKNOWN')}\n"
+                                f"{_top_feats_text}"
                             )
                             llm_result = crews_instance.get_loan_creation_crew(prompt_context).kickoff()
                             # Task 0 = decision (JSON), Task 1 = summary (Markdown for email)
@@ -2002,6 +2078,7 @@ with tab3:
                     st.session_state._loan_rationale = rec_text
                     st.session_state._loan_conditions = conditions
                     st.session_state._loan_next_steps = next_steps
+                    rec_text = _sanitize_grade_in_text(rec_text, grade)
 
                     st.markdown(f"""
                     <div style="background:{rec_bg}; border-left:4px solid {rec_color}; border-radius:0 8px 8px 0; padding:16px; margin-bottom:16px;">
@@ -2013,10 +2090,10 @@ with tab3:
                     """, unsafe_allow_html=True)
 
                     # LLM attribution
-                    if llm_raw and llm_parsed.get("loan_decision"):
-                        st.caption("🤖 Decision generated by AI Loan Creation Agent (LLM)")
-                    else:
-                        st.caption("📊 Decision generated by rule-based engine (XGBoost scoring)")
+                    # if llm_raw and llm_parsed.get("loan_decision"):
+                    #     st.caption("🤖 Decision generated by AI Loan Creation Agent (LLM)")
+                    # else:
+                    #     st.caption("📊 Decision generated by rule-based engine (XGBoost scoring)")
 
                     if conditions:
                         st.markdown("**Conditions:**")
@@ -2032,6 +2109,14 @@ with tab3:
 
                     # ── Auto-save to DB ──
                     llm_summary_md = result.get("_llm_summary_raw", "")
+                    llm_summary_md = _sanitize_grade_in_text(llm_summary_md, grade) if llm_summary_md else ""
+
+                    # ── Display AI-generated Borrower Summary from crew ──
+                    if llm_summary_md:
+                        st.markdown("---")
+                        st.markdown("#### 📋 AI Borrower Summary")
+                        st.markdown(llm_summary_md)
+
                     _auto_save_done = st.session_state.get("_loan_auto_saved_id")
                     if not _auto_save_done:
                         logged = st.session_state.get("logged_in_user") or {}
@@ -2207,6 +2292,7 @@ DETAILED BORROWER SUMMARY
                         if not report_email or "@" not in report_email:
                             st.warning("Please enter a valid email address.")
                         else:
+                            _logged = st.session_state.get("logged_in_user") or {}
                             smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
                             smtp_port = int(os.getenv("SMTP_PORT", "587"))
                             smtp_user = os.getenv("SMTP_USER", "")
@@ -2231,7 +2317,83 @@ DETAILED BORROWER SUMMARY
                                         server.starttls()
                                         server.login(smtp_user, smtp_pass)
                                         server.sendmail(smtp_user, report_email, msg.as_string())
-                                    st.success(f"✅ Report sent to {report_email}!")
+                                    st.success(f"✅ Report sent to **{report_email}**!")
+
+                                    # Update DB: notification_sent + disbursement if needed
+                                    _saved_id = st.session_state.get("_loan_auto_saved_id")
+                                    _logged_uid = _logged.get("user_id")
+                                    _now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                    _conn = get_db_connection()
+                                    if _conn:
+                                        try:
+                                            if not _saved_id:
+                                                _aid = save_loan_application(
+                                                    applicant_email=report_email,
+                                                    borrower=borrower_data,
+                                                    result=result,
+                                                    loan_decision=loan_decision,
+                                                    rationale=rec_text,
+                                                    conditions=conditions,
+                                                    next_steps=next_steps,
+                                                    user_id=_logged_uid,
+                                                )
+                                                if _aid:
+                                                    _saved_id = _aid
+                                                    st.session_state._loan_auto_saved_id = _aid
+
+                                            if _saved_id:
+                                                _conn.execute(
+                                                    "UPDATE loan_applications SET notification_sent=1, updated_at=? WHERE application_id=?",
+                                                    (_now, _saved_id),
+                                                )
+                                                _borrower_em = st.session_state.get("_borrower_email", "")
+                                                if _borrower_em:
+                                                    _conn.execute(
+                                                        "UPDATE loan_applications SET applicant_email=? WHERE application_id=?",
+                                                        (_borrower_em, _saved_id),
+                                                    )
+                                                if _logged_uid:
+                                                    _conn.execute(
+                                                        "UPDATE loan_applications SET user_id=? WHERE application_id=? AND (user_id IS NULL OR user_id=0)",
+                                                        (_logged_uid, _saved_id),
+                                                    )
+                                                    _conn.execute(
+                                                        "UPDATE loan_disbursements SET user_id=? WHERE application_id=? AND (user_id IS NULL OR user_id=0)",
+                                                        (_logged_uid, _saved_id),
+                                                    )
+                                                _conn.commit()
+
+                                            if _saved_id:
+                                                _disb_exists = _conn.execute(
+                                                    "SELECT disbursement_id FROM loan_disbursements WHERE application_id=?",
+                                                    (_saved_id,),
+                                                ).fetchone()
+                                                if not _disb_exists:
+                                                    _disb_status = {
+                                                        "LOAN_APPROVED": "PENDING_DISBURSEMENT",
+                                                        "NEEDS_VERIFY":  "PENDING_VERIFICATION",
+                                                        "REJECTED":      "CANCELLED",
+                                                    }.get(loan_decision, "PENDING")
+                                                    _disb_remarks = {
+                                                        "LOAN_APPROVED": "Auto-approved by credit risk model — awaiting disbursement",
+                                                        "NEEDS_VERIFY":  "Flagged by credit risk model — additional verification required",
+                                                        "REJECTED":      "Auto-rejected by credit risk model",
+                                                    }.get(loan_decision, "")
+                                                    _conn.execute(
+                                                        """INSERT INTO loan_disbursements
+                                                           (application_id, user_id, sanctioned_amount, disbursement_status, remarks, created_at)
+                                                           VALUES (?, ?, ?, ?, ?, ?)""",
+                                                        (_saved_id, _logged_uid, borrower.get("loan_amnt", 0), _disb_status, _disb_remarks, _now),
+                                                    )
+                                                    _conn.commit()
+
+                                        except Exception as db_err:
+                                            st.error(f"DB update failed: {db_err}")
+                                        finally:
+                                            _conn.close()
+
+                                    st.session_state._notify_clicked = False
+
                                 except Exception as e:
                                     st.error(f"❌ Failed to send report: {e}")
 

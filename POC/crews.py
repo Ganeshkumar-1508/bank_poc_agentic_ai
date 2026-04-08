@@ -9,7 +9,8 @@ from tasks import (
     create_aml_execution_tasks,
     create_visualization_task,
     create_routing_task,
-    create_credit_risk_tasks, 
+    create_credit_risk_tasks,
+    create_loan_creation_tasks,
 )
 
 
@@ -142,6 +143,23 @@ class FixedDepositCrews:
             agents=[
                 self.agents["credit_risk_collector_agent"],
                 self.agents["credit_risk_analyst_agent"],
+            ],
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=True,
+        )
+
+    def get_loan_creation_crew(self, borrower_context: str = ""):
+        """
+        Two-agent crew for loan decision + borrower summary.
+        Agent 1 (loan_creation_agent): Evaluates credit profile → JSON decision.
+        Agent 2 (loan_summary_agent): Generates borrower-friendly email summary.
+        """
+        tasks = create_loan_creation_tasks(self.agents, borrower_context)
+        return Crew(
+            agents=[
+                self.agents["loan_creation_agent"],
+                self.agents["loan_summary_agent"],
             ],
             tasks=tasks,
             process=Process.sequential,
