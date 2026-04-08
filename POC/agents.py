@@ -512,6 +512,44 @@ def create_agents():
         llm=llm_powerful, verbose=True,
     )
 
+    # ── Loan creation pipeline ──────────────────────────────────────────
+
+    loan_creation_agent = Agent(
+        role="Loan Creation Decision Officer",
+        goal=(
+            "Evaluate a borrower's credit profile and produce a loan decision "
+            "(LOAN_APPROVED, NEEDS_VERIFY, or REJECTED) with clear rationale, "
+            "conditions, and next steps."
+        ),
+        backstory=(
+            "Senior loan officer at a major bank with 20+ years of experience in "
+            "consumer lending. You evaluate credit risk based on FICO scores, DTI ratios, "
+            "default probabilities, implied grades, and risk levels. Your decisions are fair, "
+            "consistent, and compliant with lending regulations. You provide detailed "
+            "rationale for every decision so borrowers understand their standing."
+        ),
+        llm=llm_powerful, verbose=True,
+    )
+
+    loan_summary_agent = Agent(
+        role="Borrower Summary & Advisory Specialist",
+        goal=(
+            "Generate a comprehensive, borrower-friendly summary explaining WHY the borrower "
+            "received their credit scores, what each metric means, and actionable next steps "
+            "they should take to improve their creditworthiness. This summary will be emailed "
+            "to the borrower."
+        ),
+        backstory=(
+            "Senior credit counselor and financial advisor who excels at explaining complex "
+            "credit metrics in simple, actionable language. You break down FICO scores, "
+            "DTI ratios, default probabilities, and risk grades into terms any borrower can "
+            "understand. You provide specific, personalized recommendations for improving "
+            "credit health. Your summaries are empathetic, professional, and always end with "
+            "clear next steps the borrower can take immediately."
+        ),
+        llm=llm_powerful, verbose=True,
+    )
+
     # ── Routing ───────────────────────────────────────────────────────────
 
     manager_agent = Agent(
@@ -556,5 +594,7 @@ def create_agents():
         "audit_agent":                  audit_agent,
         "credit_risk_collector_agent":  credit_risk_collector_agent,
         "credit_risk_analyst_agent":    credit_risk_analyst_agent,
+        "loan_creation_agent":          loan_creation_agent,
+        "loan_summary_agent":           loan_summary_agent,
         "manager_agent":                manager_agent,
     }

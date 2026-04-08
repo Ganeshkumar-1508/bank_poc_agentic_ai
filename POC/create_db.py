@@ -180,13 +180,63 @@ CREATE TABLE IF NOT EXISTS interest_rates_catalog (
 );
 
 --   ─
+-- 10. LOAN_APPLICATIONS
+--     Stores loan applications with 3-category decision.
+--     Condition 1 (LOAN_APPROVED):  loan amount credited to applicant's account.
+--     Condition 2 (NEEDS_VERIFY):    flagged as review/verification required.
+--     Condition 3 (REJECTED):         marked as rejected — no amount credited.
+--   ─
+CREATE TABLE IF NOT EXISTS loan_applications (
+    application_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id           INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+    applicant_email   TEXT    NOT NULL,
+    loan_amnt         REAL    NOT NULL,
+    term              INTEGER NOT NULL,
+    int_rate          REAL,
+    purpose           TEXT,
+    annual_inc        REAL,
+    fico_score        INTEGER,
+    dti               REAL,
+    home_ownership    TEXT,
+    default_prob      REAL,
+    implied_grade     TEXT,
+    risk_level        TEXT,
+    loan_decision     TEXT    NOT NULL DEFAULT 'NEEDS_VERIFY',
+    -- loan_decision is one of: LOAN_APPROVED | NEEDS_VERIFY | REJECTED
+    decision_rationale TEXT,
+    conditions        TEXT,
+    next_steps        TEXT,
+    notification_sent INTEGER NOT NULL DEFAULT 0,
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+--   ─
+-- 11. LOAN_DISBURSEMENTS
+--     Tracks actual disbursements for approved loans.
+--     Only created when loan_decision = LOAN_APPROVED.
+--   ─
+CREATE TABLE IF NOT EXISTS loan_disbursements (
+    disbursement_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    application_id    INTEGER NOT NULL REFERENCES loan_applications(application_id),
+    user_id           INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+    account_id        INTEGER REFERENCES accounts(account_id) ON DELETE SET NULL,
+    sanctioned_amount REAL    NOT NULL,
+    disbursement_status TEXT   NOT NULL DEFAULT 'PENDING',
+    -- PENDING | PENDING_VERIFICATION | PENDING_DISBURSEMENT | DISBURSED | CANCELLED
+    disbursed_at      TEXT,
+    remarks           TEXT,
+    created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+--   ─
 -- INDEXES for common query patterns
 --   ─
 CREATE INDEX IF NOT EXISTS idx_users_account    ON users(account_number);
 CREATE INDEX IF NOT EXISTS idx_users_email      ON users(email);
 CREATE INDEX IF NOT EXISTS idx_address_user     ON address(user_id);
 CREATE INDEX IF NOT EXISTS idx_kyc_user         ON kyc_verification(user_id);
-CREATE INDEX IF NOT EXISTS idx_accounts_user    ON accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_accounts_user    ON accounts(account_id);
 CREATE INDEX IF NOT EXISTS idx_fd_user          ON fixed_deposit(user_id);
 CREATE INDEX IF NOT EXISTS idx_fd_status        ON fixed_deposit(fd_status);
 CREATE INDEX IF NOT EXISTS idx_txn_user         ON transactions(user_id);
@@ -195,6 +245,10 @@ CREATE INDEX IF NOT EXISTS idx_aml_user         ON aml_cases(user_id);
 CREATE INDEX IF NOT EXISTS idx_aml_decision     ON aml_cases(decision);
 CREATE INDEX IF NOT EXISTS idx_audit_user       ON compliance_audit_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_rates_bank       ON interest_rates_catalog(bank_name, product_type, country_code);
+CREATE INDEX IF NOT EXISTS idx_loan_app_email   ON loan_applications(applicant_email);
+CREATE INDEX IF NOT EXISTS idx_loan_app_decision ON loan_applications(loan_decision);
+CREATE INDEX IF NOT EXISTS idx_loan_app_user    ON loan_applications(user_id);
+CREATE INDEX IF NOT EXISTS idx_loan_disb_app    ON loan_disbursements(application_id);
 """
 
 
@@ -218,6 +272,11 @@ def create_database():
         ("interest_rates_catalog", "credit_rating", "TEXT"),
         ("interest_rates_catalog", "news_headline", "TEXT"),
         ("interest_rates_catalog", "news_url",      "TEXT"),
+        ("loan_applications",     "home_ownership", "TEXT"),
+        ("loan_applications",     "decision_rationale", "TEXT"),
+        ("loan_applications",     "conditions",     "TEXT"),
+        ("loan_applications",     "next_steps",     "TEXT"),
+        ("loan_applications",     "notification_sent",  "INTEGER DEFAULT 0"),
     ]
     with sqlite3.connect(DB_PATH) as conn:
         migrated = []
