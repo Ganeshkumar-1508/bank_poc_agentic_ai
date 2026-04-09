@@ -456,7 +456,7 @@ def save_loan_application(
         # Create disbursement record for ALL decisions with status based on risk model
         if app_id:
             _disb_status = {
-                "LOAN_APPROVED": "PENDING_DISBURSEMENT",
+                "LOAN_APPROVED": "APPROVE_DISBURSEMENT",
                 "NEEDS_VERIFY":  "PENDING_VERIFICATION",
                 "REJECTED":      "CANCELLED",
             }.get(loan_decision, "PENDING")
@@ -517,7 +517,7 @@ def update_loan_status(application_id: int, new_decision: str,
     """Update loan_decision to LOAN_APPROVED, NEEDS_VERIFY, or REJECTED.
 
     Updates BOTH loan_applications and loan_disbursements tables:
-      - LOAN_APPROVED:  set disbursement_status = 'PENDING_DISBURSEMENT'
+      - LOAN_APPROVED:  set disbursement_status = 'APPROVE_DISBURSEMENT'
       - NEEDS_VERIFY:   set disbursement_status = 'PENDING_VERIFICATION'
       - REJECTED:       set disbursement_status = 'CANCELLED'
     Creates a disbursement record if one does not exist yet.
@@ -553,7 +553,7 @@ def update_loan_status(application_id: int, new_decision: str,
         # 2. Map decision to disbursement status and remarks
         _disb_map = {
             "LOAN_APPROVED": {
-                "status":  "PENDING_DISBURSEMENT",
+                "status":  "APPROVE_DISBURSEMENT",
                 "remarks": "Loan approved — awaiting disbursement",
             },
             "NEEDS_VERIFY": {
@@ -2397,107 +2397,6 @@ DETAILED BORROWER SUMMARY
                                 except Exception as e:
                                     st.error(f"❌ Failed to send report: {e}")
 
-        # ── Loan Applications History & Status Management ──
-        st.markdown("---")
-        st.markdown("#### 📋 Loan Applications History")
-        st.caption("View all loan applications. Update status from PENDING/NEEDS_VERIFY to APPROVED or REJECTED.")
-
-        _filter_col1, _filter_col2 = st.columns([1, 1])
-        with _filter_col1:
-            _status_filter = st.selectbox(
-                "Filter by Status",
-                options=["ALL", "LOAN_APPROVED", "NEEDS_VERIFY", "REJECTED"],
-                format_func=lambda x: {
-                    "ALL": "All Statuses",
-                    "LOAN_APPROVED": "✅ Approved",
-                    "NEEDS_VERIFY": "⚠️ Pending / Need to Verify",
-                    "REJECTED": "🔴 Rejected",
-                }.get(x, x),
-                key="loan_history_filter",
-            )
-        with _filter_col2:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🔄 Refresh", key="refresh_loan_history"):
-                st.rerun()
-
-        _loan_df = get_loan_applications(
-            loan_decision=_status_filter if _status_filter != "ALL" else None
-        )
-
-        if _loan_df.empty:
-            st.info("No loan applications found.")
-        else:
-            # Display status counts
-            _counts = _loan_df["loan_decision"].value_counts()
-            _c1, _c2, _c3 = st.columns(3)
-            with _c1:
-                st.metric("✅ Approved", int(_counts.get("LOAN_APPROVED", 0)))
-            with _c2:
-                st.metric("⚠️ Pending", int(_counts.get("NEEDS_VERIFY", 0)))
-            with _c3:
-                st.metric("🔴 Rejected", int(_counts.get("REJECTED", 0)))
-
-            st.markdown("---")
-
-            for _, row in _loan_df.iterrows():
-                _app_id = row.get("application_id", 0)
-                _decision = row.get("loan_decision", "NEEDS_VERIFY")
-                _created = row.get("created_at", "")
-                _email_addr = row.get("applicant_email", row.get("user_email", ""))
-                _grade_val = row.get("implied_grade", "N/A")
-                _risk_val = row.get("risk_level", "UNKNOWN")
-                _prob_val = row.get("default_prob", 0)
-                _loan_amt = row.get("loan_amnt", 0)
-                _fico_val = row.get("fico_score", 0)
-                _rationale_val = row.get("decision_rationale", "")
-
-                # Color config per decision
-                _dc = {
-                    "LOAN_APPROVED": {"bg": "#DCFCE7", "fg": "#166534", "icon": "✅", "label": "LOAN APPROVED"},
-                    "NEEDS_VERIFY":  {"bg": "#FEF9C3", "fg": "#854D0E", "icon": "⚠️", "label": "PENDING — NEED TO VERIFY"},
-                    "REJECTED":      {"bg": "#FEE2E2", "fg": "#991B1B", "icon": "🔴", "label": "LOAN REJECTED"},
-                }.get(_decision, {"bg": "#F1F5F9", "fg": "#475569", "icon": "❓", "label": _decision})
-
-                with st.expander(f"{_dc['icon']} Application #{_app_id} — {_dc['label']} — {_created}", expanded=False):
-                    st.markdown(f"""
-                    <div style="background:{_dc['bg']}; border-left:4px solid {_dc['fg']}; border-radius:0 8px 8px 0; padding:12px; margin-bottom:12px;">
-                        <div style="font-size:16px; font-weight:700; color:{_dc['fg']};">
-                            {_dc['icon']} {_dc['label']}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    _info_col1, _info_col2 = st.columns(2)
-                    with _info_col1:
-                        st.markdown(f"**Application ID:** #{_app_id}")
-                        st.markdown(f"**Email:** {_email_addr}")
-                        st.markdown(f"**Loan Amount:** ${_loan_amt:,.0f}" if _loan_amt else "**Loan Amount:** N/A")
-                        st.markdown(f"**FICO Score:** {_fico_val}")
-                    with _info_col2:
-                        st.markdown(f"**Grade:** {_grade_val}")
-                        st.markdown(f"**Risk Level:** {_risk_val}")
-                        st.markdown(f"**Default Prob:** {_prob_val:.2%}" if _prob_val else "**Default Prob:** N/A")
-                        st.markdown(f"**Created:** {_created}")
-                    if _rationale_val:
-                        st.markdown(f"**Rationale:** {_rationale_val}")
-
-                    # Status update buttons (only for PENDING/NEEDS_VERIFY)
-                    if _decision in ("NEEDS_VERIFY",):
-                        st.markdown("---")
-                        st.markdown("**Update Loan Status:**")
-                        _upd_col1, _upd_col2 = st.columns(2)
-                        with _upd_col1:
-                            if st.button(f"✅ Approve #{_app_id}", type="primary", key=f"approve_{_app_id}"):
-                                _reviewer_notes = f"Manually approved on {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-                                if update_loan_status(_app_id, "LOAN_APPROVED", reviewer_notes=_reviewer_notes):
-                                    st.success(f"Application #{_app_id} updated to LOAN APPROVED ✅")
-                                    st.rerun()
-                        with _upd_col2:
-                            if st.button(f"🔴 Reject #{_app_id}", type="secondary", key=f"reject_{_app_id}"):
-                                _reviewer_notes = f"Manually rejected on {datetime.now().strftime('%Y-%m-%d %H:%M')}"
-                                if update_loan_status(_app_id, "REJECTED", reviewer_notes=_reviewer_notes):
-                                    st.success(f"Application #{_app_id} updated to REJECTED 🔴")
-                                    st.rerun()
 
 # =============================================================================
 
