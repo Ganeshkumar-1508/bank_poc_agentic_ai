@@ -1,0 +1,234 @@
+LOAN ELIGIBILITY CRITERIA AND VERIFICATION REQUIREMENTS
+=========================================================
+Document Reference: LEC-2024-004
+Effective Date: January 2024
+Version: 2.2
+Department: Loan Origination
+
+1. GENERAL ELIGIBILITY REQUIREMENTS
+====================================
+
+1.1 Age and Identity Requirements
+----------------------------------
+All loan applicants must meet the following minimum criteria:
+
+  - Minimum age: 18 years old (21 years old for loans exceeding $50,000)
+  - Must be a US citizen, permanent resident, or have valid visa with work authorization
+  - Must have a valid Social Security Number (SSN) or Individual Taxpayer Identification Number (ITIN)
+  - Must present government-issued photo identification (driver's license, passport, or state ID)
+  - Must not be listed on OFAC Specially Designated Nationals (SDN) list
+
+1.2 Residency Requirements
+----------------------------
+  - Must have a residential address in the United States (no P.O. boxes accepted)
+  - Minimum time at current residence: 6 months (exceptions with supporting documentation)
+  - Mailing address must match residential address unless documented reason provided
+  - For mortgage applications: property must be located in the United States
+
+1.3 Employment Requirements
+------------------------------
+  - Must be currently employed (minimum 3 months at current employer)
+  - Self-employed applicants must provide 2 years of tax returns and business financials
+  - Retired applicants must provide pension/retirement income documentation
+  - Students may apply with co-signer (minimum FICO 700 for co-signer)
+  - Unemployment benefits are NOT accepted as qualifying income
+
+2. INCOME VERIFICATION STANDARDS
+==================================
+
+2.1 Acceptable Income Documentation
+------------------------------------
+Full Documentation (for loans above $25,000):
+  - Most recent 2 years of W-2 forms
+  - Most recent 2 months of pay stubs
+  - Most recent 2 years of federal tax returns (all schedules)
+  - Year-to-date pay stub showing year-to-date earnings
+
+Simplified Documentation (for loans up to $25,000):
+  - Most recent 2 months of pay stubs
+  - Most recent W-2 form
+  - Bank statements showing income deposits for 3 months
+
+Self-Employment Documentation:
+  - Most recent 2 years of personal and business tax returns (all schedules)
+  - Year-to-date profit and loss statement
+  - Business bank statements for 12 months
+  - CPA letter confirming business operations (for loans above $50,000)
+
+2.2 Income Calculation Methodology
+------------------------------------
+Qualifying Income Sources:
+  - Base salary or hourly wages (calculated at 40 hours/week for hourly)
+  - Overtime and bonuses: Only if received for 2+ consecutive years, averaged over 24 months
+  - Commission income: Only if received for 2+ consecutive years, averaged over 24 months
+  - Rental income: Net rental income (75% of gross rent for investment properties)
+  - Investment income: Documented dividends and interest (averaged over 24 months)
+  - Social Security income: Full amount acceptable
+  - Pension income: Full amount acceptable
+  - Alimony/child support: Only with court order and 12-month receipt history
+  - Trust income: Must be documented with trust agreement
+
+Non-Qualifying Income (NOT accepted):
+  - Temporary or seasonal employment income
+  - Unemployment benefits
+  - Student financial aid
+  - Gift funds (except for down payment on mortgage)
+  - One-time bonuses or severance pay
+  - Income from illegal sources
+
+2.3 Minimum Income Requirements by Loan Type
+----------------------------------------------
+Personal Loan: Minimum $24,000 annual gross income
+Auto Loan: Minimum $18,000 annual gross income
+Mortgage: Minimum $36,000 annual gross income
+Home Equity: Minimum $36,000 annual gross income
+Small Business Loan: Minimum $60,000 annual gross income (personal + business)
+Debt Consolidation: Minimum $30,000 annual gross income
+
+3. LOAN-SPECIFIC ELIGIBILITY CRITERIA
+=======================================
+
+3.1 Personal Loan Eligibility
+-------------------------------
+  - Loan Amount: $1,000 - $50,000
+  - Term: 12 - 84 months
+  - Minimum FICO: 640
+  - Maximum DTI: 43%
+  - Employment: Minimum 6 months at current employer
+  - Income: Minimum $24,000 annually
+  - Purpose: Debt consolidation, home improvement, medical expenses, major purchases, wedding, moving expenses
+  - Prohibited purposes: Investment, gambling, illegal activities, business use (use business loan instead)
+
+3.2 Mortgage Eligibility
+--------------------------
+  - Loan Amount: $50,000 - $1,000,000 (jumbo up to $3,000,000)
+  - Term: 15 or 30 years (ARM products: 5/1, 7/1, 10/1)
+  - Minimum FICO: 620 (conventional), 580 (FHA), 620 (VA)
+  - Maximum DTI: 43% (QM compliant), 50% with compensating factors
+  - LTV Maximum: 95% (conventional), 96.5% (FHA), 100% (VA)
+  - PMI Required: If LTV exceeds 80% for conventional loans
+  - Appraisal: Required from approved appraiser
+  - Property Type: Single-family, condo, townhouse, 2-4 unit residential
+  - Occupancy: Owner-occupied primary residence, second home, investment (rate adjusted)
+
+3.3 Auto Loan Eligibility
+---------------------------
+  - Loan Amount: $5,000 - $100,000
+  - Term: 24 - 84 months (new), 24 - 72 months (used)
+  - Minimum FICO: 625 (used), 660 (new)
+  - Maximum DTI: 45%
+  - Vehicle Age: Maximum 10 model years old at loan maturity
+  - Vehicle Mileage: Maximum 120,000 miles at purchase
+  - Down Payment: Minimum 10% for used vehicles, 5% for new vehicles
+  - Insurance: Comprehensive and collision insurance required for loan term
+  - Title: Lienholder must be listed on title
+
+4. DOCUMENT CHECKLIST BY LOAN TYPE
+====================================
+
+4.1 Personal Loan Required Documents
+--------------------------------------
+  - Government-issued photo ID
+  - Most recent W-2 form
+  - 2 most recent pay stubs
+  - Bank statements (2 most recent months)
+  - Signed loan application (Form 1003 equivalent)
+  - Authorization to pull credit report
+  - Proof of residence (utility bill or lease agreement)
+
+4.2 Mortgage Required Documents
+---------------------------------
+  - Government-issued photo ID (all borrowers)
+  - Social Security card (all borrowers)
+  - 2 years W-2 forms (all borrowers)
+  - 2 years federal tax returns with all schedules (all borrowers)
+  - 2 most recent pay stubs (all borrowers)
+  - 2 months bank statements (all accounts, all pages)
+  - Signed loan application (Form 1003)
+  - Purchase agreement (if purchase) or mortgage statement (if refinance)
+  - Homeowner's insurance declaration page
+  - Gift letter (if applicable, with donor bank statements)
+  - Divorce decree / separation agreement (if applicable)
+  - Bankruptcy discharge papers (if applicable)
+
+5. INELIGIBLE APPLICANTS
+==========================
+
+5.1 Automatic Decline Criteria
+-------------------------------
+Applications will be automatically declined if ANY of the following conditions exist:
+
+  - Active bankruptcy (Chapter 7 or 13) not yet discharged
+  - Foreclosure within the past 7 years
+  - Open tax lien of any amount
+  - Outstanding judgment exceeding $5,000
+  - Current delinquency on any existing loan (30+ days past due)
+  - FICO score below 500
+  - DTI ratio exceeding 55% (no exceptions)
+  - Applicant is a minor (under 18)
+  - Fraudulent information detected on application
+  - Applicant on OFAC SDN list or other sanctions list
+  - Unverifiable identity or Social Security Number
+  - Less than 6 months of credit history (unless using non-traditional credit)
+  - Existing debt-to-income exceeds 60% including proposed loan
+
+5.2 Waiting Periods After Adverse Events
+------------------------------------------
+Chapter 7 Bankruptcy Discharge: 4 years from discharge date
+Chapter 13 Bankruptcy Discharge: 2 years from discharge date
+Chapter 13 Bankruptcy Dismissal: 4 years from dismissal date
+Foreclosure: 7 years from completion date
+Deed-in-Lieu of Foreclosure: 4 years from execution date
+Short Sale: 4 years from completion date
+Multiple Bankruptcies: 5 years from most recent discharge date
+
+6. CO-SIGNER AND GUARANTOR REQUIREMENTS
+=========================================
+
+6.1 Co-Signer Eligibility
+---------------------------
+  - Minimum FICO: 700
+  - Maximum DTI: 35%
+  - Minimum annual income: $36,000
+  - No adverse credit events in the past 7 years
+  - Must be a US citizen or permanent resident
+  - Must not be co-signer on more than 2 other active loans
+  - Must provide all standard income and identity documentation
+
+6.2 Co-Signer Rights and Responsibilities
+-------------------------------------------
+  - Co-signer is equally responsible for loan repayment
+  - Loan appears on co-signer's credit report
+  - Late payments affect co-signer's credit history
+  - Co-signer receives all loan-related correspondence
+  - Co-signer can request release after 24 consecutive on-time payments (subject to credit review)
+  - Release requires primary borrower to meet credit and income requirements independently
+
+7. SPECIAL ELIGIBILITY PROGRAMS
+================================
+
+7.1 First-Time Homebuyer Program
+---------------------------------
+  - First-time homebuyer defined: Has not owned a home in the past 3 years
+  - Maximum annual income: $120,000 (may vary by MSA)
+  - Homebuyer education course completion required (8 hours minimum)
+  - Reduced down payment options available (as low as 3%)
+  - Reduced PMI rates for qualifying borrowers
+  - Closing cost assistance available up to $5,000
+
+7.2 Low-to-Moderate Income (LMI) Program
+------------------------------------------
+  - Maximum annual income: 80% of area median income (AMI)
+  - Minimum FICO reduced by 20 points (not below 580)
+  - DTI limit increased by 5 percentage points
+  - Financial counseling required for Grade D and below
+  - Maximum loan amount: $35,000 (personal), $250,000 (mortgage)
+
+7.3 Employee Internal Loan Program
+------------------------------------
+  - Eligible after 12 months of continuous employment
+  - Minimum FICO: 600 (relaxed from standard 640)
+  - Interest rate: Prime rate only (no risk spread applied)
+  - Maximum loan amount: $25,000
+  - Automatic payroll deduction for payments
+  - No prepayment penalty

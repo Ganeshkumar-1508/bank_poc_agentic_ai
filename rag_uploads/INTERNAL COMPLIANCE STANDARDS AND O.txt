@@ -1,0 +1,217 @@
+INTERNAL COMPLIANCE STANDARDS AND OPERATIONAL PROCEDURES
+===========================================================
+Document Reference: ICS-2024-005
+Effective Date: January 2024
+Version: 1.8
+Department: Internal Audit & Compliance
+
+1. LOAN APPROVAL AUTHORITY AND ESCALATION HIERARCHY
+======================================================
+
+1.1 Approval Authority Levels
+------------------------------
+Level 1 - Automated Approval (System):
+  - Risk Grade A and B
+  - Loan amount up to $25,000
+  - All eligibility criteria met
+  - No exceptions or overrides required
+  - No automatic processing: Loan officer review within 1 business day
+
+Level 2 - Loan Officer Approval:
+  - Risk Grade C
+  - Loan amount $25,000 - $75,000
+  - Minor exceptions documented (within policy tolerance)
+  - Must document rationale in loan file
+  - Processing time: Within 2 business days
+
+Level 3 - Branch Manager Approval:
+  - Risk Grade D
+  - Loan amount $75,000 - $250,000
+  - Any exception to standard policy
+  - Requires documented compensating factors
+  - Processing time: Within 3 business days
+
+Level 4 - Credit Committee Approval:
+  - Risk Grade E
+  - Loan amount $250,000 - $1,000,000
+  - Multiple policy exceptions
+  - Non-standard loan structures
+  - Meeting: Weekly on Tuesdays
+  - Processing time: Within 5 business days
+
+Level 5 - Executive Approval:
+  - Risk Grade F (exceptions only)
+  - Loan amount exceeding $1,000,000
+  - Policy exceptions exceeding tolerance thresholds
+  - Requires CEO or CFO signature
+  - Board notification required within 5 business days
+
+1.2 Mandatory Escalation Triggers
+-----------------------------------
+The following situations require mandatory escalation regardless of risk grade:
+  - Applicant is an employee or employee's immediate family member
+  - Application involves a politically exposed person (PEP)
+  - Fraud indicators detected at any stage
+  - Application value exceeds 5% of total portfolio
+  - Adverse media search returns negative results
+  - Applicant has existing non-performing loan
+  - Sanctions screening generates potential match
+
+2. LOAN DOCUMENTATION STANDARDS
+=================================
+
+2.1 Complete File Requirements
+-------------------------------
+Every approved loan file MUST contain the following documents:
+
+  - Signed and dated loan application
+  - Identity verification documents (all borrowers)
+  - Income verification (all borrowers)
+  - Credit report with scores
+  - Credit decision documentation (approval/decline letter)
+  - Risk assessment worksheet (if manually underwritten)
+  - Appraisal or valuation (for secured loans)
+  - Collateral documentation (title, lien filing, UCC)
+  - Insurance verification (for secured loans)
+  - Signed promissory note
+  - Signed disclosure statements (TILA, ECOA, etc.)
+  - AML/KYC verification checklist
+  - OFAC screening results
+
+2.2 Quality Control Sampling
+------------------------------
+Pre-Funding QC (10% random sample):
+  - Verify income documentation matches application
+  - Verify property appraisal independence
+  - Verify DTI calculation accuracy
+  - Verify all required disclosures provided timely
+  - Verify collateral valuation reasonableness
+  - Must be completed before loan disbursement
+
+Post-Closing QC (10% random sample within 90 days):
+  - Verify all documents executed correctly
+  - Verify lien perfection (for secured loans)
+  - Verify insurance coverage adequacy
+  - Verify rate and fee accuracy vs disclosures
+  - Verify HMDA data accuracy
+
+3. FAIR LENDING COMPLIANCE
+============================
+
+3.1 Prohibited Practices
+--------------------------
+The following practices are strictly prohibited:
+  - Steering borrowers to specific loan products based on race, gender, age, or national origin
+  - Offering different terms to similarly qualified borrowers based on protected characteristics
+  - Setting different credit thresholds for different demographic groups
+  - Redlining (denying or restricting loans based on neighborhood demographics)
+  - Reverse redlining (targeting high-cost products to minority neighborhoods)
+  - Discouraging applications from protected class members
+  - Using proxy variables that correlate with protected characteristics (e.g., zip code as proxy for race)
+
+3.2 Fair Lending Testing Program
+----------------------------------
+Annual fair lending testing must include:
+  - Statistical analysis of approval rates by race, gender, age, and national origin
+  - Disparate treatment testing using matched-pair methodology
+  - Disparate impact analysis comparing outcomes across demographic groups
+  - Pricing analysis for disparities in interest rates and fees
+  - Geographic analysis to identify potential redlining patterns
+
+3.3 Bias Detection in AI/ML Models
+-------------------------------------
+Machine learning models used in credit decisions must be monitored for:
+  - Proxies for protected characteristics (e.g., zip code, school name, employer name)
+  - Adverse impact ratio analysis (approval rate for protected group / approval rate for control group)
+  - Threshold: 4/5ths rule - if any group's approval rate is less than 80% of the highest group, investigation required
+  - Model explainability: Must be able to explain denial reasons in plain language
+  - Annual third-party bias audit required for all production models
+
+4. INTEREST RATE AND FEE COMPLIANCE
+====================================
+
+4.1 Rate Ceiling Compliance
+-----------------------------
+  - All loan APRs must comply with applicable state usury laws
+  - Rate locks must be honored for minimum 60 days (mortgage), 30 days (other loans)
+  - If rate increases after lock, borrower must be notified within 3 business days
+  - No bait-and-switch: Advertised rate must be available to reasonably qualified applicants
+
+4.2 Fee Transparency Requirements
+-----------------------------------
+  - All fees must be disclosed before loan closing
+  - Origination fee maximum: 5% for loans up to $20,000, 3% for loans above $20,000
+  - Late payment fee maximum: $25 or 5% of past-due payment, whichever is less
+  - No hidden fees: All charges must be itemized in the Truth in Lending disclosure
+  - Prepayment penalty prohibited on all consumer loans
+
+4.3 Rate Floor and Rate Spread Reporting
+-----------------------------------------
+  - APR spread over Treasury rate must be tracked for HOEPA compliance
+  - HOEPA triggers: APR exceeds average prime offer rate by 8.5% (first lien) or 10% (subordinate lien)
+  - Points and fees exceed 8% of total loan amount or $800 (whichever is greater)
+  - HOEPA loans require additional disclosures and restrictions
+
+5. DELINQUENCY AND COLLECTIONS COMPLIANCE
+==========================================
+
+5.1 Early Delinquency Management (1-30 Days Past Due)
+-------------------------------------------------------
+  - Day 1 past due: Automated reminder via SMS/email
+  - Day 5 past due: Phone call from servicing team
+  - Day 15 past due: Written notice via US mail
+  - Day 30 past due: Formal demand letter with payment plan options
+
+5.2 Collections Compliance Requirements
+-----------------------------------------
+  - All collections activity must comply with the Fair Debt Collection Practices Act (FDCPA)
+  - Cannot call before 8 AM or after 9 PM local time
+  - Cannot harass, oppress, or abuse the debtor
+  - Cannot misrepresent the amount owed or legal consequences
+  - Must honor cease-and-desist requests (may still file lawsuit)
+  - Must validate debt within 5 days of initial contact
+  - Cannot report inaccurate information to credit bureaus
+
+5.3 Loss Mitigation Options
+-----------------------------
+Before proceeding to foreclosure or charge-off, the following loss mitigation options must be explored:
+  - Loan modification (rate reduction, term extension, principal forbearance)
+  - Forbearance agreement (temporary payment reduction)
+  - Repayment plan (catch-up over 6-12 months)
+  - Short sale (with borrower consent)
+  - Deed-in-lieu of foreclosure (with borrower consent)
+
+5.4 Charge-Off Standards
+--------------------------
+  - Consumer loans: Charge-off at 120 days past due
+  - Mortgage loans: Charge-off at 180 days past due
+  - All charge-offs require written approval from Level 3 or above
+  - Charge-off recovery efforts continue for minimum 3 years
+
+6. ANNUAL COMPLIANCE TRAINING REQUIREMENTS
+============================================
+
+6.1 Mandatory Training Topics
+-------------------------------
+All lending staff must complete annual training on:
+  - Fair lending laws and prohibited practices (2 hours)
+  - BSA/AML requirements and suspicious activity reporting (2 hours)
+  - Truth in Lending Act disclosures (1 hour)
+  - Identity theft prevention program (1 hour)
+  - Cybersecurity and data privacy (1 hour)
+  - Workplace harassment and ethics (1 hour)
+  Total minimum: 8 hours annually
+
+6.2 Role-Specific Training
+----------------------------
+  - Loan Officers: Additional 4 hours on underwriting standards and policy exceptions
+  - Branch Managers: Additional 4 hours on approval authority and escalation procedures
+  - Collections Staff: Additional 4 hours on FDCPA compliance and loss mitigation
+  - Compliance Officers: Additional 8 hours on regulatory updates and examination preparation
+
+6.3 Training Documentation
+----------------------------
+  - All training completion must be documented in the Learning Management System (LMS)
+  - Non-completion by December 31 results in temporary suspension of lending authority
+  - New hires must complete all mandatory training within 30 days of start date
+  - Training records must be maintained for 5 years and available for regulatory examination
