@@ -153,6 +153,7 @@ class FixedDepositCrews:
         """
         Two-agent crew for loan decision + borrower summary.
         Agent 1 (loan_creation_agent): Evaluates credit profile → JSON decision.
+            - Uses RAG Policy Search and RAG Policy Stats tools to check bank policies.
         Agent 2 (loan_summary_agent): Generates borrower-friendly email summary.
         """
         tasks = create_loan_creation_tasks(self.agents, borrower_context)
@@ -164,6 +165,7 @@ class FixedDepositCrews:
             tasks=tasks,
             process=Process.sequential,
             verbose=True,
+            max_iter=15,
         )
 
 # ---------------------------------------------------------------------------

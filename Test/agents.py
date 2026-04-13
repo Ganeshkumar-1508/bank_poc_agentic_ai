@@ -33,6 +33,8 @@ from tools import (
     pdf_loader_tool,
     markdown_loader_tool,
     news_api_tool,
+    rag_policy_search_tool,
+    rag_policy_stats_tool,  
 )
 
 load_dotenv()
@@ -50,7 +52,9 @@ def get_llm():
 
 def get_llm_powerful():
     return NVIDIA(
-        model="qwen/qwen3-next-80b-a3b-instruct",
+        # model="qwen/qwen3-next-80b-a3b-instruct",
+        model="meta/llama-3.1-8b-instruct",
+        # model="meta/llama-3.1-70b-instruct",
         callbacks=_lf_callbacks,
     )
 
@@ -517,20 +521,31 @@ def create_agents():
     loan_creation_agent = Agent(
         role="Loan Creation Decision Officer",
         goal=(
-            "Evaluate a borrower's credit profile and produce a loan decision "
-            "(LOAN_APPROVED, NEEDS_VERIFY, or REJECTED) with clear rationale, "
-            "conditions, and next steps."
+            "Evaluate a borrower's credit profile against the bank's policy documents "
+            "and produce a loan decision (LOAN_APPROVED, NEEDS_VERIFY, or REJECTED) with "
+            "clear rationale, conditions, and next steps."
         ),
         backstory=(
-            "Senior loan officer at a major bank with 20+ years of experience in "
-            "consumer lending. You evaluate credit risk based on FICO scores, DTI ratios, "
-            "default probabilities, implied grades, and risk levels. Your decisions are fair, "
-            "consistent, and compliant with lending regulations. You provide detailed "
-            "rationale for every decision so borrowers understand their standing."
+            "You are a senior loan officer at a major bank with 20+ years of experience. "
+            "You have access to the bank's policy document database via the RAG Policy Search tool. "
+            "Your evaluation workflow is ALWAYS: "
+            "1) First, use 'RAG_Policy_Stats' to check if policy documents are loaded. "
+            "2) Then, use 'RAG_Policy_Search' to look up relevant policies for this borrower's profile "
+            "(e.g., search for 'loan approval FICO score requirements', 'DTI ratio thresholds', "
+            "'risk assessment for borderline applications'). "
+            "3) Use the ACTUAL policy excerpts returned by the tool to inform your decision. "
+            "4) Reference the specific policy sections/documents in your rationale. "
+            "NEVER fabricate or assume policy references — only cite what the tool returns. "
+            "If the tool returns no documents, explicitly state that no policy documents were found "
+            "and use standard lending best practices as fallback. "
+            "Your decisions must be fair, consistent, and compliant with lending regulations."
         ),
-        llm=llm_powerful, verbose=True,
+        tools=[rag_policy_search_tool, rag_policy_stats_tool],
+        llm=llm_powerful,
+        verbose=True,
+        max_iter=15,
+        allow_delegation=False,
     )
-
     loan_summary_agent = Agent(
         role="Borrower Summary & Advisory Specialist",
         goal=(
@@ -545,8 +560,15 @@ def create_agents():
             "DTI ratios, default probabilities, and risk grades into terms any borrower can "
             "understand. You provide specific, personalized recommendations for improving "
             "credit health. Your summaries are empathetic, professional, and always end with "
-            "clear next steps the borrower can take immediately."
+            "clear next steps the borrower can take immediately. "
+            "You have access to the bank's policy document database via the RAG Policy Search tool. "
+            "Before mentioning any specific threshold or policy requirement in your summary, "
+            "use the RAG tool to verify it. If the tool confirms the threshold, cite it. "
+            "If the tool does not return a result for that threshold, do NOT mention it — "
+            "use generic language like 'below the bank's requirement' instead. "
+            "NEVER fabricate or assume thresholds you cannot verify via the tool."
         ),
+        tools=[rag_policy_search_tool],
         llm=llm_powerful, verbose=True,
     )
 

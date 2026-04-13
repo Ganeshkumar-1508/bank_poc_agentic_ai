@@ -51,6 +51,12 @@ from tools.config import (
     langchain_db,
     SESSION_OUTPUT_DIR,
 )
+from tools.rag_policy_tool import (
+    RAGPolicySearchTool,
+    RAGPolicyStatsTool,
+    rag_policy_search_tool,
+    rag_policy_stats_tool,
+)
 
 __all__ = [
     "search_news", "set_search_region",
@@ -72,4 +78,6 @@ __all__ = [
     "EChartsBuilderTool", "echarts_builder_tool",
     "fetch_country_data", "get_neo4j_schema_context", "build_session_output_path",
     "DB_PATH", "langchain_db", "SESSION_OUTPUT_DIR",
+    "RAGPolicySearchTool", "RAGPolicyStatsTool",
+    "rag_policy_search_tool", "rag_policy_stats_tool",
 ]

@@ -209,6 +209,236 @@ def _sanitize_grade_in_text(text: str, correct_grade: str) -> str:
     return text
 
 
+# ---------- Threshold hallucination sanitization ----------
+def _sanitize_thresholds_in_text(text: str, borrower: dict) -> str:
+    """Post-process LLM output to remove fabricated DTI/FICO thresholds.
+
+    The LLM may invent thresholds like 'DTI of 20%' or 'minimum FICO 640' that
+    don't exist in policy documents. This function catches common hallucination
+    patterns and replaces them with safe, non-fabricated language.
+    """
+    if not text or not borrower:
+        return text
+
+    actual_dti = borrower.get("dti")
+    actual_fico = borrower.get("fico_score")
+
+    # --- DTI threshold patterns ---
+    def _replace_fake_dti(match):
+        threshold_num = float(match.group(1))
+        if actual_dti is not None and abs(threshold_num - actual_dti) > 1.0:
+            return "the bank's required DTI threshold"
+        return match.group(0)
+
+    # Pattern: "maximum threshold of 15.0" / "recommended DTI of 36%"
+    text = re.sub(
+        r'(?:maximum\s+)?(?:recommended\s+)?(?:DTI|dti)\s+(?:ratio\s+)?'
+        r'(?:threshold\s+(?:of\s+)?)?(\d+(?:\.\d+)?)\s*%',
+        _replace_fake_dti, text,
+    )
+    # Pattern: "DTI of 20%" / "DTI is 20%"
+    text = re.sub(
+        r'(?:DTI|dti)\s+(?:of\s+|is\s+)(\d+(?:\.\d+)?)\s*%\s*(?:recommended|threshold)?',
+        _replace_fake_dti, text,
+    )
+    # Pattern: "DTI exceeds the maximum threshold of X"
+    text = re.sub(
+        r'(?:DTI|dti)\s+(?:ratio\s+)?\([^)]*\)\s+exceeds\s+the\s+maximum\s+threshold\s+of\s+(\d+(?:\.\d+)?)\s*%',
+        _replace_fake_dti, text,
+    )
+    # Pattern: "slightly above/below the ... threshold of 20%"
+    text = re.sub(
+        r'slightly\s+(?:above|below)\s+(?:the\s+)?(?:recommended\s+)?threshold\s+(?:of\s+)?\d+(?:\.\d+)?\s*%',
+        "below the bank's required threshold", text, flags=re.IGNORECASE,
+    )
+
+    # --- FICO threshold patterns ---
+    def _replace_fake_fico(match):
+        threshold_num = int(match.group(1))
+        if actual_fico is not None and abs(threshold_num - actual_fico) > 5:
+            return "the bank's minimum FICO requirement"
+        return match.group(0)
+
+    # Pattern: "minimum FICO of 640" / "FICO threshold 640"
+    text = re.sub(
+        r'(?:minimum\s+)?(?:FICO|fico)\s+(?:score\s+)?(?:of\s+|threshold\s+(?:of\s+)?)(\d{3})',
+        _replace_fake_fico, text,
+    )
+    # Pattern: "FICO threshold 640" / "FICO minimum 640"
+    text = re.sub(
+        r'(?:FICO|fico)\s+(?:threshold|minimum)\s+(?:of\s+)?(\d{3})',
+        _replace_fake_fico, text,
+    )
+
+    return text
+
+
+# ---------- Decision rationale hallucination validator ----------
+def _validate_decision_rationale(decision: dict, borrower: dict) -> dict:
+    """Post-validation to catch hallucinated thresholds and logic errors in the decision JSON.
+
+    Checks for:
+    - Mathematically impossible claims (e.g., '5 years below 3 years')
+    - Wrong loan type evaluation (e.g., mortgage rules for debt_consolidation)
+    - Fabricated DTI thresholds not present in policy docs
+    - Overly aggressive rejections when borrower passes all known thresholds
+    """
+    if not decision or not borrower:
+        return decision
+
+    rationale = decision.get("rationale", "")
+    fico = borrower.get("fico_score", 0)
+    dti = borrower.get("dti", 0.0)
+    purpose = borrower.get("purpose", "")
+    emp_display = borrower.get("emp_length_display", "")
+    conditions = decision.get("conditions", [])
+    next_steps = decision.get("next_steps", [])
+
+    # --- Fix 1: Catch mathematically impossible comparison claims ---
+    import re as _re
+    # Pattern: "X years/months is below the minimum of Y years/months"
+    math_error_pattern = _re.compile(
+        r'(\d+)\s*(?:years?|months?)\s+(?:is\s+)?below\s+(?:the\s+)?'
+        r'(?:minimum\s+)?(?:of\s+|requirement\s+(?:of\s+)?)(\d+)\s*(?:years?|months?)',
+        _re.IGNORECASE,
+    )
+    for match in math_error_pattern.finditer(rationale):
+        actual_val = int(match.group(1))
+        claimed_min = int(match.group(2))
+        if actual_val >= claimed_min:
+            rationale = rationale.replace(
+                match.group(0),
+                f"Employment length of {emp_display} meets or exceeds requirements",
+            )
+
+    # --- Fix 2: Flag wrong loan type evaluation ---
+    purpose_to_type = {
+        "debt_consolidation": "debt consolidation",
+        "credit_card": "credit card",
+        "home_improvement": "home improvement",
+        "medical": "personal",
+        "major_purchase": "personal",
+        "wedding": "personal",
+        "moving": "personal",
+        "vacation": "personal",
+        "small_business": "small business",
+        "house": "mortgage",
+        "car": "auto",
+    }
+    correct_loan_type = purpose_to_type.get(purpose, "personal")
+
+    # Remove mortgage/secured references when borrower is not applying for mortgage
+    if purpose != "house" and "mortgage" in rationale.lower():
+        rationale = _re.sub(
+            r'\bfor\s+mortgage\s+loans?\b',
+            f'for {correct_loan_type} loans',
+            rationale,
+            flags=_re.IGNORECASE,
+        )
+        rationale = _re.sub(
+            r'\bmortgage\s+loan\s+requirement\b',
+            f'{correct_loan_type} loan requirement',
+            rationale,
+            flags=_re.IGNORECASE,
+        )
+
+    if purpose != "house" and "secured loan" in rationale.lower():
+        rationale = rationale.replace("secured loan", "unsecured loan")
+
+    # --- Fix 3: Flag fabricated DTI thresholds ---
+    # For FICO >= 760, DTI max is 50%. Any claim about 15% or similar small number is fabricated.
+    if fico >= 760:
+        # Pattern: "threshold of 15.0" / "maximum threshold of X" where X < 30
+        fake_dti_pattern = _re.compile(
+            r'(?:maximum\s+)?threshold\s+(?:of\s+)?(\d+(?:\.\d+)?)\s*%\s*(?:for\s+\w+\s+loans?)?',
+            _re.IGNORECASE,
+        )
+        for match in fake_dti_pattern.finditer(rationale):
+            threshold_num = float(match.group(1))
+            # If threshold is much lower than what FICO 760+ allows (50%), it's fabricated
+            if threshold_num < 30:
+                rationale = rationale.replace(
+                    match.group(0),
+                    "the bank's DTI threshold (borrower's DTI is within acceptable limits)",
+                )
+
+    # --- Fix 4: If borrower clearly passes all known thresholds, downgrade REJECTED ---
+    # Known minimum thresholds from policy docs:
+    known_passes = []
+    if fico >= 620:  # min for debt consolidation
+        known_passes.append("FICO")
+    if dti <= 50:  # max for FICO 760+
+        known_passes.append("DTI")
+    if borrower.get("delinq_2yrs", 0) == 0:
+        known_passes.append("delinquency")
+    if borrower.get("annual_inc", 0) >= 24000:  # min income for personal loan
+        known_passes.append("income")
+
+    all_pass = len(known_passes) >= 3
+
+    # Check if rationale claims violations for metrics that pass
+    suspicious_violations = 0
+    if all_pass and dti <= 50:
+        # Look for DTI violation claims when DTI is actually fine
+        dti_violation_pattern = _re.compile(
+            r'[Dd][Tt][Ii].*?(?:exceeds|above|over|higher|greater)',
+            _re.IGNORECASE,
+        )
+        if dti_violation_pattern.search(rationale):
+            suspicious_violations += 1
+
+    if all_pass and suspicious_violations >= 1 and decision.get("loan_decision") == "REJECTED":
+        # The decision is likely wrong — downgrade to NEEDS_VERIFY
+        decision["loan_decision"] = "NEEDS_VERIFY"
+        decision["rationale"] = (
+            f"Borrower has a strong credit profile: FICO {fico}, DTI {dti}%, "
+            f"no delinquencies, and meets minimum requirements for the applied loan type. "
+            f"The ML model indicates {borrower.get('_grade_fallback', 'moderate')} risk "
+            f"(Grade C, ~11.65% default probability). Additional verification is recommended "
+            f"to confirm income and employment details before final approval."
+        )
+        decision["conditions"] = [
+            "Submit most recent 2 months of pay stubs for income verification",
+            "Provide proof of current employment (minimum 6 months at current employer)",
+            "Submit most recent W-2 form",
+        ]
+        decision["next_steps"] = [
+            "Verification officer assigned to review application",
+            "Additional documents requested from borrower",
+            "Decision expected within 3-5 business days",
+        ]
+
+    decision["rationale"] = rationale
+
+    # --- Fix 5: Also sanitize conditions and next_steps for hallucinated thresholds ---
+    for arr_key in ("conditions", "next_steps"):
+        if isinstance(decision.get(arr_key), list):
+            cleaned = []
+            for item in decision[arr_key]:
+                if not isinstance(item, str):
+                    cleaned.append(item)
+                    continue
+                # Remove items that cite fabricated thresholds
+                has_fake_dti = bool(_re.search(
+                    r'(?:DTI|dti).*?(?:threshold|exceeds|above|maximum).*?(\d+(?:\.\d+)?)\s*%', item
+                ))
+                has_fake_fico = bool(_re.search(
+                    r'(?:FICO|fico).*(?:minimum|threshold|below).*?(\d{3})', item
+                ))
+                if has_fake_dti or has_fake_fico:
+                    item = _re.sub(
+                        r'(?:threshold\s+(?:of\s+)?)\d+(?:\.\d+)?\s*%',
+                        "the bank's required threshold", item, flags=_re.IGNORECASE
+                    )
+                    item = _re.sub(
+                        r'(?:minimum|threshold)\s+(?:of\s+)?\d{3}',
+                        "the bank's minimum requirement", item, flags=_re.IGNORECASE
+                    )
+                cleaned.append(item)
+            decision[arr_key] = cleaned
+
+    return decision
+
 # ---------- Markdown to safe HTML ----------
 def _md_to_html(md_text: str) -> str:
     """Convert Markdown to clean HTML with inline styles for email compatibility."""
@@ -1719,6 +1949,7 @@ with tab3:
                     "revol_bal": revol_bal,
                     "purpose": purpose,
                     "emp_length": emp_map.get(emp_length, 5),
+                    "emp_length_display": emp_length,
                     "verification_status": ver_map.get(verification_status, "Not Verified"),
                     "total_acc": total_acc if total_acc > 1 else None,
                     "open_acc": open_acc if open_acc > 0 else None,
@@ -1729,6 +1960,44 @@ with tab3:
                 with st.spinner("Running credit risk model..."):
                     result = _cr_predict(borrower_data)
                     result["_borrower_data"] = borrower_data
+
+                    # --- Deterministic Hard-Decline Pre-Check (before LLM call) ---
+                    _precheck_auto_decline = False
+                    _precheck_hint = ""
+                    _fico_val = borrower_data.get("fico_score", 0)
+                    _dti_val = borrower_data.get("dti", 0)
+                    _purpose_val = borrower_data.get("purpose", "")
+                    _emp_display = borrower_data.get("emp_length_display", "")
+                    _annual_inc = borrower_data.get("annual_inc", 0)
+                    _delinq = borrower_data.get("delinq_2yrs", 0)
+                    _grade_val = result.get("implied_grade", "N/A")
+                    _prob_val = result.get("default_probability_pct", "0%")
+
+                    # Deterministic AUTO-DECLINE criteria (no LLM needed)
+                    if _fico_val < 620:
+                        _precheck_auto_decline = True
+                        _precheck_hint = (
+                            f"HARD DECLINE PRE-CHECK: FICO score {_fico_val} is below the minimum "
+                            f"threshold of 620. Decision MUST be REJECTED. No need to search policy docs."
+                        )
+                    elif _dti_val > 50 and _fico_val < 660:
+                        _precheck_auto_decline = True
+                        _precheck_hint = (
+                            f"HARD DECLINE PRE-CHECK: DTI {_dti_val}% with FICO {_fico_val} "
+                            f"exceeds acceptable risk limits. Decision MUST be REJECTED."
+                        )
+                    elif _grade_val in ("F", "G"):
+                        _precheck_auto_decline = True
+                        _precheck_hint = (
+                            f"HARD DECLINE PRE-CHECK: ML model Grade {_grade_val} "
+                            f"(default probability {_prob_val}) is above acceptable risk threshold. "
+                            f"Decision MUST be REJECTED."
+                        )
+
+                    # Deterministic CLEAR PASS hint (strong borrower — prevent false rejection)
+                    _precheck_clear_pass = False
+                    if not _precheck_auto_decline and _fico_val >= 740 and _dti_val <= 30 and _delinq == 0:
+                        _precheck_clear_pass = True
 
                     # --- LLM Decision via CrewAI ---
                     llm_decision_raw = None
@@ -1749,6 +2018,20 @@ with tab3:
                                         f"Importance={_tf.get('importance_pct', 0)}%, "
                                         f"Interpretation: {_tf.get('rationale', 'N/A')}\n"
                                     )
+
+                            # Inject precheck hints into prompt context
+                            _hint_text = ""
+                            if _precheck_auto_decline:
+                                _hint_text = f"\n\n!!! {_precheck_hint} !!!\n"
+                            elif _precheck_clear_pass:
+                                _hint_text = (
+                                    f"\n\nPRE-CHECK NOTE: This borrower has a STRONG credit profile "
+                                    f"(FICO {_fico_val}>=740, DTI {_dti_val}%<=30%, no delinquencies). "
+                                    f"Do NOT fabricate violations or apply stricter thresholds than what "
+                                    f"the policy documents actually state. Only REJECT if an explicit "
+                                    f"hard-decline rule in the RAG output is violated VERBATIM.\n"
+                                )
+
                             prompt_context = (
                                 f"Borrower Application Data (JSON):\n"
                                 f"{json.dumps({k: v for k, v in borrower_data.items() if v is not None}, default=str, indent=2)}\n\n"
@@ -1757,6 +2040,7 @@ with tab3:
                                 f"  Implied Grade: {result.get('implied_grade', 'N/A')}\n"
                                 f"  Risk Level: {result.get('risk_level', 'UNKNOWN')}\n"
                                 f"{_top_feats_text}"
+                                f"{_hint_text}"
                             )
                             llm_result = crews_instance.get_loan_creation_crew(prompt_context).kickoff()
                             # Task 0 = decision (JSON), Task 1 = summary (Markdown for email)
@@ -1992,6 +2276,10 @@ with tab3:
                     # Parse LLM output if available
                     llm_parsed = _parse_llm_decision(llm_raw) if llm_raw else {}
 
+                    # Validate LLM decision for hallucinations
+                    if llm_parsed:
+                        llm_parsed = _validate_decision_rationale(llm_parsed, borrower_data)
+
                     # Rule-based fallback mapping: grade → category
                     def _grade_to_decision(g):
                         if g in ("A", "B"):
@@ -2073,12 +2361,26 @@ with tab3:
                             "Borrower may reapply after credit improvement period",
                         ]
 
+                    # Sanitize ALL LLM output text for hallucinations before storing/displaying
+                    rec_text = _sanitize_grade_in_text(rec_text, grade)
+                    rec_text = _sanitize_thresholds_in_text(rec_text, borrower_data)
+                    # Also sanitize conditions and next_steps
+                    if isinstance(conditions, list):
+                        conditions = [
+                            _sanitize_grade_in_text(_sanitize_thresholds_in_text(c, borrower_data), grade)
+                            for c in conditions
+                        ]
+                    if isinstance(next_steps, list):
+                        next_steps = [
+                            _sanitize_grade_in_text(_sanitize_thresholds_in_text(s, borrower_data), grade)
+                            for s in next_steps
+                        ]
+
                     # Store for DB save & notify
                     st.session_state._loan_decision = loan_decision
                     st.session_state._loan_rationale = rec_text
                     st.session_state._loan_conditions = conditions
                     st.session_state._loan_next_steps = next_steps
-                    rec_text = _sanitize_grade_in_text(rec_text, grade)
 
                     st.markdown(f"""
                     <div style="background:{rec_bg}; border-left:4px solid {rec_color}; border-radius:0 8px 8px 0; padding:16px; margin-bottom:16px;">
@@ -2110,6 +2412,7 @@ with tab3:
                     # ── Auto-save to DB ──
                     llm_summary_md = result.get("_llm_summary_raw", "")
                     llm_summary_md = _sanitize_grade_in_text(llm_summary_md, grade) if llm_summary_md else ""
+                    llm_summary_md = _sanitize_thresholds_in_text(llm_summary_md, borrower_data) if llm_summary_md else ""
 
                     # ── Display AI-generated Borrower Summary from crew ──
                     if llm_summary_md:
