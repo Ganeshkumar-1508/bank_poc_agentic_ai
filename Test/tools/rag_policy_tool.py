@@ -3,7 +3,7 @@
 # CrewAI tool that allows agents to query the RAG system for policy documents.
 # Agents call this tool during loan evaluation to check relevant banking policies
 # (loan policies, credit score requirements, compliance rules, etc.).
-# ---------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 
 from crewai.tools import BaseTool
 from pydantic import BaseModel, Field
