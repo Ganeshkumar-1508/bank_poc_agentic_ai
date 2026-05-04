@@ -32,9 +32,7 @@ scikit-learn
 Pillow
 requests
 chromadb==1.1.1
-channels
 catboost
-litegbm
+lightgbm
+channels
 countrystatecity-countries
-
-
