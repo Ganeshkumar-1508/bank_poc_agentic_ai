@@ -1,0 +1,239 @@
+RISK ASSESSMENT FRAMEWORK FOR CREDIT DECISIONS
+================================================
+Document Reference: RAF-2024-002
+Effective Date: January 2024
+Version: 3.0
+Department: Enterprise Risk Management
+
+1. RISK CLASSIFICATION METHODOLOGY
+===================================
+
+1.1 Risk Score Interpretation
+-----------------------------
+The institution uses a multi-factor risk scoring model that produces a default probability score ranging from 0.00 (lowest risk) to 1.00 (highest risk). This score is derived from the XGBoost machine learning model incorporating borrower demographics, financial history, credit attributes, and loan characteristics.
+
+Risk Grade Mapping:
+
+Grade A (Very Low Risk): Default Probability 0.00 - 0.05 (0% - 5%)
+  - Expected Loss Rate: Less than 0.5%
+  - Recommendation: Auto-approve with standard terms
+  - Risk Weight: 20% for capital adequacy calculations
+  - Monitoring Frequency: Annual review
+
+Grade B (Low Risk): Default Probability 0.05 - 0.15 (5% - 15%)
+  - Expected Loss Rate: 0.5% - 1.5%
+  - Recommendation: Approve with standard monitoring
+  - Risk Weight: 50% for capital adequacy calculations
+  - Monitoring Frequency: Semi-annual review
+
+Grade C (Moderate Risk): Default Probability 0.15 - 0.25 (15% - 25%)
+  - Expected Loss Rate: 1.5% - 3.0%
+  - Recommendation: Approve with enhanced monitoring and possible conditions
+  - Risk Weight: 75% for capital adequacy calculations
+  - Monitoring Frequency: Quarterly review
+  - Conditions may include: lower LTV, additional collateral, guarantor
+
+Grade D (Elevated Risk): Default Probability 0.25 - 0.40 (25% - 40%)
+  - Expected Loss Rate: 3.0% - 5.0%
+  - Recommendation: Manual underwriting review required
+  - Risk Weight: 100% for capital adequacy calculations
+  - Monitoring Frequency: Monthly review
+  - May require: risk-based pricing, reduced loan amount, shorter term
+
+Grade E (High Risk): Default Probability 0.40 - 0.60 (40% - 60%)
+  - Expected Loss Rate: 5.0% - 8.0%
+  - Recommendation: Conditional approval or decline
+  - Risk Weight: 150% for capital adequacy calculations
+  - Conditions: Must have compensating factors documented
+  - Monitoring Frequency: Monthly with detailed quarterly reviews
+
+Grade F (Very High Risk): Default Probability 0.60 - 0.80 (60% - 80%)
+  - Expected Loss Rate: 8.0% - 15.0%
+  - Recommendation: Decline unless extraordinary compensating factors
+  - Risk Weight: 200% for capital adequacy calculations
+  - Requires: Senior management approval for any exception
+
+Grade G (Critical Risk): Default Probability 0.80 - 1.00 (80% - 100%)
+  - Expected Loss Rate: Greater than 15.0%
+  - Recommendation: Automatic decline
+  - Risk Weight: Deducted from capital (no netting)
+  - No exceptions permitted
+
+1.2 Risk Level Summary
+-----------------------
+Risk Level Classification:
+  - Low Risk: Grade A and Grade B (Default Probability 0% - 15%)
+  - Medium Risk: Grade C and Grade D (Default Probability 15% - 40%)
+  - High Risk: Grade E and above (Default Probability 40%+)
+
+2. MODEL FEATURES AND FEATURE IMPORTANCE
+==========================================
+
+2.1 Primary Risk Factors (High Importance)
+------------------------------------------
+The XGBoost model evaluates the following high-impact features ranked by information gain:
+
+1. Annual Income (annual_inc): Higher income reduces default probability
+   - Income below $30,000: Significant risk factor (+15-25% default probability)
+   - Income $30,000-$75,000: Moderate risk factor
+   - Income above $75,000: Risk mitigating factor
+
+2. Debt-to-Income Ratio (dti): Higher DTI increases default probability
+   - DTI below 20%: Strong positive factor (-5-10% default probability)
+   - DTI 20-36%: Moderate risk factor
+   - DTI above 36%: Significant risk factor (+10-20% default probability)
+   - DTI above 50%: Critical risk factor (+20-35% default probability)
+
+3. FICO Score (fico_range_low_fico_range_high): Higher score reduces risk
+   - FICO 300-579: Very high risk (+25-40% default probability)
+   - FICO 580-669: High risk (+15-25% default probability)
+   - FICO 670-739: Moderate risk (+8-15% default probability)
+   - FICO 740-799: Low risk (+3-8% default probability)
+   - FICO 800-850: Very low risk (+0-3% default probability)
+
+4. Loan-to-Income Ratio (loan_to_income): Derived feature
+   - Below 0.5: Low risk
+   - 0.5 - 1.0: Moderate risk
+   - 1.0 - 2.0: High risk
+   - Above 2.0: Very high risk
+
+5. Employment Length (emp_length): Longer tenure reduces risk
+   - Below 1 year: High risk factor
+   - 1-3 years: Moderate risk factor
+   - 3-7 years: Low risk factor
+   - 7+ years: Minimal risk factor
+
+2.2 Secondary Risk Factors (Moderate Importance)
+-------------------------------------------------
+6. Revolving Utilization (revol_util): Percentage of available credit used
+   - Below 30%: Positive factor
+   - 30-50%: Neutral to slightly negative
+   - Above 50%: Significant negative factor
+   - Above 80%: Critical negative factor
+
+7. Loan Amount (loan_amnt): Larger loans carry more risk
+   - Below $10,000: Lower risk
+   - $10,000-$25,000: Moderate risk
+   - $25,000-$50,000: Higher risk
+   - Above $50,000: Highest risk category
+
+8. Open Accounts (open_acc): Number of open credit lines
+   - 1-5 accounts: Limited history, moderate risk
+   - 6-15 accounts: Optimal range, lower risk
+   - 16-30 accounts: Slightly higher risk (overextension concern)
+   - 30+ accounts: High risk (potential credit dependency)
+
+9. Installment (monthly installment amount): Derived from loan amount and term
+   - Monthly installment should not exceed 30% of monthly income
+   - Exceeding 40% is a significant risk factor
+
+10. Mortgage Status (home_ownership): Ownership type affects risk
+    - MORTGAGE: Lowest risk (demonstrates creditworthiness)
+    - OWN: Low risk
+    - RENT: Moderate risk
+    - OTHER/NONE: Higher risk
+
+3. COMPOSITE RISK SCORING
+==========================
+
+3.1 Weighted Risk Score Calculation
+------------------------------------
+The composite risk score is calculated as follows:
+
+Individual Factor Scores = Model output feature importance weights applied to each input feature
+Raw Score = Sum of all weighted factor scores
+Calibrated Probability = Sigmoid transformation of raw score to [0, 1] range
+Final Default Probability = Calibrated Probability adjusted for economic conditions
+
+3.2 Economic Adjustment Factor
+-------------------------------
+Default probabilities are adjusted based on current economic conditions:
+
+Strong Economy (GDP growth > 2.5%): Multiply default probability by 0.85
+Normal Economy (GDP growth 1.0% - 2.5%): No adjustment (factor = 1.00)
+Weak Economy (GDP growth 0% - 1.0%): Multiply default probability by 1.20
+Recession (GDP contraction): Multiply default probability by 1.50
+
+3.3 Portfolio Concentration Risk
+---------------------------------
+Additional risk is applied when portfolio concentration exceeds thresholds:
+
+Industry Concentration:
+  - Single industry exceeding 15% of total portfolio: +5% to default probability
+  - Single industry exceeding 25% of total portfolio: +10% to default probability
+
+Geographic Concentration:
+  - Single state exceeding 20% of total portfolio: +3% to default probability
+  - Single MSA exceeding 15% of total portfolio: +5% to default probability
+
+4. RISK-BASED PRICING MODEL
+=============================
+
+4.1 Risk-Adjusted Interest Rate Formula
+----------------------------------------
+Base Rate = Federal Funds Rate + Cost of Funds + Operating Margin (currently 3.5%)
+Risk Spread = f(Risk Grade)
+
+Risk Grade Spreads:
+  - Grade A: +1.0% to +2.0%
+  - Grade B: +2.0% to +3.5%
+  - Grade C: +3.5% to +5.0%
+  - Grade D: +5.0% to +7.0%
+  - Grade E: +7.0% to +10.0%
+  - Grade F: +10.0% to +15.0%
+  - Grade G: Decline (no pricing offered)
+
+4.2 Risk-Based Loan Amount Limits
+-----------------------------------
+Maximum loan amount by risk grade (percentage of requested amount):
+  - Grade A: 100% of requested amount
+  - Grade B: 90% of requested amount
+  - Grade C: 75% of requested amount
+  - Grade D: 60% of requested amount
+  - Grade E: 40% of requested amount
+  - Grade F-G: Decline
+
+4.3 Collateral Requirements by Risk Grade
+------------------------------------------
+  - Grade A: Unsecured acceptable
+  - Grade B: Unsecured acceptable for amounts below $25,000
+  - Grade C: Collateral required for amounts above $15,000
+  - Grade D: Collateral required for all amounts
+  - Grade E: Full collateral required (loan-to-value ratio maximum 60%)
+  - Grade F: Full collateral required (loan-to-value ratio maximum 50%)
+
+5. PORTFOLIO RISK LIMITS
+==========================
+
+5.1 Maximum Portfolio Risk Distribution
+----------------------------------------
+The total loan portfolio must maintain the following risk grade distribution limits:
+
+Grade A+B combined: Minimum 40% of total portfolio
+Grade C combined: Maximum 30% of total portfolio
+Grade D+E combined: Maximum 20% of total portfolio
+Grade F+G combined: Maximum 10% of total portfolio
+
+5.2 Single Borrower Exposure Limits
+-------------------------------------
+  - Grade A-B: Maximum $100,000 per borrower
+  - Grade C: Maximum $50,000 per borrower
+  - Grade D: Maximum $25,000 per borrower
+  - Grade E: Maximum $10,000 per borrower
+
+6. MODEL VALIDATION AND MONITORING
+====================================
+
+6.1 Backtesting Requirements
+-----------------------------
+- Monthly: Compare predicted default rates vs actual default rates by grade
+- Quarterly: Population Stability Index (PSI) monitoring - PSI > 0.25 triggers model recalibration
+- Semi-Annually: Discrimination metrics (Gini coefficient must remain above 0.45, KS statistic above 0.30)
+- Annually: Full model validation by independent model risk team
+
+6.2 Drift Detection
+--------------------
+Feature drift is monitored using the following thresholds:
+  - Individual feature drift > 10%: Warning - increased monitoring
+  - Individual feature drift > 25%: Action required - model review
+  - Overall model performance degradation > 5%: Mandatory recalibration

@@ -4,6 +4,7 @@ import time
 import random
 import requests
 from typing import Type, Dict, List, Optional
+from datetime import datetime
 
 from crewai.tools import BaseTool, tool
 from pydantic import BaseModel, Field
@@ -15,13 +16,24 @@ from pydantic import BaseModel, Field
 GDELT_API_BASE = "https://api.gdeltproject.org/api/v2/doc/doc"
 _GDELT_LOW_VALUE = {"wikipedia.org", "reddit.com", "quora.com", "answers.yahoo.com"}
 _gdelt_last_call_ts: float = 0.0
-_GDELT_MIN_INTERVAL: float = 4.0
+_GDELT_MIN_INTERVAL: float = 2.0
 
 _GDELT_TIMESPAN_MAP = {
-    "1y": "12months", "2y": "12months", "6m": "6months", "3m": "3months",
-    "1m": "1months", "12months": "12months", "6months": "6months",
-    "3months": "3months", "1months": "1months",
-    "30d": "30d", "14d": "14d", "7d": "7d", "12w": "12w", "4w": "4w", "1w": "1w",
+    "1y": "12months",
+    "2y": "12months",
+    "6m": "6months",
+    "3m": "3months",
+    "1m": "1months",
+    "12months": "12months",
+    "6months": "6months",
+    "3months": "3months",
+    "1months": "1months",
+    "30d": "30d",
+    "14d": "14d",
+    "7d": "7d",
+    "12w": "12w",
+    "4w": "4w",
+    "1w": "1w",
 }
 
 
@@ -35,20 +47,28 @@ def _gdelt_wait_for_slot() -> None:
 
 def _gdelt_fetch(query: str, max_records: int = 8, timespan: str = "6months") -> str:
     timespan = _GDELT_TIMESPAN_MAP.get(timespan.lower().strip(), timespan)
-    retry_waits = [5, 15, 30, 60]
+    retry_waits = [3, 8, 15]
 
     for attempt in range(4):
         _gdelt_wait_for_slot()
         try:
             resp = requests.get(
                 GDELT_API_BASE,
-                params={"query": query, "mode": "artlist", "format": "json",
-                        "maxrecords": max_records, "timespan": timespan, "sort": "relevance"},
+                params={
+                    "query": query,
+                    "mode": "artlist",
+                    "format": "json",
+                    "maxrecords": max_records,
+                    "timespan": timespan,
+                    "sort": "relevance",
+                },
                 timeout=20,
             )
             if resp.status_code == 429:
-                wait = max(int(resp.headers.get("Retry-After", retry_waits[attempt])),
-                           retry_waits[attempt]) + random.uniform(1, 3)
+                wait = max(
+                    int(resp.headers.get("Retry-After", retry_waits[attempt])),
+                    retry_waits[attempt],
+                ) + random.uniform(0.1, 0.5)
                 time.sleep(wait)
                 _gdelt_last_call_ts = time.monotonic()
                 continue
@@ -91,7 +111,8 @@ def _gdelt_fetch(query: str, max_records: int = 8, timespan: str = "6months") ->
                 entry = (
                     f"Title: {art.get('title', '').strip()}\n"
                     f"Date: {date_str}"
-                    + (f" | Tone: {tone_label}" if tone_label else "") + "\n"
+                    + (f" | Tone: {tone_label}" if tone_label else "")
+                    + "\n"
                     f"URL: {art.get('url', '').strip()}"
                 )
                 lines.append(entry)
@@ -118,10 +139,97 @@ def gdelt_news_search(query: str) -> str:
     return _gdelt_fetch(query, max_records=8, timespan="6months")
 
 
+# ---------------------------------------------------------------------------
+# Provider-Specific News Search (2025-2026)
+# ---------------------------------------------------------------------------
+
+
+@tool("Provider News Search")
+def fetch_provider_news(
+    provider_name: str, product_type: str = "FD", max_articles: int = 3
+) -> str:
+    """Fetch current news (2025-2026) for a specific financial provider/bank.
+
+    Args:
+        provider_name: Name of the bank/financial institution (e.g., 'Union Bank of India', 'IDFC First Bank')
+        product_type: Type of product to search for (default: 'FD' for Fixed Deposit)
+        max_articles: Maximum number of articles to return (default: 3, max: 5)
+
+    Returns:
+        Formatted news articles with headline, URL, and snippet for the specific provider.
+        Each article is formatted as:
+        - **[Headline]**(URL)
+          > _Snippet: 1-2 sentence summary_
+
+    Important: This tool uses web-search to fetch REAL, CURRENT news (2025-2026).
+    """
+    try:
+        # Import the search tool dynamically to avoid circular imports
+        from tools.search_tool import search_news
+
+        # Build provider-specific search query for current year
+        current_year = datetime.now().year
+        query = f"{provider_name} {product_type} rates news {current_year}"
+
+        # Fetch news using the search tool
+        raw_results = search_news.run(query)
+
+        if "No results found" in raw_results or "Search failed" in raw_results:
+            # Try alternative query
+            query = f"{provider_name} bank news 2025 2026"
+            raw_results = search_news.run(query)
+
+        # Parse and format results
+        if raw_results and "Title:" in raw_results:
+            articles = raw_results.split("---")
+            formatted_articles = []
+
+            for article in articles[:max_articles]:
+                article = article.strip()
+                if not article:
+                    continue
+
+                title = ""
+                snippet = ""
+                url = ""
+
+                for line in article.split("\n"):
+                    line = line.strip()
+                    if line.startswith("Title:"):
+                        title = line.replace("Title:", "").strip()
+                    elif line.startswith("Snippet:"):
+                        snippet = line.replace("Snippet:", "").strip()
+                    elif line.startswith("URL:"):
+                        url = line.replace("URL:", "").strip()
+
+                if title and url:
+                    # Truncate snippet to 1-2 sentences
+                    if len(snippet) > 200:
+                        snippet = snippet[:200] + "..."
+
+                    formatted = f"- MARKDOWN_LINK: [{title}]({url})\n > _Snippet: {snippet}_\n"
+                    formatted_articles.append(formatted)
+
+            if formatted_articles:
+                return "\n".join(formatted_articles)
+            else:
+                return f"No recent news found for {provider_name}."
+
+        return f"No recent news found for {provider_name}."
+
+    except Exception as e:
+        return f"Failed to fetch news for {provider_name}: {str(e)}"
+
+
 class GDELTEntityInput(BaseModel):
     entity_name: str = Field(..., description="Full name of person or organisation.")
-    context: str = Field(default="", description="Optional context keywords (e.g. 'sanctions').")
-    timespan: str = Field(default="12months", description="Look-back: '3months', '6months', '12months', '30d'.")
+    context: str = Field(
+        default="", description="Optional context keywords (e.g. 'sanctions')."
+    )
+    timespan: str = Field(
+        default="12months",
+        description="Look-back: '3months', '6months', '12months', '30d'.",
+    )
 
 
 class GDELTEntitySearchTool(BaseTool):
@@ -136,7 +244,9 @@ class GDELTEntitySearchTool(BaseTool):
     )
     args_schema: Type[BaseModel] = GDELTEntityInput
 
-    def _run(self, entity_name: str, context: str = "", timespan: str = "12months") -> str:
+    def _run(
+        self, entity_name: str, context: str = "", timespan: str = "12months"
+    ) -> str:
         query = f'"{entity_name}"'
         if context:
             query += f" {context}"
@@ -149,10 +259,18 @@ class GDELTEntitySearchTool(BaseTool):
 
 ICIJ_RECONCILE_URL = "https://offshoreleaks.icij.org/api/v1/reconcile"
 ICIJ_REST_NODE_URL = "https://offshoreleaks.icij.org/api/v1/rest/nodes/{node_id}"
-ICIJ_REST_RELS_URL = "https://offshoreleaks.icij.org/api/v1/rest/nodes/{node_id}/relationships"
+ICIJ_REST_RELS_URL = (
+    "https://offshoreleaks.icij.org/api/v1/rest/nodes/{node_id}/relationships"
+)
 ICIJ_NODE_PAGE_URL = "https://offshoreleaks.icij.org/nodes/{node_id}"
 
-_ICIJ_DATASETS = ["panama-papers", "pandora-papers", "paradise-papers", "bahamas-leaks", "offshore-leaks"]
+_ICIJ_DATASETS = [
+    "panama-papers",
+    "pandora-papers",
+    "paradise-papers",
+    "bahamas-leaks",
+    "offshore-leaks",
+]
 _ICIJ_TYPE_MAP = {
     "https://offshoreleaks.icij.org/schema/oldb/entity": "Offshore Entity",
     "https://offshoreleaks.icij.org/schema/oldb/officer": "Officer / Beneficial Owner",
@@ -178,7 +296,9 @@ def _icij_request(method: str, url: str, payload=None, timeout=15) -> Optional[D
         try:
             if method == "POST":
                 headers["Content-Type"] = "application/json"
-                resp = requests.post(url, json=payload, headers=headers, timeout=timeout)
+                resp = requests.post(
+                    url, json=payload, headers=headers, timeout=timeout
+                )
             else:
                 resp = requests.get(url, headers=headers, timeout=timeout)
             if resp.status_code in (429, 503):
@@ -195,7 +315,9 @@ def _icij_request(method: str, url: str, payload=None, timeout=15) -> Optional[D
 
 class ICIJInput(BaseModel):
     name: str = Field(..., description="Full name of the person or company to search.")
-    country_code: str = Field(default="", description="Optional ISO-3166-1 alpha-3 country code.")
+    country_code: str = Field(
+        default="", description="Optional ISO-3166-1 alpha-3 country code."
+    )
 
 
 class ICIJOffshoreLeaksTool(BaseTool):
@@ -225,18 +347,28 @@ class ICIJOffshoreLeaksTool(BaseTool):
                     continue
                 seen_ids.add(node_id)
                 raw_type = r.get("type", [{}])
-                type_str = raw_type[0].get("id", "") if isinstance(raw_type, list) and raw_type else ""
-                candidates.append({
-                    "id": node_id, "name": r.get("name", name),
-                    "score": r.get("score", 0), "dataset": dataset_name,
-                    "type_label": _ICIJ_TYPE_MAP.get(type_str, type_str.split("/")[-1].title()),
-                    "profile_url": ICIJ_NODE_PAGE_URL.format(node_id=node_id),
-                })
+                type_str = (
+                    raw_type[0].get("id", "")
+                    if isinstance(raw_type, list) and raw_type
+                    else ""
+                )
+                candidates.append(
+                    {
+                        "id": node_id,
+                        "name": r.get("name", name),
+                        "score": r.get("score", 0),
+                        "dataset": dataset_name,
+                        "type_label": _ICIJ_TYPE_MAP.get(
+                            type_str, type_str.split("/")[-1].title()
+                        ),
+                        "profile_url": ICIJ_NODE_PAGE_URL.format(node_id=node_id),
+                    }
+                )
         candidates.sort(key=lambda x: x["score"], reverse=True)
         return candidates[:5]
 
     def _run(self, name: str, country_code: str = "") -> str:
-        time.sleep(1.0)
+        time.sleep(0.5)
         candidates = self._reconcile(name)
         if not candidates:
             return (
@@ -248,22 +380,38 @@ class ICIJOffshoreLeaksTool(BaseTool):
         quoted_name = requests.utils.quote(name)
         output_blocks = [
             f"ICIJ_RESULT: {len(candidates)} match(es) found for '{name}'.",
-            f"ICIJ_SEARCH_URL: https://offshoreleaks.icij.org/search?q={quoted_name}", "",
+            f"ICIJ_SEARCH_URL: https://offshoreleaks.icij.org/search?q={quoted_name}",
+            "",
         ]
 
         for rank, cand in enumerate(candidates, 1):
             node_id = cand["id"]
-            time.sleep(1.2)
-            detail = _icij_request("GET", ICIJ_REST_NODE_URL.format(node_id=node_id)) or {}
+            time.sleep(0.5)
+            detail = (
+                _icij_request("GET", ICIJ_REST_NODE_URL.format(node_id=node_id)) or {}
+            )
 
             node_name = detail.get("name") or cand["name"]
-            jurisdiction = detail.get("jurisdiction") or detail.get("country_codes") or "N/A"
+            jurisdiction = (
+                detail.get("jurisdiction") or detail.get("country_codes") or "N/A"
+            )
             incorp_date = detail.get("incorporation_date") or "N/A"
             status = detail.get("status") or "N/A"
-            source_id = detail.get("sourceID") or cand["dataset"].replace("-", " ").title()
-            status_flag = " STRUCK OFF / INACTIVE" if isinstance(status, str) and status.lower() in (
-                "defaulted", "struck off", "dissolved", "inactive") else ""
-            score_str = f"{cand['score']:.2f}" if isinstance(cand["score"], float) else str(cand["score"])
+            source_id = (
+                detail.get("sourceID") or cand["dataset"].replace("-", " ").title()
+            )
+            status_flag = (
+                " STRUCK OFF / INACTIVE"
+                if isinstance(status, str)
+                and status.lower()
+                in ("defaulted", "struck off", "dissolved", "inactive")
+                else ""
+            )
+            score_str = (
+                f"{cand['score']:.2f}"
+                if isinstance(cand["score"], float)
+                else str(cand["score"])
+            )
 
             block_lines = [
                 f"### Match #{rank}: {node_name}",
@@ -277,29 +425,55 @@ class ICIJOffshoreLeaksTool(BaseTool):
                 f"- **ICIJ_NODE_ID**: {node_id}",
             ]
 
-            time.sleep(1.0)
-            rels_data = _icij_request("GET", ICIJ_REST_RELS_URL.format(node_id=node_id)) or {}
-            raw_rels = rels_data.get("relationships", rels_data if isinstance(rels_data, list) else [])
+            time.sleep(0.5)
+            rels_data = (
+                _icij_request("GET", ICIJ_REST_RELS_URL.format(node_id=node_id)) or {}
+            )
+            raw_rels = rels_data.get(
+                "relationships", rels_data if isinstance(rels_data, list) else []
+            )
             raw_nodes = {str(n.get("id")): n for n in rels_data.get("nodes", [])}
             rels = []
             for rel in raw_rels[:10]:
-                rel_type = rel.get("rel_type") or rel.get("type") or rel.get("relationship", "connected")
-                linked_id = str(rel.get("end_node_id") or rel.get("endNodeId") or
-                                rel.get("start_node_id") or rel.get("startNodeId") or "")
+                rel_type = (
+                    rel.get("rel_type")
+                    or rel.get("type")
+                    or rel.get("relationship", "connected")
+                )
+                linked_id = str(
+                    rel.get("end_node_id")
+                    or rel.get("endNodeId")
+                    or rel.get("start_node_id")
+                    or rel.get("startNodeId")
+                    or ""
+                )
                 linked_node = raw_nodes.get(linked_id, {})
-                linked_name = linked_node.get("name") or linked_node.get("caption") or linked_id
+                linked_name = (
+                    linked_node.get("name") or linked_node.get("caption") or linked_id
+                )
                 linked_type_raw = (linked_node.get("labels") or [""])[0]
                 linked_type = _ICIJ_TYPE_MAP.get(
                     f"https://offshoreleaks.icij.org/schema/oldb/{linked_type_raw.lower()}",
                     linked_type_raw or "Node",
                 )
-                rels.append((rel_type, linked_id, linked_name, linked_type,
-                              _ICIJ_REL_RISK.get(rel_type.lower(), rel_type)))
+                rels.append(
+                    (
+                        rel_type,
+                        linked_id,
+                        linked_name,
+                        linked_type,
+                        _ICIJ_REL_RISK.get(rel_type.lower(), rel_type),
+                    )
+                )
 
             if rels:
                 block_lines.append("- **Relationships**:")
                 for rel_type, linked_id, linked_name, linked_type, risk_note in rels:
-                    linked_url = ICIJ_NODE_PAGE_URL.format(node_id=linked_id) if linked_id else ""
+                    linked_url = (
+                        ICIJ_NODE_PAGE_URL.format(node_id=linked_id)
+                        if linked_id
+                        else ""
+                    )
                     block_lines.append(
                         f"  - `{rel_type}` → **{linked_name}** ({linked_type}) — {risk_note}"
                         + (f"  [{linked_url}]({linked_url})" if linked_url else "")
@@ -311,12 +485,16 @@ class ICIJOffshoreLeaksTool(BaseTool):
             output_blocks.append("")
 
         top = candidates[0]
-        datasets_found = list(dict.fromkeys(c["dataset"].replace("-", " ").title() for c in candidates))
+        datasets_found = list(
+            dict.fromkeys(c["dataset"].replace("-", " ").title() for c in candidates)
+        )
         output_blocks.append(
             f"ICIJ_TOP_MATCH: {top['name']} | Dataset: {top['dataset'].replace('-', ' ').title()} | "
             f"Score: {top['score']} | URL: {top['profile_url']}"
         )
-        output_blocks.append(f"ICIJ_OFFSHORE_EXPOSURE: YES — {', '.join(datasets_found)}")
+        output_blocks.append(
+            f"ICIJ_OFFSHORE_EXPOSURE: YES — {', '.join(datasets_found)}"
+        )
         return "\n".join(output_blocks)
 
 
@@ -326,6 +504,7 @@ class ICIJOffshoreLeaksTool(BaseTool):
 
 try:
     from crewai_tools import NewsApiTool as _CrewAINewsApiTool
+
     _NEWSAPI_AVAILABLE = True
 except ImportError:
     _NEWSAPI_AVAILABLE = False
@@ -343,11 +522,27 @@ def _build_news_api_tool():
 
 news_api_tool = _build_news_api_tool()
 
+# Singleton for reuse within entity search calls (avoid repeated init overhead)
+_newsapi_singleton = news_api_tool
+
+
+def _get_newsapi_singleton():
+    global _newsapi_singleton
+    if _newsapi_singleton is None:
+        _newsapi_singleton = _build_news_api_tool()
+    return _newsapi_singleton
+
 
 class NewsApiEntityInput(BaseModel):
-    entity_name: str = Field(..., description="Full name of the person or organisation.")
-    context: str = Field(default="", description="Optional context keywords (e.g. 'sanctions', 'fraud').")
-    max_results: int = Field(default=5, description="Maximum number of articles (1-10).")
+    entity_name: str = Field(
+        ..., description="Full name of the person or organisation."
+    )
+    context: str = Field(
+        default="", description="Optional context keywords (e.g. 'sanctions', 'fraud')."
+    )
+    max_results: int = Field(
+        default=5, description="Maximum number of articles (1-10)."
+    )
 
 
 class NewsApiEntitySearchTool(BaseTool):
@@ -366,7 +561,9 @@ class NewsApiEntitySearchTool(BaseTool):
         if not _NEWSAPI_AVAILABLE:
             return "NEWS_API_ERROR: crewai-tools not installed. Run: pip install crewai-tools newsapi-python"
         if not os.getenv("NEWS_API_KEY"):
-            return "NEWS_API_ERROR: NEWS_API_KEY not set. Get a key at https://newsapi.org"
+            return (
+                "NEWS_API_ERROR: NEWS_API_KEY not set. Get a key at https://newsapi.org"
+            )
 
         query_parts = [f'"{entity_name}"']
         if context.strip():
@@ -374,7 +571,7 @@ class NewsApiEntitySearchTool(BaseTool):
         query = " ".join(query_parts)
 
         try:
-            tool_instance = _CrewAINewsApiTool()
+            tool_instance = _get_newsapi_singleton()
             raw = tool_instance._run(query)
 
             # Parse the raw output into structured article blocks.
@@ -382,6 +579,7 @@ class NewsApiEntitySearchTool(BaseTool):
             articles = []
             try:
                 import json as _json
+
                 parsed = _json.loads(raw)
                 if isinstance(parsed, list):
                     articles = parsed
@@ -392,13 +590,25 @@ class NewsApiEntitySearchTool(BaseTool):
 
             if articles:
                 max_results = min(max(1, max_results), 10)
-                lines = [f"NewsAPI results for: {entity_name}" + (f" [{context}]" if context else ""), ""]
+                lines = [
+                    f"NewsAPI results for: {entity_name}"
+                    + (f" [{context}]" if context else ""),
+                    "",
+                ]
                 for i, art in enumerate(articles[:max_results], 1):
-                    title   = (art.get("title")   or "").strip()
-                    source  = (art.get("source", {}).get("name") or art.get("source") or "Unknown").strip()
-                    pub_at  = (art.get("publishedAt") or art.get("published_at") or "")[:10]
-                    url     = (art.get("url")     or "").strip()
-                    desc    = (art.get("description") or art.get("content") or "")[:200].strip()
+                    title = (art.get("title") or "").strip()
+                    source = (
+                        art.get("source", {}).get("name")
+                        or art.get("source")
+                        or "Unknown"
+                    ).strip()
+                    pub_at = (art.get("publishedAt") or art.get("published_at") or "")[
+                        :10
+                    ]
+                    url = (art.get("url") or "").strip()
+                    desc = (art.get("description") or art.get("content") or "")[
+                        :200
+                    ].strip()
                     lines.append(
                         f"[{i}] {title}\n"
                         f"    Source: {source} | Date: {pub_at}\n"
@@ -406,7 +616,7 @@ class NewsApiEntitySearchTool(BaseTool):
                         + f"    URL: {url}"
                     )
                 return "\n".join(lines)
-            
+
             if len(raw) > 3000:
                 raw = raw[:3000] + "\n... [truncated]"
             return raw

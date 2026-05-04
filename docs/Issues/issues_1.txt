@@ -1,0 +1,16 @@
+**Task**:
+1. Examine [`Test/agents.py`](Test/agents.py) to understand how agents are configured and how they pass context to each other
+2. Examine [`Test/crews.py`](Test/crews.py) to understand the crew structure and information flow
+3. Examine [`Test/tasks.py`](Test/tasks.py) to understand task definitions and output formats
+4. Identify where hallucinated content is being generated:
+   - Are agent prompts too vague?
+   - Is there insufficient validation of tool outputs?
+   - Are agents making up data instead of using tool results?
+5. Check if there's proper context isolation between agents
+6. Look for missing constraints in agent instructions that would prevent fabrication
+
+**Deliverable**: Provide a detailed diagnosis report identifying:
+- Root causes of hallucination
+- Specific files and lines where issues occur
+- Recommended fixes for each issue
+- Best practices for preventing hallucination in this codebase

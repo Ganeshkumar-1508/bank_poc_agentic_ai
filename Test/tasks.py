@@ -1,783 +1,474 @@
-# tasks.py
+# tasks.py - OPTIMIZED VERSION (matching merged agents)
 from crewai import Task
 from datetime import datetime
-import hashlib
 
 _CURRENT_YEAR = datetime.now().year
+_CURRENT_DATE = datetime.now().strftime("%B %d, %Y")
 
-DB_SCHEMA_INFO = """\
-Tables in 'bank_poc.db':
-- users: user_id, first_name, last_name, account_number, email, is_account_active
-- address: address_id, user_id, user_address, pin_number, mobile_number, mobile_verified
-- kyc_verification: kyc_id, user_id, address_id, account_number, kyc_details_1, kyc_details_2,
-  kyc_status, verified_at, created_at, updated_at  (kyc_details format: 'TYPE-VALUE', e.g. 'PAN-ABCDE1234F')
-- accounts: account_id, user_id, account_number, account_type, balance, email, created_at
-- fixed_deposit: fd_id, user_id, initial_amount, bank_name, tenure_months, interest_rate,
-  maturity_date, premature_penalty_percent, fd_status, product_type, monthly_installment, compounding_freq"""
-
-_MD_RULES = (
-    "OUTPUT: valid Streamlit-renderable Markdown only — no JSON, no code fences, no HTML, "
-    "no escaped characters. Every table cell must have a value (N/A if unknown). "
-    "Links: [text](url). Bold key values with **. Use --- for section dividers."
+_URL_VALIDATION_RULES = (
+    "URL VALIDATION — CRITICAL BEFORE OUTPUT:\n"
+    "Before including any URL, verify it matches ONE of these patterns:\n"
+    "1. Contains '/articleshow/' followed by digits (e.g., /articleshow/12345.cms)\n"
+    "2. Contains '/news/' followed by date pattern (e.g., /news/2026/04/20/)\n"
+    "3. Contains a numeric article ID in the path\n"
+    "4. Domain ends in .com/.in/.org with a long path (not just /news)\n\n"
+    "INVALID URLs (DO NOT USE):\n"
+    "- Short URLs like 'bank.com/news' or 'hdfcbank.com/fd-rates'\n"
+    "- URLs without article IDs or dates\n"
+    "- URLs you created or modified\n\n"
+    "If a URL fails validation, replace with: **[Headline]** (no URL available)"
 )
 
-
-_PRODUCT_META = {
-    # code: (display_name, regions_list_or_"ALL", default_tenure_months, notes)
-    "FD":           ("Fixed Deposit",                   "ALL",   12,  ""),
-    "TD":           ("Term Deposit",                    "ALL",   12,  ""),
-    "RD":           ("Recurring Deposit",               "SA",    12,  "monthly installment"),
-    "MF":           ("Mutual Fund / SIP",               "ALL",   36,  "market-linked; SIP or lump-sum"),
-    "BOND":         ("Bond (coupon)",                   "ALL",   60,  "semi-annual coupon"),
-    "MMARKET":      ("Money Market Account",            "ALL",   12,  ""),
-    "PPF":          ("Public Provident Fund",           "IN",   180,  "annual deposit; EEE tax; lock-in 15 yr"),
-    "NSC":          ("National Savings Certificate",    "IN",    60,  "lump-sum; 80C deduction"),
-    "KVP":          ("Kisan Vikas Patra",               "IN",   115,  "doubles money"),
-    "SSY":          ("Sukanya Samriddhi Yojana",        "IN",   252,  "girl-child; annual deposit; EEE"),
-    "SCSS":         ("Senior Citizens Savings Scheme",  "IN",    60,  "quarterly payout; age ≥60"),
-    "SGB":          ("Sovereign Gold Bond",             "IN",    96,  "2.5% coupon + gold price gains"),
-    "NPS":          ("National Pension System",         "IN",   240,  "monthly SIP; 60% lump / 40% annuity"),
-    "CD":           ("Certificate of Deposit",          "US",    12,  "FDIC insured"),
-    "T-BILL":       ("Treasury Bill",                   "US",     6,  "discount; 4–52 weeks"),
-    "T-NOTE":       ("Treasury Note",                   "US",    60,  "semi-annual coupon; 2–10 yr"),
-    "T-BOND":       ("Treasury Bond",                   "US",   360,  "semi-annual coupon; 20–30 yr"),
-    "I-BOND":       ("I Bond (Inflation-Protected)",    "US",    12,  "composite = fixed + 2×CPI-U"),
-    "ISA":          ("Individual Savings Account",      "GB",    12,  "tax-free; £20k/yr allowance"),
-    "PREMIUM_BOND": ("Premium Bond (NS&I)",             "GB",    12,  "prize draws; no guaranteed return"),
-    "GIC":          ("Guaranteed Investment Certificate","CA",   12,  "CDIC insured; C$100k"),
-    "SSB":          ("Singapore Savings Bond",          "SG",   120,  "step-up interest; 10 yr"),
-    "MURABAHA":     ("Murabaha / Islamic Term Deposit", "GCC",   12,  "Sharia-compliant profit rate"),
-}
-
-_REGION_PRODUCTS = {
-    "IN":  ["FD", "RD", "PPF", "NSC", "KVP", "SSY", "SCSS", "SGB", "NPS", "MF", "BOND"],
-    "US":  ["FD", "CD", "T-BILL", "T-NOTE", "T-BOND", "I-BOND", "MMARKET", "MF", "BOND"],
-    "GB":  ["FD", "TD", "ISA", "PREMIUM_BOND", "MMARKET", "MF", "BOND"],
-    "AU":  ["FD", "TD", "MMARKET", "MF", "BOND"],
-    "CA":  ["FD", "GIC", "MMARKET", "MF", "BOND"],
-    "SG":  ["FD", "TD", "SSB", "MF", "BOND"],
-    "AE":  ["FD", "TD", "MURABAHA", "MF", "BOND"],
-    "MY":  ["FD", "RD", "MURABAHA", "MF", "BOND"],
-}
-
-_REGION_NAMES = {
-    "INDIA": "IN", "UNITED STATES": "US", "USA": "US", "AMERICA": "US",
-    "UK": "GB", "UNITED KINGDOM": "GB", "BRITAIN": "GB",
-    "AUSTRALIA": "AU", "CANADA": "CA", "SINGAPORE": "SG",
-    "UAE": "AE", "MALAYSIA": "MY",
-}
-
-
-def _region_code(region: str) -> str:
-    return _REGION_NAMES.get(region.upper(), region.upper()[:2] if len(region) >= 2 else "IN")
-
-
-def _get_region_products_str(region: str) -> str:
-    """Return a formatted bullet list of product codes + names for a region (used in prompts)."""
-    code = _region_code(region)
-    codes = _REGION_PRODUCTS.get(code, ["FD", "TD", "RD", "MF", "BOND"])
-    lines = []
-    for c in codes:
-        meta = _PRODUCT_META.get(c, (c, "ALL", 12, ""))
-        note = f" — {meta[3]}" if meta[3] else ""
-        lines.append(f"  - **{c}**: {meta[0]}{note}")
-    return "\n".join(lines)
-
-
-def _get_product_name(code: str) -> str:
-    return _PRODUCT_META.get(code.upper(), (code,))[0]
-
-
-def _product_synonyms_str() -> str:
-    return (
-        "'fixed deposit'/'FD'→FD, 'term deposit'/'TD'→TD, 'recurring deposit'/'RD'→RD, "
-        "'mutual fund'/'SIP'/'MF'→MF, 'provident fund'/'PPF'→PPF, "
-        "'savings certificate'/'NSC'→NSC, 'kisan vikas'/'KVP'→KVP, "
-        "'sukanya'/'girl child'/'SSY'→SSY, 'senior citizen scheme'/'SCSS'→SCSS, "
-        "'gold bond'/'SGB'→SGB, 'pension'/'NPS'→NPS, "
-        "'certificate of deposit'/'CD'→CD, 'treasury bill'/'T-BILL'→T-BILL, "
-        "'treasury note'/'T-NOTE'→T-NOTE, 'treasury bond'/'T-BOND'→T-BOND, "
-        "'i bond'/'inflation bond'/'I-BOND'→I-BOND, "
-        "'ISA'/'individual savings'→ISA, 'premium bond'→PREMIUM_BOND, "
-        "'GIC'/'guaranteed investment'→GIC, 'savings bond'/'SSB'→SSB, "
-        "'murabaha'/'islamic deposit'→MURABAHA, 'money market'/'MMARKET'→MMARKET, "
-        "'bond'→BOND."
-    )
-
-
-def _get_provider_diversity_rule(region: str, count: int = 5) -> str:
-    """Return a region-appropriate provider diversity rule."""
-    return (
-        f"Select {count} providers meeting ALL of these diversity requirements:\n"
-        f"- ≥1 government/public sector bank (e.g. national or state-owned banks in {region})\n"
-        f"- ≥1 non-banking financial institution (NBFC or equivalent in {region})\n"
-        "- ≥1 regional/specialized bank (e.g. community bank, cooperative bank, digital bank, or small finance bank)\n"
-        f"- Remaining slots: top private/commercial banks by rate in {region}\n"
-        "If the user names specific providers, include them first, then fill remaining slots."
-    )
-
-
-# SQL cache query template — shared between analysis & research pipelines
-_RATES_CACHE_SQL_TEMPLATE = (
-    "SELECT general_rate, senior_rate, effective_date FROM interest_rates_catalog\n"
-    "WHERE lower(bank_name)=lower('<PROVIDER>') AND product_type='<PRODUCT_TYPE>'\n"
-    "AND tenure_min_months<=<TENURE> AND tenure_max_months>=<TENURE>\n"
-    "AND is_active=1 AND effective_date>=datetime('now','-6 hours')\n"
-    "ORDER BY effective_date DESC LIMIT 1;"
+_SEARCH_BOILERPLATE = (
+    f"IMPORTANT: Today's date is {_CURRENT_DATE}. The current year is {_CURRENT_YEAR}. "
+    f"Always include the current year ({_CURRENT_YEAR}) in search queries "
+    f"(e.g., 'best FD rates India {_CURRENT_YEAR}'). Do NOT use older years. "
+    f"Use 'NewsAPI Provider Search' as your PRIMARY search tool. "
+    f"Only use 'DuckDuckGo News Search' if NewsAPI returns no results."
 )
 
-# Deposit insurance / protection by region
-_DEPOSIT_INSURANCE = {
-    "IN": "DICGC ₹5 lakh per depositor per bank",
-    "US": "FDIC $250,000 per depositor per insured bank",
-    "GB": "FSCS £85,000 per depositor per institution",
-    "AU": "FCS AU$250,000 per depositor per institution",
-    "CA": "CDIC C$100,000 per depositor per category",
-    "SG": "SDIC S$100,000 per depositor per DI member",
-    "AE": "No universal deposit insurance scheme (UAE)",
-}
+_NEWS_FORMAT = (
+    "NEWS CITATION RULES — CRITICAL FOR URL ACCURACY:\n"
+    "============================================================\n"
+    "You MUST copy news citations EXACTLY from the search tool output.\n\n"
+    "STEP 1 - Find the MARKDOWN_LINK line in search results:\n"
+    "  Example from tool: MARKDOWN_LINK: [HDFC Bank raises FD rates](https://economictimes.indiatimes.com/.../articleshow/12345.cms)\n\n"
+    "STEP 2 - Copy that EXACT line into your output:\n"
+    "  Correct: - [HDFC Bank raises FD rates](https://economictimes.indiatimes.com/.../articleshow/12345.cms) — Brief summary\n"
+    "  WRONG:   - [HDFC Bank raises FD rates](https://hdfcbank.com/news/fd-hike) — (fabricated URL)\n\n"
+    "CRITICAL RULES:\n"
+    "1. NEVER create, guess, modify, or shorten URLs\n"
+    "2. ALWAYS copy the full URL from the search tool's MARKDOWN_LINK line\n"
+    "3. If no MARKDOWN_LINK exists, write: **[Headline]** — Summary (without a link)\n"
+    "4. If the URL looks wrong, still use it — it's from the real source\n"
+    "5. Real URLs are often long and contain IDs like 'articleshow/12345.cms' or '/news/2026/04/20/'\n"
+    "6. Fake URLs often look 'clean' like 'bank.com/news/fd-rates' — these are HALLUCINATIONS\n\n"
+    "Do NOT use blockquotes (>), do NOT use <br> tags.\n"
+    "Only use MARKDOWN_LINK lines from actual search results."
+)
+
+_STREAMLIT_MD_RULES = (
+    "STREAMLIT MARKDOWN RENDERING RULES — your output will be rendered by st.markdown() in Streamlit. "
+    "Follow these rules strictly:\n"
+    "1. TABLES: Every table MUST have a header row, a separator row of dashes (|---|---|), and data rows. "
+    "Columns are separated by | pipes. Never leave a separator row missing.\n"
+    "2. NO RAW HTML: Do NOT use <br>, <b>, <i>, <div>, <span>, or any HTML tags. "
+    "Use markdown equivalents instead: **bold**, *italic*, blank lines for spacing.\n"
+    "3. NO BLOCKQUOTES: Do NOT use > quote syntax. Write summaries as normal paragraphs.\n"
+    "4. HEADINGS: Use ## for sections, ### for subsections. Never skip a level (e.g., #### right after ##).\n"
+    "5. LISTS: Use - for bullet lists. For numbered lists use 1. 2. 3. with proper ordering.\n"
+    "6. LINKS: Use [visible text](URL) format. Never paste bare URLs.\n"
+    "7. CODE BLOCKS: For ECharts JSON output, wrap in ```json ... ``` with nothing else on those lines.\n"
+    "8. EMPHASIS: Use **bold** for key metrics, provider names, and important labels. Use *italic* sparingly.\n"
+    "9. BLANK LINES: Always use exactly one blank line before a heading and one after. Two blank lines before a new section.\n"
+    "10. CURRENCY: Use ₹ for INR, $ for USD. Format numbers with commas: ₹1,49,631.23"
+)
+
+_AML_REPORT_TEMPLATE = """\
+Required sections (in order):
+# AML Compliance Report — [Client Full Name]
+**Generated:** [datetime] | **Prepared by:** Chief Risk Officer | **Classification:** CONFIDENTIAL
+
+## Executive Summary
+DECISION: [PASS or FAIL], SCORE: [N]/100, REASONING: [1 sentence]
+
+## 1. Subject Identity Profile
+Table: Full Name, DOB, Nationality, Occupation, Positions, Education, Wikidata Entity.
+
+## 2. Sanctions and PEP Status
+PEP Status, PEP Level, Sanctions Programs, Risk Flags, Match Score, Data Source. Narrative paragraph.
+
+## 3. Neo4j Graph Analysis
+GRAPH_IMAGE_PATH: [exact path from context]. Table: Connection Type, Entity, Country, Notes.
+
+## 4. UBO Analysis
+Table: Entity, Role, Jurisdiction, Risk Level.
+
+## 5. OSINT and Media Intelligence
+Adverse Media: numbered list with Source, Summary, Severity (Low/Medium/High), Date.
+
+## 6. Risk Score Breakdown
+5 categories (PEP 30%, Sanctions 25%, Adverse Media 20%, Graph 15%, UBO 10%).
+Score 1-25 each. Table: Category | Score | Weight | Weighted Score | Assessment. Bold TOTAL row.
+
+## 7. Risk Score Interpretation
+1-20 Low | 21-40 Medium | 41-60 High | 61-100 Critical — with required actions.
+
+## 8-9. Compliance Decision & Justification
+DECISION, score, numbered justification factors.
+
+## 10. Recommendations
+Immediate action, reconsideration steps, ongoing monitoring. Reference FATF R10/R12/R15/R20.
+
+## 11. Data Sources Audit
+Table: Source | Type | Date | Status.
+--- *Auto-generated by Compliance AI. Internal use only.*"""
 
 
-def _get_insurance_note(region: str) -> str:
-    code = _region_code(region)
-    return _DEPOSIT_INSURANCE.get(code, f"Check local deposit protection scheme for {region}")
+# ===================================================================
+# Analysis pipeline (OPTIMIZED: 6 tasks → 4 tasks)
+# ===================================================================
 
 
-def _report_id() -> str:
-    return hashlib.md5(str(datetime.now().timestamp()).encode()).hexdigest()[:6].upper()
+def create_analysis_tasks(agents, user_query: str, region: str = "India", product_type: str = "FD"):
+# Get product display name
+    product_names = {
+    'FD': 'Fixed Deposit',
+    'RD': 'Recurring Deposit',
+    'PPF': 'Public Provident Fund',
+    'MF': 'Mutual Fund',
+    'NPS': 'National Pension System',
+    'SGB': 'Sovereign Gold Bond',
+    'BOND': 'Corporate Bond',
+    'TBILL': 'Treasury Bill',
+    'CD': 'Certificate of Deposit'
+    }
+    product_name = product_names.get(product_type, product_type)
 
-
-# ---------------------------------------------------------------------------
-# Analysis pipeline
-# ---------------------------------------------------------------------------
-
-def create_analysis_tasks(agents, user_query: str, region: str = "India"):
-
-    _products_list = _get_region_products_str(region)
-    _insurance_note = _get_insurance_note(region)
-
-    parse_task = Task(
-        description=(
-            f"Parse '{user_query}' for region: {region}.\n\n"
-            f"Step 1 — Identify product type from the list available for {region}:\n"
-            f"{_products_list}\n\n"
-            f"Synonym map: {_product_synonyms_str()}\n"
-            "Default to FD if product is ambiguous.\n\n"
-            "Step 2 — Extract:\n"
-            "1. Type: [product code — e.g. FD, RD, PPF, CD, ISA, BOND…]\n"
-            "2. Amount: integer (K/k→×1000, M/m→×1000000; "
-            "also handle L→×100000, Cr→×10000000 for India)\n"
-            "3. Tenure: integer months (years→×12; "
-            "PPF default=180, NSC=60, KVP=115, SSY=252, SCSS=60, SGB=96, NPS=240)\n"
-            "4. Compounding: monthly/quarterly/half_yearly/yearly "
-            "(default quarterly for FD/RD/CD; yearly for PPF/NSC/SSY; N/A for SCSS/BOND/SGB)\n"
-            "5. Payment_Freq: annual/semi_annual/quarterly "
-            "(for BOND/SGB/SCSS/T-NOTE/T-BOND; default semi_annual)\n"
-            "6. Is_SIP: true/false (true if user says 'SIP' or 'monthly investment' for MF/NPS)\n"
-            "7. Is_Senior: true/false (user mentions senior citizen, age 60+, or pensioner)\n\n"
-            "Output format (strict — exactly 7 lines, nothing else):\n"
-            "Type: FD\nAmount: 100000\nTenure: 12\nCompounding: quarterly\n"
-            "Payment_Freq: semi_annual\nIs_SIP: false\nIs_Senior: false"
-        ),
-        expected_output="7-line format: Type, Amount, Tenure, Compounding, Payment_Freq, Is_SIP, Is_Senior",
-        agent=agents["query_parser_agent"],
+    # MERGED: parse_task + search_task → query_search_task
+    query_search_task = Task(
+    description=(
+    f"Parse the investment query: '{user_query}' for region '{region}' AND search TOP 5 providers in ONE step.\n\n"
+    f"STEP 1 - PARSE: Identify product type ({product_name} or other financial products), "
+    f"extract: amount (handle K/k/M/m/L/Cr suffixes), tenure with appropriate unit (months/years/days), "
+    f"compounding/payment frequency, SIP flag, senior citizen flag. "
+    f"Default to {product_name} if ambiguous.\n\n"
+    f"STEP 2 - SEARCH: Based on parsed parameters, search TOP 5 providers in '{region}' offering {product_name} with best rates. "
+    + _SEARCH_BOILERPLATE
+    + " "
+    "Ensure diversity: at least one gov/public provider, one NBFC/non-bank, one regional/specialist provider, rest private/commercial. "
+    "Find General Rate and Senior Citizen Rate (+0.50% if Senior not published). "
+    "For market-linked products (MF, NPS, SGB, BOND), record expected CAGR or yield.\n\n"
+    "TOOL INPUT FORMAT — CRITICAL: When calling search tools, you MUST pass a SINGLE "
+    "dictionary object as input, NOT a list. For example:\n"
+    "  CORRECT: {'query': 'SBI FD rates 2026', 'max_results': 5}\n"
+    "  WRONG:   [{'query': 'SBI FD rates 2026', 'max_results': 5}]\n"
+    "  WRONG:   {'query': ['SBI FD rates', 'HDFC FD rates'], 'max_results': 5}\n\n"
+    "OUTPUT FORMAT:\n"
+    "Parsed Parameters:\n"
+    "- Type: [product type]\n"
+    "- Amount: [amount]\n"
+    "- Tenure: [value] [unit]\n"
+    "- Compounding: [frequency]\n"
+    "- Payment_Freq: [frequency]\n"
+    "- Is_SIP: [Yes/No]\n"
+    "- Is_Senior: [Yes/No]\n\n"
+    "Provider Rates:\n"
+    "Provider,GeneralRate%,SeniorRate% (exactly 5 lines)"
+    ),
+    expected_output="Parsed parameters (7 lines) + Provider rates (5 lines). All parameters extracted and 5 providers found.",
+    agent=agents["query_search_agent"],
     )
 
-    search_task = Task(
-        description=(
-            "Read product Type and Is_Senior from parse_task context.\n\n"
-            f"Search for the TOP 5 {region} providers offering the parsed product type "
-            f"with the best rates/returns for the parsed tenure.\n\n"
-            "Search 1 (rates): "
-            f"'best [PRODUCT_TYPE] interest rates/returns {region} {_CURRENT_YEAR} top providers'\n"
-            "Search 2 (senior rates if Is_Senior=true OR product has senior variant): "
-            f"'senior citizen [PRODUCT_TYPE] rate extra benefit {region} {_CURRENT_YEAR}'\n\n"
-            + _get_provider_diversity_rule(region, 5) + "\n\n"
-            "For EACH provider find:\n"
-            "  - General Rate/Return: standard rate for all customers\n"
-            "  - Senior Citizen Rate: rate for age 60+. If not published, add 0.50% to General.\n"
-            "    (For market-linked products like MF/NPS, record expected CAGR range instead.)\n\n"
-            "Products that do NOT have a 'senior citizen rate' (MF, NPS, BOND, T-BILL, etc.):\n"
-            "  - Set both columns to the same rate (e.g. the expected return or yield).\n\n"
-            "Output EXACTLY 5 lines — no headers, no extra text:\n"
-            "[Provider1],[GeneralRate%],[SeniorRate%]\n"
-            "Example: SBI,6.80,7.30  |  Vanguard_SP500,12.00,12.00"
-        ),
-        expected_output="Exactly 5 lines: Provider,GeneralRate%,SeniorRate%",
-        agent=agents["search_agent"],
-        context=[parse_task],
-    )
-
+    # KEPT: projection_task
     projection_task = Task(
         description=(
-            "From parse_task context: Type, Amount, Tenure, Compounding, Payment_Freq, Is_SIP.\n"
-            "From search_task context: 5 providers with General and Senior rates.\n\n"
-            "For each provider call 'Deposit_Calculator' ONCE — pass deposit_type=Type, "
-            "amount=Amount, rate=GeneralRate, senior_rate=SeniorRate, "
-            "tenure_months=Tenure, compounding_freq=Compounding, "
-            "payment_freq=Payment_Freq, is_sip=Is_SIP.\n"
-            "It returns both General and Senior results in one call.\n\n"
-            "IMPORTANT — for products with PAYOUT structure (SCSS, BOND, SGB, T-NOTE, T-BOND):\n"
-            "  'Maturity' = principal returned. 'Interest' = total periodic payouts over tenure.\n"
-            "For market-linked products (MF, NPS): label projections as 'Projected' (not guaranteed).\n\n"
-            "Output CSV with header:\n"
-            "Provider,GeneralRate,SeniorRate,GeneralMaturity,SeniorMaturity,GeneralInterest,SeniorInterest\n"
-            "Rules: numbers only, no currency symbols, no commas in numbers, exactly 5 data rows."
+            "Calculate projections using 'Deposit_Calculator' tool. "
+            "Pass deposit_type, amount, rate, senior_rate, tenure_months, compounding_freq, payment_freq, is_sip. "
+            "IMPORTANT — RD/RECURRING DEPOSITS: The 'amount' from the query parser is the MONTHLY installment. "
+            "The tool computes cumulative maturity (all monthly deposits + compound interest). "
+            "In the CSV output, add a 'Monthly_Installment' column showing the monthly deposit amount, "
+            "and a 'Total_Deposits' column = Monthly_Installment × Tenure_Months. "
+            "For FD/TD (non-RD): Monthly_Installment = Total_Deposits = amount (lump sum). "
+            "Payout products (SCSS, BOND, SGB, T-NOTE, T-BOND): maturity = principal, interest = total payouts. "
+            "Market-linked (MF, NPS): label 'Projected'. "
+            "Output CSV: Provider,GeneralRate,SeniorRate,GeneralMaturity,SeniorMaturity,GeneralInterest,SeniorInterest,"
+            "Monthly_Installment,Total_Deposits (5 rows)."
         ),
         expected_output="CSV header + 5 data rows, all numbers, no symbols.",
         agent=agents["projection_agent"],
-        context=[parse_task, search_task],
+        context=[query_search_task],
     )
 
-    research_task = Task(
+    # MERGED: research_task + safety_task → research_safety_task
+    research_safety_task = Task(
         description=(
-            "For each of the 5 providers from search_task context — "
-            "read the product Type from parse_task context.\n\n"
-            "STEP 1 — ONE batched credit-rating search:\n"
-            f"'[P1] [P2] [P3] [P4] [P5] credit rating {region} {_CURRENT_YEAR}'\n\n"
-            "STEP 2 — ONE batched product-specific news search:\n"
-            f"'[P1] [P2] [P3] [P4] [P5] [PRODUCT_TYPE] interest rate offer {region} {_CURRENT_YEAR}'\n"
-            "URL RULES (strict):\n"
-            "  ✓ Only include URLs returned directly by the search tool.\n"
-            "  ✓ Each URL must be from the provider's official domain OR a recognized financial news source.\n"
-            "  ✗ Do NOT fabricate, guess, or reconstruct any URL.\n"
-            "  ✗ If no verifiable URL: write URL: N/A — never substitute a made-up link.\n\n"
-            "STEP 3 — ONE batched product features search:\n"
-            f"'[P1] [P2] [P3] [P4] [P5] [PRODUCT_TYPE] senior benefit withdrawal penalty {region} {_CURRENT_YEAR}'\n"
-            f"Note the regional deposit insurance: {_insurance_note}. "
-            "Mark NBFCs / market-linked products as 'N/A' for deposit insurance.\n\n"
-            "STEP 4 — ONE batched provider type search:\n"
-            f"'[P1] [P2] [P3] [P4] [P5] bank type public private NBFC digital {region} {_CURRENT_YEAR}'\n"
-            "Classify each: Government/Public Sector, Private Sector, NBFC, Small Finance Bank, "
-            "Asset Manager, Brokerage, Cooperative, Government Scheme.\n\n"
-            + _MD_RULES + "\n\n"
-            "For EACH provider output a Markdown section:\n"
-            "---\n"
-            "### [Provider Name]\n\n"
-            "| Field | Details |\n"
-            "|---|---|\n"
-            "| **Provider Type** | [Government/Public / Private / NBFC / Asset Manager / Gov. Scheme / etc.] |\n"
-            "| **Product** | [Product name as marketed by this provider] |\n"
-            "| **General Rate / Return** | [X% p.a. or Expected CAGR X%] |\n"
-            "| **Senior Citizen Rate** | [X% or Same as General for non-senior products] |\n"
-            "| **Senior Benefit** | [describe extra benefit or 'Standard +0.50%' or 'N/A'] |\n"
-            "| **Credit Rating** | [Agency-Grade or Not Rated or N/A for Gov. Schemes] |\n"
-            "| **Withdrawal Penalty / Exit Load** | [X% or conditions] |\n"
-            "| **Deposit / Investor Insurance** | [coverage + scheme name, or N/A] |\n"
-            "| **Loan / Pledging Against Product** | [X% of corpus or N/A] |\n"
-            "| **Minimum Investment** | [amount or N/A] |\n"
-            "| **Online / Digital Opening** | [Yes/No] |\n"
-            "| **Auto-Renewal / SIP Mandate** | [Yes/No] |\n"
-            "| **Nomination Facility** | [Yes/No] |\n"
-            "| **Flexible Tenure Options** | [Yes/No] |\n\n"
-            "**Recent News:**\n"
-            "| # | Headline | Source |\n"
-            "|---|---|---|\n"
-            "| 1 | [Headline relevant to this product/provider] | [URL or N/A] |\n"
-            "| 2 | [Headline 2] | [URL or N/A] |\n"
-            "| 3 | [Headline 3] | [URL or N/A] |"
+            f"For each of the 5 providers from the search results, enrich with data AND classify safety in ONE step.\n\n"
+            f"STEP 1 - ENRICH: Credit ratings, product features, senior benefits, insurance, withdrawal penalties, minimum investment.\n"
+            f"STEP 2 - CLASSIFY: Safety as Safe/Moderate/Risky based on: credit rating, NPA, insurance, news sentiment, institution type. "
+            f"For market-linked (MF, NPS, SGB, BOND), also assess Market Risk (Low/Medium/High).\n\n"
+            + _NEWS_FORMAT
+            + "\n\n"
+            + _STREAMLIT_MD_RULES
+            + "\n\n"
+            + _URL_VALIDATION_RULES
+            + "\n\n"
+            "CRITICAL: Do NOT re-search for rates — use the rates from upstream context. "
+            "Only call NewsAPI Provider Search for credit ratings or product features not already in context.\n\n"
+            "URL PRESERVATION INSTRUCTION:\n"
+            "When you search for news, the tool returns lines like:\n"
+            " MARKDOWN_LINK: [Headline text](https://real-url-from-api.com/article/12345)\n"
+            "You MUST copy this EXACTLY. The URL will be long and contain article IDs.\n"
+            "If you write a 'clean' URL like 'bank.com/news/fd-rates', it is WRONG and HALLUCINATED.\n\n"
+            "OUTPUT: For each provider, output Markdown section:\n"
+            "### [Provider Name]\n"
+            "- General Rate: X% | Senior Rate: Y%\n"
+            "- Safety Profile: Safe/Moderate/Risky\n"
+            "- Risk Scores: Credit(X/3), Insurance(X/3), NPA(X/3), News(X/3), Stability(X/3), Market(X/3)\n"
+            "- 2-3 provider-specific news items (copy MARKDOWN_LINK lines EXACTLY from search tool)"
         ),
         expected_output=(
-            "5 provider sections in Streamlit-renderable Markdown, each with a fields table and news table. "
-            "All cells filled with real data. No JSON, no code fences, no fabricated URLs."
+            "5 provider sections in Markdown with rates, safety profile, risk scores (1-3 each), and REAL news links "
+            "copied EXACTLY from MARKDOWN_LINK lines. No fabricated URLs. "
+            f"All news must be provider-specific and current ({_CURRENT_YEAR})."
         ),
-        agent=agents["research_agent"],
-        context=[parse_task, search_task],
+        agent=agents["research_safety_agent"],
+        context=[query_search_task],
     )
 
-    safety_task = Task(
-        description=(
-            "Classify each provider's safety from research data. "
-            "Read product Type from parse_task context.\n\n"
-            "Classification Rules:\n"
-            "- **SAFE**: government/public sector bank OR government scheme (PPF/NSC/SCSS/SSY/KVP/SGB/SSB) "
-            "OR investment-grade rating (AAA/AA+/AA/AA-) AND deposit/investor insurance AND NPA<5%\n"
-            "- **MODERATE**: private bank with AA- or lower, or regional/specialized bank with AA, "
-            "or regulated NBFC, or market-linked product with SEBI/FCA/SEC oversight\n"
-            "- **RISKY**: NBFC/non-bank without AAA, Not Rated, negative news, NPA>10%, "
-            "no deposit insurance, or unregulated product\n\n"
-            "For market-linked products (MF, NPS, SGB price component): "
-            "note 'Market Risk' as a separate column — Low/Medium/High based on asset allocation.\n\n"
-            "For each provider score risk factors (1=Low, 2=Medium, 3=High):\n"
-            "- Credit Rating Risk\n"
-            "- Deposit / Investor Insurance Coverage\n"
-            "- NPA / Asset Quality (N/A for non-lending institutions)\n"
-            "- News / Sentiment Risk\n"
-            "- Institution Stability\n"
-            "- Market / Price Risk (for MF/NPS/SGB/BOND/T-BILL)\n\n"
-            + _MD_RULES + "\n\n"
-            "### Safety & Risk Assessment\n\n"
-            "| # | Provider | Product | Overall Safety | Rating | Insurance | NPA | "
-            "News Sentiment | Market Risk | Cr.Rating Risk | Insurance Risk | "
-            "NPA Risk | Sentiment Risk | Stability Risk | Market Risk Score | Reason |\n"
-            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n"
-            "| 1 | [Name] | [Product] | **[Safe/Moderate/Risky]** | [Grade] | [coverage] | [X% or N/A] | "
-            "[Positive/Mixed/Negative] | [Low/Med/High/N/A] | [1/2/3] | [1/2/3] | [1/2/3] | "
-            "[1/2/3] | [1/2/3] | [1/2/3] | [1-2 sentence rationale] |"
-        ),
-        expected_output=(
-            "Streamlit-renderable Markdown safety table with 5 providers, overall safety classification, "
-            "market risk column, individual risk factor scores (1-3), and detailed reasoning. "
-            "No JSON, no code fences."
-        ),
-        agent=agents["safety_agent"],
-        context=[research_task],
-    )
-
-    _report_sections = (
-        "## 1. Executive Summary\n"
-        "3-4 sentences: market/rate environment for [PRODUCT_TYPE], rate/return range, top recommendation.\n\n"
-        "## 2. Key Metrics\n"
-        "Table: highest/lowest/avg General rates, highest/lowest Senior rates (if applicable), "
-        "max maturity/corpus, safest provider, best risk-adjusted return.\n\n"
-        "## 3. Provider Comparison\n"
-        "Table: #, Provider, Product, Gen.Rate/Return, Sr.Rate, Sr.Benefit, Gen.Maturity/Corpus, "
-        "Sr.Maturity, Gen.Interest/Gain, Sr.Interest/Gain, Rating, Safety.\n"
-        "For market-linked products: label maturity columns as 'Projected Value'.\n\n"
-        "## 4. Top 3 Recommendations\n"
-        "Table: Rank, Provider, Product, Gen.Rate, Sr.Rate, Projected Value, Safety, Reason.\n\n"
-        "## 5. Senior Citizen Guide\n"
-        "Table: Provider, Senior Rate / Return, Extra Benefit over General, "
-        "Special Scheme Details, Insurance Coverage.\n"
-        "If product has no senior variant (MF, NPS, BOND, T-BILL etc.), note: "
-        "'This product does not carry a dedicated senior citizen rate. Standard rates apply to all investors.'\n"
-        "Add a 2-sentence note on eligibility and how to claim senior benefits where applicable.\n\n"
-        "## 6. Risk & Safety Assessment\n"
-        "Table: Provider, Safety, Rating, Market Risk, Exit Penalty/Load, Insurance, Pledging/Loan.\n\n"
-        "## 7. Strategy Recommendations\n"
-        "Sub-sections: **Conservative / Capital Preservation** | **Growth / Yield-Maximising** | "
-        "**Balanced** | **Senior Citizen / Income-Focused** (if relevant).\n"
-        "Each: provider, allocation, projected value, rationale.\n\n"
-        "## 8. Recent News\n"
-        "Table: Provider, Headline, URL (only real URLs from research context; N/A if unavailable).\n\n"
-        "## 9. Disclaimers\n"
-        "- AI-generated analysis — verify rates with providers before investing.\n"
-        "- Rates/returns subject to change without notice.\n"
-    )
-
+    # KEPT: summary_task
     summary_task = Task(
         description=(
-            "Write a professional investment analysis report using all context data.\n\n"
-            "Extract from context: Type (product), Amount, Tenure, Compounding, Is_SIP, Is_Senior, "
-            "5 providers with rates/returns, maturity/corpus projections, credit ratings, "
-            "news, safety classifications, penalty/insurance/loan data (from research_task).\n\n"
-            f"# Investment Analysis Report — [PRODUCT_TYPE]\n"
-            f"**Region:** {region} | **Product:** [Type — full name] | "
-            f"**Principal / Deposit:** [Amount in local currency] | "
-            f"**Tenure:** [Tenure] months | **Date:** {datetime.now().strftime('%B %d, %Y')} | "
-            f"**ID:** INV-{_report_id()}\n\n"
-            "⚠ For MARKET-LINKED products (MF, NPS, SGB, BOND, T-BILL, I-BOND): "
-            "label all projected values as 'Projected (not guaranteed)' and add a risk disclaimer "
-            "in the Executive Summary.\n\n"
-            "Required sections (all tables filled with real data from context):\n"
-            + _report_sections + "\n\n"
-            + _MD_RULES + "\n\n"
-            f"**Report Generated:** Investment Advisor AI | "
-            f"**Date:** {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            "Create comprehensive investment analysis report in Markdown using ONLY upstream context data. "
+            "Do NOT call any search tools — all news, rates, and research data are already available in context.\n\n"
+            + _STREAMLIT_MD_RULES
+            + "\n\n"
+            + _URL_VALIDATION_RULES
+            + "\n\n"
+            "URL PRESERVATION — CRITICAL:\n"
+            "The upstream tasks have already gathered news with MARKDOWN_LINK lines containing real URLs.\n"
+            "You MUST use those URLs EXACTLY as provided in the context.\n"
+            "DO NOT create new URLs or modify existing ones.\n"
+            "If a news item in context has no URL, write the headline in bold: **Headline**\n"
+            "Real URLs look like: https://economictimes.indiatimes.com/industry/banking/.../articleshow/12345.cms\n"
+            "Fake URLs look like: https://hdfcbank.com/fd-news-2026 (clean, no article ID) — AVOID THESE\n\n"
+            "CRITICAL — AMOUNT CLARIFICATION FOR RD/RECURRING DEPOSITS:\n"
+            "If the product type is RD (Recurring Deposit), the 'amount' from the parsed query is the MONTHLY INSTALLMENT, "
+            "NOT a one-time investment. The maturity and interest figures represent cumulative totals over the full tenure. "
+            "You MUST state this clearly in the report, e.g. 'Monthly RD installment of ₹X' and 'Total deposits over N months: ₹Y'.\n"
+            "For FD/TD (non-RD), the amount IS a one-time lump-sum investment.\n\n"
+            "Required sections:\n\n"
+            "## 1. Summary — Best General + Senior option (provider, rate, maturity, interest). Note elevated risk.\n"
+            "For RD: explicitly state 'Monthly installment of ₹X over Y months' and total deposits.\n"
+            "## 2. Market Overview & Provider Analysis — Per provider: name, rates, Safety Profile with rationale, "
+            "Recent News with URLs copied from upstream context.\n"
+            "## 3. Financial Projection Deep Dive — General vs Senior: highest/lowest interest, spread, insights.\n"
+            "For RD: show both monthly installment and total deposits in the projection table.\n"
+            "## 4. Strategic Recommendations — Option A (Conservative), B (Aggressive), C (Balanced) with rationale.\n"
+            "Separate recommendations for General and Senior.\n"
+            "## 5. Conclusion — 2-3 sentences, best choice, safety+return trade-off.\n"
+            "Market-linked → label 'Projected (not guaranteed)'. "
+            f"Region: {region} | Date: {datetime.now().strftime('%B %d, %Y')}. Markdown tables throughout."
         ),
-        expected_output=(
-            "Complete Streamlit-renderable Markdown report with 9 sections and all tables "
-            "filled with real data from context. No JSON, no code fences, no HTML."
-        ),
+        expected_output=f"Complete Markdown report with all sections. News URLs copied EXACTLY from upstream context. No fabricated URLs.",
         agent=agents["summary_agent"],
-        context=[parse_task, search_task, projection_task, research_task, safety_task],
+        context=[query_search_task, projection_task, research_safety_task],
     )
+    return [query_search_task, projection_task, research_safety_task, summary_task]
 
-    return [parse_task, search_task, projection_task, research_task, safety_task, summary_task]
 
+# ===================================================================
+# Research pipeline (OPTIMIZED: 3 tasks → 2 tasks)
+# ===================================================================
 
-# ---------------------------------------------------------------------------
-# Research pipeline
-# ---------------------------------------------------------------------------
 
 def create_research_tasks(agents, user_query: str, region: str = "India"):
-
-    _today = datetime.now().strftime("%B %d, %Y")
-    _products_list = _get_region_products_str(region)
-    _insurance_note = _get_insurance_note(region)
-
-    identify_providers_task = Task(
+    # MERGED: identify_providers_task + deep_research_task → provider_research_task
+    provider_research_task = Task(
         description=(
-            f"Request: '{user_query}'\n\n"
-            "STEP 1 — Determine:\n"
-            "- Product type (use synonyms and context; default FD)\n"
-            "- Tenure in months (default 12; years→×12)\n"
-            "- Any specifically named providers in the query\n"
-            "- User intent: RATES (returns-focused), SAFETY (risk/rating), "
-            "COMPARISON (side-by-side), GENERAL (overview)\n\n"
-            f"Available products for {region}:\n{_products_list}\n\n"
-            f"Synonym map: {_product_synonyms_str()}\n\n"
-            f"STEP 2 — Search (run both):\n"
-            f"  Search A: 'top [PRODUCT_TYPE] interest rates/returns {region} {_CURRENT_YEAR} highest'\n"
-            f"  Search B: 'senior citizen [PRODUCT_TYPE] rate benefit {region} {_CURRENT_YEAR}'\n\n"
-            + _get_provider_diversity_rule(region, 10) + "\n\n"
-            "For EACH provider record:\n"
-            "  - General Rate / Return: standard customer rate or expected CAGR\n"
-            "  - Senior Rate: age 60+ rate (General+0.50% if not found; same as General for market-linked)\n\n"
-            + _MD_RULES + "\n\n"
-            "### Query Analysis\n\n"
-            "| Field | Value |\n"
-            "|---|---|\n"
-            "| **Product Type** | [code — e.g. FD, PPF, CD, ISA, MF] |\n"
-            "| **Product Name** | [full name] |\n"
-            "| **Tenure** | [months] |\n"
-            "| **Intent** | [RATES / SAFETY / COMPARISON / GENERAL] |\n"
-            f"| **Region** | {region} |\n\n"
-            "### Identified Providers\n\n"
-            "| # | Provider | Type | General Rate/Return (%) | Senior Rate (%) | Insurance / Protection |\n"
-            "|---|---|---|---|---|---|\n"
-            "| 1 | [Name] | [Gov/Private/NBFC/AssetMgr/GovScheme] | [X%] | [X%] | "
-            f"[{_insurance_note} or N/A] |\n"
-            "(List all 10 providers as rows.)"
+            f"Analyze query: '{user_query}' AND conduct deep research in ONE step.\n\n"
+            f"STEP 1 - IDENTIFY: Determine product type, tenure (default 12mo). "
+            f"Search TOP 5 providers in '{region}' with best rates. "
+            + _SEARCH_BOILERPLATE
+            + " "
+            "Ensure diversity: gov/public bank, NBFC, regional bank. "
+            "Record General + Senior rates (+0.50% if Senior not published; same for market-linked).\n\n"
+            f"STEP 2 - DEEP RESEARCH: For EACH provider found, gather:\n"
+            f"- Credit ratings (intl + domestic: Moody's, S&P, Fitch, CRISIL, ICRA, CARE, India Ratings)\n"
+            f"- Financial health (CAR%, NPA%, AUM, NIM%, CASA%)\n"
+            f"- Product news with VERIFIED URLs from search tool\n"
+            f"- Senior citizen details\n"
+            f"- Liquidity/exit terms\n\n"
+            + _NEWS_FORMAT
+            + "\n\n"
+            + _STREAMLIT_MD_RULES
+            + "\n\n"
+            + _URL_VALIDATION_RULES
+            + "\n\n"
+            "TOOL INPUT FORMAT — CRITICAL: When calling search tools, you MUST pass a SINGLE "
+            "dictionary object as input, NOT a list. For example:\n"
+            " CORRECT: {'query': 'SBI FD rates 2026', 'max_results': 5}\n"
+            " WRONG: [{'query': 'SBI FD rates 2026', 'max_results': 5}]\n"
+            " WRONG: {'query': ['SBI FD rates', 'HDFC FD rates'], 'max_results': 5}\n\n"
+            "URL PRESERVATION — CRITICAL:\n"
+            "The search tool returns lines like:\n"
+            " MARKDOWN_LINK: [Headline](https://real-url.com/article/12345)\n"
+            "Copy these EXACTLY. Real URLs are long with article IDs.\n"
+            "NEVER create URLs like 'bank.com/news/fd-rates' — these are HALLUCINATED.\n\n"
+            "OUTPUT: Detailed Markdown per provider including:\n"
+            "- Provider name, type, General/Senior Rate, Insurance\n"
+            "- Credit ratings table\n"
+            "- Financial health table\n"
+            "- Product features table\n"
+            "- News items: Copy MARKDOWN_LINK lines EXACTLY, then add summary"
         ),
         expected_output=(
-            "Streamlit-renderable Markdown with Query Analysis table and Identified Providers table "
-            "listing 10 providers. No JSON, no code fences."
+            "Per-provider Markdown with all tables, rates, credit ratings, financial health. "
+            "News URLs copied EXACTLY from MARKDOWN_LINK lines. No fabricated URLs. "
+            f"All news provider-specific and current ({_CURRENT_YEAR})."
         ),
-        agent=agents["provider_search_agent"],
+        agent=agents["provider_research_agent"],
     )
 
-    deep_research_task = Task(
-        description=(
-            "From context: TENURE, PRODUCT_TYPE, INTENT, all PROVIDERS with General and Senior rates.\n\n"
-            "For EACH provider gather: credit ratings, product-specific news with verified URLs, "
-            "senior citizen rate details, key financials, and liquidity/exit terms.\n\n"
-            "STEP 1 — International credit-rating search:\n"
-            f"'[P1]…[P5] credit rating Moodys S&P Fitch {_CURRENT_YEAR}'\n\n"
-            "STEP 2 — Local/domestic credit-rating search:\n"
-            f"'[P1]…[P5] ICRA CRISIL CARE rating {region} {_CURRENT_YEAR}'\n"
-            "(Adapt agencies: ICRA/CRISIL/CARE India; DBRS/Kroll US; "
-            "Capital Intelligence UAE; RAM/MARC Malaysia; ACRA Singapore; etc.)\n\n"
-            "STEP 3 — Financial health search:\n"
-            f"'[P1]…[P5] quarterly results NPA CAR capital adequacy AUM {_CURRENT_YEAR}'\n\n"
-            "STEP 4 — Product-specific news search (P1–P5):\n"
-            f"'[P1]…[P5] [PRODUCT_TYPE] rate offer return {region} {_CURRENT_YEAR}'\n"
-            "URL RULES — READ CAREFULLY:\n"
-            "  ✓ Record ONLY the exact URL the search tool returns.\n"
-            "  ✓ URL must be from provider's official site OR recognized financial news source.\n"
-            "  ✗ Do NOT fabricate, guess, or reconstruct any URL.\n"
-            "  ✗ If no verifiable URL: write 'URL: N/A'.\n\n"
-            "STEP 5 — Product-specific news for remaining providers (P6–P10): same rules.\n\n"
-            "STEP 6 — Senior citizen & exit/liquidity search:\n"
-            f"'[P1]…[P5] senior citizen rate scheme premature withdrawal exit load {region} {_CURRENT_YEAR}'\n"
-            f"Deposit insurance: {_insurance_note}. Mark NBFCs / market-linked as N/A.\n\n"
-            + _MD_RULES + "\n\n"
-            "For EACH provider output a section:\n\n"
-            "---\n"
-            "### [Provider Name]\n\n"
-            "| Field | Details |\n"
-            "|---|---|\n"
-            "| **General Rate / Return** | [X% or Expected CAGR X%] |\n"
-            "| **Senior Citizen Rate** | [X% or Same as General] |\n"
-            "| **Safety Classification** | **[Safe / Moderate / Risky]** |\n"
-            "| **Senior Citizen Scheme** | [scheme name / 'Standard +0.50%' / 'N/A'] |\n"
-            "| **Provider Type** | [Government / Private / NBFC / Asset Manager / Gov. Scheme / etc.] |\n"
-            "| **Established** | [year or N/A] |\n"
-            "| **AUM / Customer Base** | [AUM or approx. depositors or N/A] |\n\n"
-            "#### Credit Ratings\n\n"
-            "| Agency | Rating | Outlook |\n"
-            "|---|---|---|\n"
-            "| **Moody's** | [Rating or Not Rated] | [Outlook or N/A] |\n"
-            "| **S&P Global** | [Rating or Not Rated] | [Outlook or N/A] |\n"
-            "| **Fitch** | [Rating or Not Rated] | [Outlook or N/A] |\n"
-            "| **Domestic ([Agency])** | [Rating or Not Rated] | [Outlook or N/A] |\n\n"
-            "#### Financial Health\n\n"
-            "| Metric | Value |\n"
-            "|---|---|\n"
-            "| **Capital Adequacy Ratio (CAR)** | [X% or N/A] |\n"
-            "| **Gross NPA** | [X% or N/A for non-lending] |\n"
-            "| **Net NPA** | [X% or N/A] |\n"
-            "| **Net Profit (Latest)** | [Amount or N/A] |\n"
-            "| **Net Interest Margin (NIM)** | [X% or N/A] |\n"
-            "| **CASA Ratio** | [X% or N/A] |\n"
-            "| **AUM** | [Amount or N/A] |\n\n"
-            "#### Product Features & Liquidity\n\n"
-            "| Feature | Details |\n"
-            "|---|---|\n"
-            "| **Early Exit Penalty / Exit Load** | [X% or conditions] |\n"
-            "| **Deposit / Investor Insurance** | [coverage + scheme or N/A] |\n"
-            "| **Loan / Pledge Against Product** | [X% or N/A] |\n"
-            "| **Minimum Investment** | [amount or N/A] |\n"
-            "| **Digital / Online Access** | [Yes/No] |\n"
-            "| **Auto-Renewal / SIP Mandate** | [Yes/No] |\n"
-            "| **Nomination Facility** | [Yes/No] |\n"
-            "| **Flexible Tenure Options** | [Yes/No] |\n\n"
-            "#### Recent News\n\n"
-            "| # | Headline | URL |\n"
-            "|---|---|---|\n"
-            "| 1 | [Headline] | [exact URL or N/A] |\n"
-            "| 2 | [Headline 2] | [exact URL or N/A] |\n"
-            "| 3 | [Headline 3] | [exact URL or N/A] |\n\n"
-            "**Safety Rationale:** [2-3 sentences referencing credit ratings, NPA, insurance, provider type]\n\n"
-            "**Market Context:** [2-3 sentences on recent product-related developments]"
-        ),
-        expected_output=(
-            "Per-provider Streamlit-renderable Markdown sections with all tables. "
-            "All cells filled. Real URLs only (N/A if unavailable). No JSON, no code fences."
-        ),
-        agent=agents["deep_research_agent"],
-        context=[identify_providers_task],
-    )
-
-    _research_report_sections = (
-        "## 1. Executive Summary\n"
-        "3-4 sentences: market rate/return environment, safety landscape, and the single strongest "
-        "recommendation with its General rate/return, Senior rate, and projected value on a standard "
-        "100,000 principal (or 10,000 monthly SIP for installment products).\n"
-        "⚠ If product is market-linked (MF, NPS, SGB, BOND, T-BILL), add: "
-        "'Projected returns are illustrative and not guaranteed.'\n\n"
-        "## 2. Market Overview & Provider Analysis\n"
-        "Per-provider sub-section:\n"
-        "### [Provider Name]\n"
-        "- **General Rate / Return:** [X%] | **Senior Rate:** [X%]\n"
-        "- **Senior Citizen Scheme:** [scheme name or 'Standard +0.50%' or 'N/A']\n"
-        "- **Safety Profile:** [Safe / Moderate / Risky]\n"
-        "  - **Reason:** [1-2 sentence rationale]\n"
-        "- **Market Context:** [2-3 sentences. Each news fact MUST be [Headline](URL) with real URL. "
-        "If no verified URL: cite as plain text — never fabricate a URL.]\n\n"
-        "## 3. Financial Projections\n"
-        "Standard principal = 100,000 in local currency (or 10,000/month SIP for installment products). "
-        "Tenure from context.\n"
-        "| Provider | Product | Gen.Rate/Return (%) | Sr.Rate (%) | Gen.Value | Sr.Value | "
-        "Gen.Gain | Sr.Gain | Safety |\n"
-        "|---|---|---|---|---|---|---|---|---|\n"
-        "| [Name] | [Product] | [X%] | [X%] | [amount¹] | [amount¹] | [amount] | [amount] | [Safe/Mod/Risky] |\n"
-        "¹ Label as 'Projected' for market-linked products.\n"
-        "Key Observations: 3-4 bullet points.\n\n"
-        "## 4. Senior Citizen Guide\n"
-        "| Provider | Gen.Rate | Senior Rate | Extra Benefit | Special Scheme | Insurance |\n"
-        "|---|---|---|---|---|---|\n"
-        "2-sentence note on eligibility and claiming the benefit.\n"
-        "If product has no senior variant: note this clearly.\n\n"
-        "## 5. Risk vs. Reward Assessment\n"
-        "**Maximum Safety** / **High Yield** / **Balanced Choice** sub-sections.\n"
-        "Include **Market / Price Risk** assessment for MF / NPS / BOND / SGB / T-BILL.\n\n"
-        "## 6. Strategic Recommendations\n"
-        "**Option A (Conservative)** | **Option B (Aggressive)** | **Option C (Balanced)**\n\n"
-        "## 7. Conclusion\n"
-        "2-3 sentences naming the best overall choice, referencing safety + return.\n\n"
-        "_Disclaimer: AI-generated for informational purposes only. "
-        "Market-linked products carry principal risk. Not financial advice. "
-        "Verify rates/returns with providers before investing._"
-    )
-
+    # KEPT: compile_report_task
     compile_report_task = Task(
         description=(
-            f"Request: '{user_query}'\n"
-            f"Report Date: {_today}\n\n"
-            "From context extract: PRODUCT_TYPE, TENURE, INTENT, all PROVIDERS with General and Senior "
-            "rates/returns, senior citizen scheme details, research data (ratings, news with URLs, "
-            "financials, liquidity, safety rationale, market context).\n\n"
-            "Compile into a comprehensive Streamlit-renderable Markdown report.\n\n"
-            + _MD_RULES + "\n\n"
-            "SENIOR CITIZEN RULE: Every provider section MUST show BOTH General rate AND Senior rate. "
-            "Projections table must have separate General and Senior columns. "
-            "Section 4 (Senior Citizen Guide) is mandatory; if product has no senior variant, state so.\n\n"
-            "MARKET-LINKED RULE: For MF, NPS, SGB, BOND, T-BILL, I-BOND — "
-            "label all projected values as 'Projected (not guaranteed)' everywhere they appear.\n\n"
-            "URL RULE — STRICTLY ENFORCED:\n"
-            "  ✓ Markdown hyperlinks [text](url) ONLY for URLs explicitly in research context.\n"
-            "  ✗ Do NOT write any URL not returned by the search tool.\n"
-            "  ✗ If context says 'URL: N/A', cite as plain text — no hyperlink.\n\n"
-            "PROJECTION RULE: Use compound interest for FD/TD/NSC/CD/GIC/MMARKET; "
-            "recurring deposit formula for RD; SIP formula for MF/NPS; "
-            "quarterly payout + principal for SCSS; coupon + face for BOND/SGB/T-NOTE/T-BOND. "
-            "Use 100,000 as principal (or 10,000/month for SIP products). "
-            "Compute General and Senior separately.\n\n"
-            "REQUIRED SECTIONS:\n\n"
-            + _research_report_sections + "\n\n"
-            "After the Conclusion, append this machine-readable block:\n\n"
-            "---\n"
-            "**_STRUCTURED_SUMMARY_BEGIN_**\n"
-            "PRODUCT_TYPE: [code]\nPRODUCT_NAME: [full name]\n"
-            "PROVIDERS: [comma-separated in general-rate-descending order]\n"
-            "GENERAL_RATES: [comma-separated matching PROVIDERS order]\n"
-            "SENIOR_RATES: [comma-separated matching PROVIDERS order]\n"
-            "GENERAL_VALUE: [comma-separated General projected values]\n"
-            "SENIOR_VALUE: [comma-separated Senior projected values]\n"
-            "GENERAL_GAIN: [comma-separated General gains]\n"
-            "SENIOR_GAIN: [comma-separated Senior gains]\n"
-            "SAFETY: [comma-separated Safe/Moderate/Risky]\n"
-            "SAFEST: [provider with best ratings]\n"
-            "HIGHEST_GENERAL_RATE: [provider]\nHIGHEST_SENIOR_RATE: [provider]\n"
-            "LOWEST_NPA: [provider or N/A]\nINTENT: [RATES|SAFETY|COMPARISON|GENERAL]\n"
-            "TENURE_MONTHS: [number]\nPRINCIPAL: 100000\nIS_MARKET_LINKED: [true/false]\n"
-            "**_STRUCTURED_SUMMARY_END_**"
+            f"Compile findings from upstream context into institutional-grade Markdown report for '{region}'. CFA standards.\n\n"
+            "CRITICAL: Do NOT call any search tools — use ONLY the data already in context.\n\n"
+            + _STREAMLIT_MD_RULES
+            + "\n\n"
+            "URL PRESERVATION — CRITICAL:\n"
+            "Upstream tasks have already gathered news with real URLs.\n"
+            "You MUST copy those URLs EXACTLY as they appear in context.\n"
+            "DO NOT create new URLs or modify existing ones.\n"
+            "If context has: MARKDOWN_LINK: [Headline](https://real-url.com/.../article/12345)\n"
+            "Your output should use: [Headline](https://real-url.com/.../article/12345)\n"
+            "Real URLs are LONG with article IDs. Fake URLs are short/clean.\n\n"
+            "CRITICAL — AMOUNT CLARIFICATION FOR RD/RECURRING DEPOSITS:\n"
+            "If the product type is RD (Recurring Deposit), the user's amount is the MONTHLY INSTALLMENT, NOT a lump sum. "
+            "Maturity and interest figures are cumulative over the full tenure. "
+            "In the projections table, replace '(₹100,000 principal)' with '(₹X monthly installment)' and note total deposits = X × tenure months.\n"
+            "For FD/TD (non-RD), the amount IS a one-time lump-sum principal.\n\n"
+            "## 1. Executive Summary & Market Overview\n"
+            "3-4 sentences: market rates, safety landscape, top recommendation "
+            "with General/Senior rate, projected value, RBI policy rate, inflation.\n"
+            "For RD: state 'Monthly installment of ₹X over Y months (total deposits: ₹Z)'.\n\n"
+            "### Provider Analysis\n"
+            "For each provider include: General/Senior Rate, "
+            "Credit Ratings (Fitch, Moody's, S&P, CRISIL, ICRA, CARE, India Ratings), "
+            "Financial Health (CAR%, NPA%, NIM%, CASA%), Product Features, Safety Profile, "
+            f"Recent News ({_CURRENT_YEAR}) with URLs copied EXACTLY from upstream context.\n\n"
+            "## 2. Financial Projections\n"
+            "Use the EXACT table format below. This table is the primary data source for the visualization crew — "
+            "every numeric column must be accurate because it will be parsed to generate charts dynamically.\n\n"
+            "**General Investors:**\n\n"
+            "| # | Provider | Interest Rate (%) | Maturity Amount (₹) | Interest Earned (₹) | Safety Category | Credit Rating | Insurance (₹) |\n"
+            "|---|----------|--------------------|---------------------|---------------------|-----------------|---------------|---------------|\n"
+            "| 1 | ... | ... | ... | ... | Safe/Moderate/Risky | ... | ... |\n"
+            "| 2 | ... | ... | ... | ... | ... | ... | ... |\n"
+            "... (one row per provider, sorted by Interest Rate descending)\n\n"
+            "**Senior Citizens:**\n\n"
+            "| # | Provider | Interest Rate (%) | Maturity Amount (₹) | Interest Earned (₹) | Extra Benefit | Scheme Name |\n"
+            "|---|----------|--------------------|---------------------|---------------------|---------------|-------------|\n"
+            "| 1 | ... | ... | ... | ... | ... | ... |\n"
+            "... (one row per provider, sorted by Interest Rate descending)\n\n"
+            "After both tables, add 2-3 sentences of analysis: spread between highest/lowest rates, "
+            "total interest range, notable outliers. For RD, note the total cumulative deposits.\n\n"
+            "## 3. Strategic Recommendations & Conclusion\n"
+            "Option A (Conservative), B (Aggressive), C (Balanced) — for both General and Senior investors. "
+            "2-3 sentence conclusion: best choice, safety+return trade-off. "
+            "Market-linked products → 'Projected (not guaranteed)'. Risk disclaimer.\n"
+            "Only use URLs from upstream context — NEVER create URLs."
         ),
         expected_output=(
-            "Full Streamlit-renderable Markdown report with all 7 sections, "
-            "product-appropriate projections, real URLs only, and STRUCTURED_SUMMARY block."
+            "Full institutional-grade Markdown report with 3 sections, detailed Financial Projections tables "
+            "(General & Senior), credit ratings. News URLs copied EXACTLY from upstream context. No fabricated URLs."
         ),
         agent=agents["research_compilation_agent"],
-        context=[identify_providers_task, deep_research_task],
+        context=[provider_research_task],
     )
+    return [provider_research_task, compile_report_task]
 
-    return [identify_providers_task, deep_research_task, compile_report_task]
 
+# ===================================================================
+# Database pipeline (unchanged - 1 task)
+# ===================================================================
 
-# ---------------------------------------------------------------------------
-# Database pipeline
-# ---------------------------------------------------------------------------
 
 def create_database_tasks(agents, user_query: str):
-    return [Task(
-        description=(
-            f"Request: '{user_query}'.\n"
-            f"Schema:\n{DB_SCHEMA_INFO}\n"
-            "Use 'Bank Database Query Tool' to write and run SQL. "
-            "Start with SELECT * FROM ... LIMIT 5 if unsure of structure.\n"
-            "The product_type column may contain: FD, TD, RD, PPF, NSC, KVP, SSY, SCSS, SGB, NPS, "
-            "MF, BOND, CD, T-BILL, T-NOTE, T-BOND, I-BOND, ISA, GIC, MURABAHA, MMARKET, PREMIUM_BOND, SSB.\n\n"
-            "OUTPUT FORMAT: Valid Streamlit-renderable Markdown. "
-            "Use tables with | delimiters for tabular data. Bold key values with **. "
-            "Use bullet points (-) for lists. No JSON, no code fences."
-        ),
-        expected_output="Clear Markdown-formatted answer based on SQL query results.",
-        agent=agents["db_agent"],
-    )]
-
-
-# ---------------------------------------------------------------------------
-# Onboarding pipeline
-# ---------------------------------------------------------------------------
-
-def create_data_collection_task(agents, conversation_history: str,
-                                 country_name: str = "India",
-                                 kyc_doc1: str = "", kyc_doc2: str = ""):
-    if kyc_doc1 and kyc_doc2:
-        kyc_instructions = (
-            f"KYC documents for {country_name} are already known: '{kyc_doc1}' and '{kyc_doc2}'. "
-            "Skip KYC search. Go to STEP 2."
+    return [
+        Task(
+            description=(
+                f"Request: '{user_query}'.\n\n"
+                "Use SQL database toolkit: sql_db_list_tables, sql_db_schema, sql_db_query, "
+                "sql_db_query_checker, Bank Database Query Tool.\n\n"
+                "The fixed_deposit table supports: FD, TD, RD, PPF, NSC, KVP, SSY, SCSS, SGB, NPS, "
+                "MF, BOND, CD, T-BILL, T-NOTE, T-BOND, I-BOND, ISA, GIC, MURABAHA, MMARKET, PREMIUM_BOND, SSB.\n\n"
+                "OUTPUT: Streamlit-renderable Markdown. Tables with | delimiters, bold with **, bullets with -. No JSON."
+            ),
+            expected_output="Clear Markdown-formatted answer based on SQL query results.",
+            agent=agents["db_agent"],
         )
-    else:
-        kyc_instructions = (
-            f"STEP 1: Search 'primary KYC documents for bank account opening in {country_name}'. "
-            "Identify TOP 2 mandatory government IDs."
-        )
-
-    doc1_label = kyc_doc1 or "KYC Doc 1"
-    doc2_label = kyc_doc2 or "KYC Doc 2"
-
-    # Get available products for this country
-    _code = _region_code(country_name)
-    _products = _REGION_PRODUCTS.get(_code, ["FD", "TD", "RD", "MF", "BOND"])
-    _products_inline = " / ".join(_products)
-
-    return Task(
-        description=(
-            f"Conversation History:\n{conversation_history}\n\n"
-            f"User Country: {country_name}\n\n"
-            f"{kyc_instructions}\n\n"
-            f"STEP 2: Check all fields collected: Name, Email, Address, PIN, Mobile, Bank/Provider Name, "
-            f"Product Type ({_products_inline}), Amount, Tenure, Compounding, {doc1_label}, {doc2_label}.\n\n"
-            "STEP 3: If anything missing, ask ONE question: 'QUESTION: [your question]'\n\n"
-            "STEP 4: If ALL present, output:\n"
-            'DATA_READY: {"first_name":"...","last_name":"...","email":"...","user_address":"...",'
-            '"pin_number":"...","mobile_number":"...","bank_name":"...","product_type":"FD",'
-            '"initial_amount":0,"tenure_months":0,"compounding_freq":"quarterly",'
-            '"kyc_details_1":"DOC_NAME-DOC_VALUE","kyc_details_2":"DOC_NAME-DOC_VALUE"}'
-        ),
-        expected_output="Either 'QUESTION: ...' or 'DATA_READY: {...}'",
-        agent=agents["onboarding_data_agent"],
-    )
+    ]
 
 
-# ---------------------------------------------------------------------------
-# AML execution pipeline
-# ---------------------------------------------------------------------------
+# ===================================================================
+# AML execution pipeline (OPTIMIZED: 9 tasks → 6 tasks)
+# ===================================================================
+
 
 def create_aml_execution_tasks(agents, client_data_json: str):
 
     neo4j_search_task = Task(
         description=(
             f"Client Data:\n{client_data_json}\n\n"
-            "STEP 1 — Extract first_name and last_name from the client data above.\n"
-            "If only a 'name' field exists, split on space: first word = first_name, rest = last_name.\n\n"
-            "STEP 2 — Call 'Neo4j Entity Name Search' with the extracted first_name and last_name.\n"
-            "Use default max_hops=4, limit_nodes=20, limit_results=50.\n\n"
-            "The tool executes this Cypher query internally (example with first_name='Alaa', last_name='Mubarak'):\n\n"
-            "// Phase 1: Identify the starting node based on name variations\n"
-            "MATCH (p)\n"
-            "WHERE any(label IN labels(p) WHERE label IN ['Officer','Entity','Intermediary','Other'])\n"
-            "  AND (\n"
-            "    toLower(p.name) CONTAINS toLower('Alaa Mubarak')\n"
-            "    OR toLower(p.name) CONTAINS toLower('Mubarak, Alaa')\n"
-            "    OR toLower(p.name) CONTAINS toLower('Mubarak Alaa')\n"
-            "    OR toLower(p.original_name) CONTAINS toLower('Alaa Mubarak')\n"
-            "    OR toLower(p.translit_name) CONTAINS toLower('Alaa Mubarak')\n"
-            "    OR (toLower(p.name) CONTAINS toLower('Alaa') AND toLower(p.name) CONTAINS toLower('Mubarak'))\n"
-            "  )\n"
-            "WITH p LIMIT 20\n\n"
-            "// Phase 2: Expand the network to find related entities\n"
-            "MATCH (p)-[r*1..4]-(connected)\n"
-            "RETURN p, r, connected\n"
-            "LIMIT 50\n\n"
-            "If the primary search returns no results, the tool automatically retries with a broader query.\n\n"
-            "STEP 3 — Report all nodes/relationships, the exact GRAPH_IMAGE_PATH line verbatim, "
-            "and a short network summary."
+            "STEP 1 — Extract first_name and last_name (split 'name' on space if needed).\n"
+            "STEP 2 — Call 'Neo4j Entity Name Search' with first_name, last_name (defaults: max_hops=4, limit_nodes=20, limit_results=50).\n"
+            "The tool internally runs a parameterized name-matching + graph expansion Cypher query. "
+            "You do NOT need to write Cypher — just call the tool.\n\n"
+            "STEP 3 — Report:\n"
+            "1. **GRAPH_IMAGE_PATH**: exact path (must preserve for downstream)\n"
+            "2. **SUMMARY**: total nodes, relationships, node types\n"
+            "3. **DIRECT CONNECTIONS**: name, type, relationship label each\n"
+            "4. **FLAGGED ENTITIES**: sanctions flags, high-risk countries, suspicious patterns\n"
+            "5. **KEY_PATHS**: notable multi-hop paths"
         ),
-        expected_output="Graph findings with node/relationship details and exact GRAPH_IMAGE_PATH.",
+        expected_output="Structured text: GRAPH_IMAGE_PATH, summary, connections, flagged entities, key paths.",
         agent=agents["neo4j_agent"],
     )
 
     sanctions_task = Task(
         description=(
-            f"Client Data:\n{client_data_json}\n\n"
-            'Build JSON: {"schema":"Person","name":"<full_name>","birth_date":"<dob>","nationality":"<nationality>"}\n'
-            "Add any extra available fields. Pass to 'Deep Entity Enrichment (Yente/OpenSanctions)'. "
-            "Trust score > 0.5 only.\n"
-            "Report ALL fields verbatim: risk_flags, topics, sanctions_programs, related_entities, "
-            "match_score, positions, aliases, nationalities, sources. Preserve the 'ENTITY_NAME:' line."
+            "Screen client against OpenSanctions/Yente using 'OpenSanctions Entity Search'.\n\n"
+            f"Client: {client_data_json}\n\n"
+            "Extract first_name/last_name. Search Yente. For EACH match > 0.7: name, aliases, "
+            "programs (OFAC/EU/UN/UK HMT), topics, related entities, jurisdictions, score.\n"
+            "Output: ### Sanctions & PEP Screening — **Confidence:** HIGH/MEDIUM/LOW/NONE | **Matches:** N\n"
+            "Per match: Entity, Score, Type, Programs, Topics, Related Entities, Risk Assessment (2-3 sentences)."
         ),
-        expected_output="Yente sanctions/PEP report with all fields including verbatim ENTITY_NAME line.",
+        expected_output="Structured Markdown with match details, risk assessment, and related entities.",
         agent=agents["sanctions_agent"],
     )
 
-    osint_task = Task(
+    # MERGED: osint_task + ubo_task + live_enrichment_task → entity_intelligence_task
+    entity_intelligence_task = Task(
         description=(
-            "From Yente context:\n"
-            "STEP 1 — Pass full Yente output (including ENTITY_NAME: line) to 'Wikidata Subject Image Fetcher'. "
-            "Record: WIKIDATA_IMAGE_PATH, Wikipedia description, organisations, positions, social media URLs.\n"
-            "STEP 2 — Adverse media: use 'NewsAPI Entity Search' first "
-            "(entity_name='[Client Full Name]', context='sanctions fraud crime'). "
-            "Fall back to 'DuckDuckGo News Search' if unavailable. Also search each related_entity.\n"
-            "Output Markdown:\n"
-            "1. Wikidata Profile (image path, biography, organisations).\n"
-            "2. Social Media and Web Presence.\n"
-            "3. Adverse Media (headlines + exact URLs — never invent)."
+            "Comprehensive entity intelligence gathering in ONE pass.\n\n"
+            f"Client: {client_data_json}\n\n"
+            "⚠️ MANDATORY: You MUST call the WikidataOSINTTool for EVERY entity mentioned (client and all flagged entities).\n"
+            "If you don't call WikidataOSINTTool, the report is incomplete and will be rejected.\n\n"
+            "STEP 1 - OSINT: Gather Wikidata intelligence on client and flagged entities from sanctions report.\n"
+            "- Call WikidataOSINTTool for each entity to get biographical data, positions, citizenship\n"
+            "- Extract WIKIDATA_IMAGE_PATH from Wikidata results\n"
+            "- REQUIRED OUTPUT FORMAT:\n"
+            "  * WIKIDATA_IMAGE_PATH: Full path to downloaded image (e.g., outputs/images/Tony_Blair_20260401_142518.jpg)\n"
+            "  * SOCIAL_MEDIA_SECTION: Wikidata social media links, profiles, public presence\n"
+            "  * RELATIVES_SECTION: Family members, spouses, children, relatives from Wikidata\n"
+            "  * BIOGRAPHY_SECTION: Full biography, career highlights, positions held from Wikidata\n\n"
+            "STEP 2 - UBO ANALYSIS: Identify UBOs and hidden controllers behind corporate entities.\n"
+            "- Check if corporate (company_name, registration_number)\n"
+            "- Search Yente for shareholders, directors, controllers\n"
+            "- News search for ownership information\n"
+            "- Build chain: Client → Direct Owner → Intermediates → Ultimate Owner\n\n"
+            "STEP 3 - LIVE ENRICHMENT: Re-enrich with fresh data.\n"
+            "- Re-query Yente+Wikidata for client and flagged entities\n"
+            "- Capture new sanctions, aliases, positions\n\n"
+            "OUTPUT: ### Entity Intelligence Report\n"
+            "1. Client Profile (Wikidata, positions, image path, WIKIDATA_IMAGE_PATH)\n"
+            "2. Adverse Media Findings (headline, source, date, URL, AML relevance)\n"
+            "3. Flagged Entity Intel (with WIKIDATA_IMAGE_PATH, SOCIAL_MEDIA_SECTION, RELATIVES_SECTION, BIOGRAPHY_SECTION)\n"
+            "4. UBO Analysis (Is Corporate, Ownership Chain, UBOs, Red Flags)\n"
+            "5. Live Updates (new sanctions, aliases, WIKIDATA_IMAGE_PATH)\n\n"
+            "VALIDATION: Before submitting, verify you have called WikidataOSINTTool for each entity and extracted:\n"
+            "- WIKIDATA_IMAGE_PATH (image file path)\n"
+            "- SOCIAL_MEDIA_SECTION (social media presence)\n"
+            "- RELATIVES_SECTION (family members)\n"
+            "- BIOGRAPHY_SECTION (biographical details)\n"
+            "If any section is missing, you have not completed the task correctly."
         ),
-        expected_output="OSINT report with WIKIDATA_IMAGE_PATH, biography, social URLs, adverse media links.",
-        agent=agents["osint_agent"],
-        context=[sanctions_task],
-    )
-
-    ubo_task = Task(
-        description=(
-            f"Client Data:\n{client_data_json}\n\n"
-            "Review Neo4j graph and Yente sanctions from context.\n"
-            "COMPANY client: search directors/shareholders via Yente; check if sanctioned.\n"
-            "PERSON client: find companies they are 'officer_of' from Neo4j. "
-            "Use 'NewsAPI Entity Search' first (entity_name='[Company]', context='ownership shareholders directors'); "
-            "fall back to DuckDuckGo.\n"
-            "For each UBO: Name | Role | Yente Match Score | Sanctions/PEP Status | Source"
-        ),
-        expected_output="Table of UBOs with individual risk assessments and sources.",
-        agent=agents["ubo_investigator_agent"],
+        expected_output="Markdown entity intelligence report with OSINT, UBO analysis, adverse media, and live enrichment data. Real URLs only.",
+        agent=agents["entity_intelligence_agent"],
         context=[neo4j_search_task, sanctions_task],
-    )
-
-    live_enrichment_task = Task(
-        description=(
-            f"Client Data:\n{client_data_json}\n\n"
-            "STEP 1 — Re-run 'Deep Entity Enrichment (Yente)' for: a) primary client, "
-            "b) every flagged related_entity, c) every UBO. Append new sanctions/aliases/positions.\n"
-            "STEP 2 — Pass latest Yente output to 'Wikidata Subject Image Fetcher' for each flagged entity. "
-            "Record exact WIKIDATA_IMAGE_PATH.\n"
-            "Output: Entity | New Sanctions Found | New Aliases | WIKIDATA_IMAGE_PATH"
-        ),
-        expected_output="Enrichment table: updated sanctions data and WIKIDATA_IMAGE_PATH per entity.",
-        agent=agents["live_enrichment_agent"],
-        context=[sanctions_task, osint_task, ubo_task],
     )
 
     risk_scoring_task = Task(
@@ -785,277 +476,724 @@ def create_aml_execution_tasks(agents, client_data_json: str):
             "Synthesise ALL context into a court-ready AML compliance report.\n\n"
             f"Client Data:\n{client_data_json}\n\n"
             "Rules:\n"
-            "1. HEADER: client full name + current datetime (YYYY-MM-DD HH:MM:SS).\n"
-            "2. VERBATIM: every figure, score, flag, entity, sanction ID, relationship, match score, graph path.\n"
-            "3. NEWS URLs: search '[Entity] sanctions fraud investigation' via DuckDuckGo. "
-            "Embed as Markdown hyperlinks. Never invent URLs.\n"
-            "4. SCORE TABLE: Risk Factor | Points | Rationale | Evidence Link. Bold total row.\n"
-            "5. GRAPH: re-state exact GRAPH_IMAGE_PATH from neo4j context.\n\n"
-            "Required sections:\n"
-            "# AML Compliance Report — [Client Full Name]\n"
-            "**Generated:** [datetime] | **Prepared by:** Chief Risk Officer | **Classification:** CONFIDENTIAL\n\n"
-            "## Executive Summary\nDECISION: [PASS or FAIL]\nSCORE: [N]\nREASONING: [1 sentence]\n\n"
-            "## 1. Subject Identity Profile\n"
-            "## 2. Sanctions and PEP Status\n"
-            "## 3. Neo4j Graph Analysis (GRAPH_IMAGE_PATH: [exact path])\n"
-            "## 4. UBO Analysis\n"
-            "## 5. OSINT and Media Intelligence\n"
-            "## 6. Risk Score Breakdown (4-column table)\n"
-            "## 7. Recommendations (numbered, with FATF references)\n"
-            "## 8. Data Sources and Tool Audit\n\n"
-            "---\n*Auto-generated by Compliance AI. Internal use only.*"
+            "1. HEADER: client full name + current datetime.\n"
+            "2. VERBATIM: every figure, score, flag, entity from upstream tasks.\n"
+            "3. NEWS URLs: search '[Entity] sanctions fraud' via DuckDuckGo. Never invent URLs.\n"
+            "4. GRAPH: re-state exact GRAPH_IMAGE_PATH from neo4j context.\n\n"
+            + _AML_REPORT_TEMPLATE
         ),
         expected_output=(
-            "Court-ready Markdown AML report with timestamp header, all risk data verbatim, "
-            "DDG hyperlinks, 4-column score table, FATF recommendations, GRAPH_IMAGE_PATH preserved, "
-            "DECISION/SCORE/REASONING clearly stated."
+            "Court-ready Markdown AML report: identity, PEP/sanctions, graph, UBO, adverse media with severity, "
+            "weighted 5-category risk table, interpretation bands, decision with justification, "
+            "3-tier recommendations with FATF refs, data sources audit. GRAPH_IMAGE_PATH preserved."
         ),
         agent=agents["risk_scoring_agent"],
-        context=[neo4j_search_task, sanctions_task, osint_task, ubo_task, live_enrichment_task],
+        context=[neo4j_search_task, sanctions_task, entity_intelligence_task],
+        output_file="outputs/reports/aml_risk_report.md",
     )
 
-    create_deposit_task = Task(
+    fd_processor_task = Task(
         description=(
-            "Check the DECISION line in the compliance report from context.\n"
-            "If 'DECISION: FAIL': output exactly 'STOP: Application Rejected.' — do nothing else.\n"
-            "If 'DECISION: PASS':\n"
-            "  1. Search current interest/return rate for the provider and product type.\n"
-            "  2. Use 'Deposit Creator' to create the investment record.\n"
-            "  3. Output: Deposit ID, Product Type, Interest/Return Rate Used, Maturity Date.\n\n"
-            f"Client Data:\n{client_data_json}"
+            f"Client Data:\n{client_data_json}\n\n"
+            "⚠️ CRITICAL: EXTRACT ALL FIELDS FROM client_data_json ⚠️\n"
+            "The client_data JSON contains ALL required fields for deposit creation:\n"
+            "  {{\n"
+            "    'name': 'Full Name',\n"
+            "    'email': 'client@example.com',\n"
+            "    'dob': 'YYYY-MM-DD',\n"
+            "    'nationality': 'Country',\n"
+            "    'address': 'Street Address',\n"
+            "    'pin_number': '123456',\n"
+            "    'mobile_number': '+1234567890',\n"
+            "    'kyc_details_1': 'PAN-ABCDE1234F',\n"
+            "    'kyc_details_2': 'AADHAAR-1234-5678-9012',\n"
+            "    'product_type': 'FD',\n"
+            "    'initial_amount': 500000,\n"
+            "    'tenure_months': 12,\n"
+            "    'interest_rate': 7.5,\n"
+            "    'bank_name': 'HDFC Bank',\n"
+            "    'compounding_freq': 'quarterly',\n"
+            "    'country_code': 'IN'\n"
+            "  }}\n\n"
+            "SCORE-BASED INVESTMENT RECORD CREATION:\n"
+            "Use the risk_score from the risk_scoring_task to determine the investment status:\n"
+            "- approved (risk_score 0-30): Low-risk investments - auto-approve and create record immediately\n"
+            "- needs_approval (risk_score 31-60): Medium-risk investments - create record with pending approval status (VERIFY)\n"
+            "- rejected (risk_score 61-100): High-risk investments - create record with 'rejected' status for audit trail\n\n"
+            "CRITICAL REQUIREMENT: CREATE DATABASE RECORD FOR ALL STATUS VALUES\n"
+            "The database MUST be updated for ALL cases (approved, needs_approval, rejected) with the appropriate fd_status value.\n"
+            "This is required for audit trail and compliance tracking.\n\n"
+            "INSTRUCTIONS:\n"
+            "1. Extract the risk_score from the risk_scoring_task output\n"
+            "2. Determine status based on score thresholds above\n"
+            "3. Use 'Universal Deposit Creation Manager' with ALL fields from client_data for ALL status values:\n"
+            " - first_name: Extract from 'name' (split on space, take first part)\n"
+            " - last_name: Extract from 'name' (split on space, take rest)\n"
+            " - email: Extract from client_data['email'] - DO NOT HALLUCINATE\n"
+            " - user_address: Extract from client_data['address']\n"
+            " - pin_number: Extract from client_data['pin_number']\n"
+            " - mobile_number: Extract from client_data['mobile_number']\n"
+            " - kyc_details_1: Extract from client_data['kyc_details_1']\n"
+            " - kyc_details_2: Extract from client_data['kyc_details_2']\n"
+            " - product_type: Extract from client_data['product_type'] (default: 'FD')\n"
+            " - initial_amount: Extract from client_data['initial_amount']\n"
+            " - tenure_months: Extract from client_data['tenure_months']\n"
+            " - interest_rate: Extract from client_data['interest_rate']\n"
+            " - bank_name: Extract from client_data['bank_name']\n"
+            " - compounding_freq: Extract from client_data['compounding_freq'] (default: 'quarterly')\n"
+            " - country_code: Extract from client_data['country_code'] (default: 'IN')\n"
+            " - risk_score: The risk score from risk_scoring_task\n"
+            " - status: 'approved', 'needs_approval', or 'rejected' based on risk_score (PASS THIS TO THE TOOL)\n"
+            "4. Report fd_id, maturity date, rate, account_number, and the assigned status\n"
+            "5. ALSO report the email address used for verification\n"
         ),
-        expected_output="Deposit ID + Product Type + Maturity Date on PASS, or 'STOP: Application Rejected.' on FAIL.",
+        expected_output="SUCCESS with investment record details including status (approved/needs_approval/rejected), fd_id, account_number, risk_score, and the email address used. Database record created for ALL status values.",
         agent=agents["fd_processor_agent"],
         context=[risk_scoring_task],
     )
 
-    pdf_task = Task(
+    # MERGED: pdf_generator_task + email_sender_task → report_delivery_task
+    report_delivery_task = Task(
         description=(
-            "Use the full Markdown compliance report from risk_scoring context as 'markdown_content'.\n\n"
-            "Extract from context (search ALL task outputs carefully):\n"
-            "  - GRAPH_IMAGE_PATH (from neo4j task) → 'graph_image_path' argument\n"
-            "  - WIKIDATA_IMAGE_PATH (from osint or live_enrichment task) → 'subject_image_path' argument\n"
-            "  - SOCIAL_MEDIA_SECTION (from osint task) → 'social_media_section'\n"
-            "  - RELATIVES_SECTION (from osint task) → 'relatives_section'\n"
-            "  - BIOGRAPHY_SECTION (from osint task) → 'biography_section'\n"
-            "  - DECISION: PASS or FAIL\n"
-            f"  - first_name, last_name from: {client_data_json}\n\n"
-            "Pass FULL raw text of each section verbatim — do NOT summarize.\n\n"
-            "Filename: {first_name}_{last_name}_{DECISION}  (e.g. John_Doe_PASS)\n"
-            "Title: 'Application Rejection Report' (FAIL) or 'Application Approval and Compliance Report' (PASS).\n\n"
-            "Call 'Markdown Report Generator' with ALL arguments. Output the exact PDF path returned. "
-            "Also output: PDF_PATH: <exact path>"
+            "Generate PDF report AND send email notification in ONE step.\n\n"
+            f"Client Data:\n{client_data_json}\n\n"
+            "⚠️ CRITICAL: WIKIDATA SUPPLEMENTARY SECTIONS ARE MANDATORY - DO NOT OMIT ⚠️\n\n"
+            "STEP 0 - EXTRACT CLIENT EMAIL (MANDATORY - DO NOT SKIP):\n"
+            "Parse the client_data JSON above and extract the 'email' field.\n"
+            "The client_data JSON structure is:\n"
+            " {{\n"
+            " 'name': 'Full Name',\n"
+            " 'email': 'client@example.com', ← THIS IS THE EMAIL YOU NEED\n"
+            " 'dob': 'YYYY-MM-DD',\n"
+            " 'nationality': 'Country',\n"
+            " ...\n"
+            " }}\n"
+            "EXTRACT the value of the 'email' key. This is the recipient email for the notification.\n"
+            "DO NOT hallucinate or make up an email address. Use ONLY the email from client_data.\n"
+            "CRITICAL: The recipient email MUST be DIFFERENT from the sender's email (ashwinpremnath123@gmail.com).\n"
+            "If you extract the sender's email as the recipient, you are making a critical error.\n\n"
+            "STEP 1 - EXTRACT WIKIDATA SECTIONS (MANDATORY):\n"
+            "From the entity_intelligence_task output, you MUST extract ALL THREE sections:\n"
+            "1. SOCIAL_MEDIA_SECTION: (everything after 'SOCIAL_MEDIA_SECTION:' until next section)\n"
+            " - Contains: Twitter/X, Instagram, Facebook, YouTube accounts with follower counts\n"
+            "2. RELATIVES_SECTION: (everything after 'RELATIVES_SECTION:' until next section)\n"
+            " - Contains: Family members and associates with Wikidata URLs in table format\n"
+            "3. BIOGRAPHY_SECTION: (everything after 'BIOGRAPHY_SECTION:' until next section)\n"
+            " - Contains: Occupation, positions held, employer, political party, citizenship, birthplace, education\n\n"
+            "VALIDATION: Before proceeding to Step 2, verify you have extracted all three sections. "
+            "If any section is missing, go back to entity_intelligence_task output and find it.\n\n"
+            "STEP 2 - PDF GENERATION:\n"
+            "Convert AML report to PDF using 'Markdown Report Generator'.\n"
+            "Tool auto-detects client name and PASS/FAIL. Pass these parameters:\n"
+            "- title: 'AML Compliance Report — [Client Full Name]'\n"
+            "- markdown_content: ENTIRE report (do NOT truncate)\n"
+            "- graph_image_path / subject_image_path: from upstream context if present, else None\n"
+            "- social_media_section: THE EXTRACTED SOCIAL_MEDIA_SECTION (NOT None, NOT empty)\n"
+            "- relatives_section: THE EXTRACTED RELATIVES_SECTION (NOT None, NOT empty)\n"
+            "- biography_section: THE EXTRACTED BIOGRAPHY_SECTION (NOT None, NOT empty)\n"
+            "⚠️ You will be penalized if you pass None or empty strings for these sections ⚠️\n"
+            "Tool saves to outputs/sessions/{{First}}_{{Last}}_{{ts}}_{{PASS|FAIL}}.pdf.\n\n"
+            "STEP 3 - EMAIL SENDING:\n"
+            "Send email with the generated PDF attached.\n"
+            "- Read PDF path from Step 2\n"
+            "- RECIPIENT EMAIL: Use the email you extracted in STEP 0 (from client_data['email'])\n"
+            "- CRITICAL VALIDATION: The recipient email MUST NOT be 'ashwinpremnath123@gmail.com' (the sender's email).\n"
+            "- If the extracted email IS 'ashwinpremnath123@gmail.com', you have made a critical error - go back to STEP 0 and re-extract.\n"
+            "- Use 'Email Sender' tool (SMTP-based, no OAuth required)\n"
+            "- Input to Email Sender: to_email=<extracted_email>, subject='AML Compliance Report — [Full Name]', body='PASS/FAIL + risk score summary', attachment_paths=[PDF path]\n"
+            "- DO NOT use 'Gmail Sender' - it requires OAuth which is not configured\n"
+            "- DO NOT hallucinate or guess the email address. Use ONLY the email from client_data.\n\n"
+            "VALIDATION BEFORE SENDING:\n"
+            "- Verify you have a valid email address from client_data (not empty, not None)\n"
+            "- Verify the email contains '@' symbol\n"
+            "- Verify the email is NOT 'ashwinpremnath123@gmail.com' (sender's email)\n"
+            "- If email is missing, invalid, or equals sender's email, report error: 'EMAIL_ERROR: Could not extract valid recipient email from client_data'\n\n"
+            "FINAL OUTPUT: Exact PDF file path and email confirmation. "
+            "Also confirm: 'Wikidata sections included: SOCIAL_MEDIA, RELATIVES, BIOGRAPHY'. "
+            "State the recipient email used: 'Email sent to: <extracted_email>'"
         ),
-        expected_output="Exact PDF file path from Markdown Report Generator. Must include a line: PDF_PATH: <path>",
-        agent=agents["pdf_generator_agent"],
-        context=[risk_scoring_task, create_deposit_task, neo4j_search_task, live_enrichment_task, osint_task],
-    )
-
-    email_task = Task(
-        description=(
-            f"Recipient email from client data:\n{client_data_json}\n\n"
-            "Get DECISION from risk_scoring context. "
-            "Get PDF path from pdf_task context (line starting 'PDF_PATH:').\n\n"
-            "FAIL — Subject: 'Application Update'\n"
-            "Body: 'We regret to inform you that we are unable to proceed with your application "
-            "due to compliance requirements. Please find the detailed report attached.'\n\n"
-            "PASS — Subject: 'Investment Created — Compliance Report Attached'\n"
-            "Body: 'Your investment has been successfully created. "
-            "Please find your personalised compliance report attached.'\n\n"
-            "Call 'Email Sender' with to_email, subject, body, attachment_paths=[PDF_PATH]. "
-            "Send EXACTLY ONE email.\n\n"
-            "CRITICAL: Your final output MUST be the PDF file path (the line starting 'PDF_PATH:'). "
-            "Do NOT output the email confirmation as your final answer."
-        ),
-        expected_output="The exact PDF_PATH: <path> line from pdf_task context.",
-        agent=agents["email_sender_agent"],
-        context=[pdf_task, risk_scoring_task],
+        expected_output="PDF file path, EMAIL_SENT confirmation, and verification that all Wikidata sections were included.",
+        agent=agents["report_delivery_agent"],
+        context=[
+            neo4j_search_task,
+            sanctions_task,
+            entity_intelligence_task,
+            risk_scoring_task,
+        ],
     )
 
     return [
-        neo4j_search_task, sanctions_task, osint_task,
-        ubo_task, live_enrichment_task, risk_scoring_task,
-        create_deposit_task, pdf_task, email_task,
+        neo4j_search_task,
+        sanctions_task,
+        entity_intelligence_task,
+        risk_scoring_task,
+        fd_processor_task,
+        report_delivery_task,
     ]
 
 
-# ---------------------------------------------------------------------------
-# Visualization
-# ---------------------------------------------------------------------------
+# ===================================================================
+# Visualization pipeline (unchanged - 1 task)
+# ===================================================================
+
 
 def create_visualization_task(agents, user_query: str, data_context: str):
-    has_context = bool(data_context and data_context != "null" and len(data_context) > 50)
-    data_instruction = (
-        "Use the DataFrame JSON context primarily. Only search web if user asks for external data."
-        if has_context
-        else "No data context. Use DuckDuckGo to fetch necessary data first."
-    )
-
     return Task(
         description=(
-            f"Query: '{user_query}'\n"
-            f"Data Context: {data_context if has_context else 'None'}\n\n"
-            f"1. {data_instruction}\n"
-            "2. Create an Apache ECharts JSON configuration.\n"
-            "3. Match chart type: 'bar'→type bar, 'line'→type line, 'pie'→type pie.\n\n"
-            'Schema: {"title":{"text":"Title","left":"center"},"tooltip":{"trigger":"axis"},'
-            '"legend":{"data":["S1"],"bottom":0},"xAxis":{"type":"category","data":["L1","L2"]},'
-            '"yAxis":{"type":"value","name":"Label"},"series":[{"name":"S1","type":"bar","data":[10,20]}]}\n\n'
-            "Rules: output ONLY raw JSON object or list, no fences, no 'options' wrapper. "
-            "xAxis data and series data MUST have same length. Multiple metrics → return list."
+            f"User query: '{user_query}'\n\nData context:\n{data_context}\n\n"
+            + _STREAMLIT_MD_RULES
+            + "\n\n"
+            "CRITICAL: You MUST use the 'Apache ECharts Configuration Builder' tool for ALL chart generation.\n\n"
+            "DATA EXTRACTION:\n"
+            "If the data context contains a '## Financial Projections' section with markdown tables, "
+            "extract provider names from the first column and numeric data from the other columns. "
+            "Use these extracted values directly as x_labels and series data in the tool call.\n\n"
+            "TOOL USAGE:\n"
+            "1. Call EChartsBuilderTool with: chart_type, title, x_labels (provider names), series (numeric data arrays)\n"
+            "2. The tool returns valid ECharts JSON — return ONLY this output, do NOT modify it.\n\n"
+            "MULTIPLE CHARTS REQUIREMENT:\n"
+            "When the data contains BOTH General and Senior Citizen columns (e.g., 'General Rate (%)' and 'Senior Rate (%)', "
+            "'General Maturity' and 'Senior Maturity', 'General Interest' and 'Senior Interest'), "
+            "you MUST generate TWO separate charts:\n"
+            "- Chart 1: For General Investors (title should include 'General Investors')\n"
+            "- Chart 2: For Senior Citizens (title should include 'Senior Citizens')\n\n"
+            "Call the EChartsBuilderTool ONCE for each chart and output each result in a separate ```json code block.\n\n"
+            "Example output format:\n"
+            "```json\n"
+            "{...chart config for General Investors...}\n"
+            "```\n"
+            "```json\n"
+            "{...chart config for Senior Citizens...}\n"
+            "```\n\n"
+            "Example tool call for General:\n"
+            'EChartsBuilderTool({"chart_type":"bar","title":"Interest Earned by Provider (General Investors)",'
+            '"x_labels":["Bank A","Bank B"],"series":[{"name":"Interest Earned","data":[140000,135000]}]})\n\n'
+            "Example tool call for Senior:\n"
+            'EChartsBuilderTool({"chart_type":"bar","title":"Interest Earned by Provider (Senior Citizens)",'
+            '"x_labels":["Bank A","Bank B"],"series":[{"name":"Interest Earned","data":[145000,140000]}]})'
         ),
-        expected_output="Valid JSON object or list configuring an EChart. No fences, no wrapper keys.",
+        expected_output="One or more valid Apache ECharts JSON configurations in separate ```json code blocks. "
+        "When data has both General and Senior columns, output TWO chart configurations.",
         agent=agents["data_visualizer_agent"],
     )
 
 
-# ---------------------------------------------------------------------------
-# Credit risk
-# ---------------------------------------------------------------------------
+# ===================================================================
+# Credit risk pipeline (unchanged - 2 tasks)
+# ===================================================================
 
-def create_credit_risk_tasks(agents, borrower_json: str = "{}"):
 
-    collect_task = Task(
+def create_credit_risk_tasks(agents, borrower_json: str = "{}", region: str = "IN"):
+    """
+    Create credit risk tasks with region-specific logic.
+
+    Args:
+        agents: Dictionary of credit risk agents
+        borrower_json: JSON string containing borrower data (can be "{}" for empty)
+        region: Region code - "US" for US model, "IN" for India model (default: "IN")
+
+    Returns:
+        List of Task objects
+    """
+    import json as _json
+
+    # Normalize region
+    region_code = region.upper() if region else "IN"
+
+    # Detect region type
+    us_regions = ('US', 'UNITED STATES', 'USA')
+    india_regions = ('IN', 'INDIA', 'BHARAT')
+
+    is_us_region = region_code in us_regions
+    is_india_region = region_code in india_regions
+
+    # Parse borrower data if provided
+    try:
+        borrower_data = _json.loads(borrower_json) if borrower_json and borrower_json.strip() != "{}" else {}
+    except _json.JSONDecodeError:
+        borrower_data = {}
+
+    # Check if we have pre-filled data
+    has_pre_filled_data = bool(borrower_data and isinstance(borrower_data, dict) and len(borrower_data) > 0)
+
+    if is_us_region:
+        # US Credit Risk Tasks
+        # Build pre-filled data context if available
+        pre_filled_context = ""
+        if has_pre_filled_data:
+            pre_filled_context = "\n\nPRE-FILLED BORROWER DATA (USE THESE VALUES, DO NOT ASK FOR THEM):\n"
+            for key, value in borrower_data.items():
+                pre_filled_context += f"- {key}: {value}\n"
+            pre_filled_context += "\nIMPORTANT: The borrower data above is already provided. "
+            pre_filled_context += "DO NOT ask the user for these fields. "
+            "Use the provided values directly and proceed to the analysis task.\n"
+
+        collect_task = Task(
+            description=(
+                "Collect borrower attributes for US credit-risk model one question at a time.\n"
+                "Required: loan_amnt, term, int_rate, annual_inc, dti, fico_score, home_ownership, "
+                "delinq_2yrs, inq_last_6mths, pub_rec, earliest_cr_line, revol_util, revol_bal, purpose, emp_length.\n"
+                "Optional: total_acc, open_acc, mths_since_last_delinq, total_rev_hi_lim, verification_status.\n"
+                "Skip already-provided fields. Output valid JSON when all required collected."
+                + pre_filled_context
+            ),
+            expected_output="JSON object with all required borrower attributes for US credit risk assessment.",
+            agent=agents["credit_risk_collector_agent"],
+        )
+        analyze_task = Task(
+            description=(
+                "⚠️ MANDATORY: You MUST call the 'US_Credit_Risk_Scorer' tool with the borrower_data dictionary.\n\n"
+                "STEP 1 - Call the Tool:\n"
+                "Pass the borrower JSON from the previous task to 'US_Credit_Risk_Scorer'. "
+                "The tool accepts a borrower_data dictionary with fields: fico_score, dti, annual_inc, loan_amnt, "
+                "delinq_2yrs, inq_last_6mths, pub_rec, revol_util, emp_length, home_ownership, purpose, etc.\n\n"
+                "STEP 2 - Tool Returns:\n"
+                "- implied_grade: Letter grade A (Excellent), B (Good), C (Fair), D (Poor), E (Very Poor), F (Critical)\n"
+                "- default_probability: Decimal 0.0-1.0 (e.g., 0.07 = 7% chance of default)\n"
+                "- risk_level: LOW, MEDIUM, HIGH, or CRITICAL\n"
+                "- composite_score: 0-100 numeric score\n"
+                "- top_features: List of top contributing factors\n"
+                "- score_breakdown: Detailed component scores for each factor\n\n"
+                "STEP 3 - Produce Memo:\n"
+                "Generate a detailed credit-risk memo interpreting ALL results from the tool. "
+                "Include the Risk Assessment Result with Grade (A-F), Default Probability %, and Risk Level. "
+                "This is for US region - use FICO score conventions and US lending criteria."
+            ),
+            expected_output=(
+                "Detailed credit-risk memo with: Risk Assessment Result (Grade A-F, Default Probability %, Risk Level), "
+                "composite score breakdown, top contributing factors, and recommendations. "
+                "Grade must be A, B, C, D, E, or F - NEVER 'N/A' or 'UNKNOWN'. "
+                "Must use US Credit Risk Scorer tool."
+            ),
+            agent=agents["credit_risk_analyst_agent"],
+            context=[collect_task],
+        )
+    elif is_india_region:
+      # India Credit Risk Tasks
+      if has_pre_filled_data:
+        # Form data already provided - skip collection, go straight to analysis
+        analyze_task = Task(
+          description=(
+            "⚠️ MANDATORY: You MUST call the 'Indian_Credit_Risk_Scorer' tool with the provided borrower data.\n\n"
+            "BORROWER DATA (USE THESE VALUES DIRECTLY):\n"
+            + "\n".join([f"- {key}: {value}" for key, value in borrower_data.items()]) + "\n\n"
+            "STEP 1 - Call the Tool:\n"
+            "Pass the borrower data above to 'Indian_Credit_Risk_Scorer'. "
+            "The tool accepts: applicant_income, coapplicant_income, credit_score, dti_ratio, "
+            "collateral_value, loan_amount, loan_term, savings, employment_status, education_level, "
+            "property_area, existing_loans, age, dependents, marital_status, gender, employer_category, loan_purpose.\n\n"
+            "STEP 2 - Tool Returns:\n"
+            "- approval_probability: 0-100% chance of approval\n"
+            "- verdict: 'Approved' or 'Rejected'\n"
+            "- confidence: High, Medium, or Low\n"
+            "- key_factors: List of factors influencing the decision\n"
+            "- improvement_tips: Suggestions to improve approval chances\n\n"
+            "STEP 3 - Produce Memo:\n"
+            "Generate a detailed credit-risk memo interpreting ALL results from the tool. "
+            "Include the approval probability percentage, verdict (Approved/Rejected), and key factors. "
+            "This is for India region - use CIBIL-style credit scores (300-900) and Indian lending conventions."
+          ),
+          expected_output=(
+            "Detailed credit-risk memo with: Approval Probability %, Verdict (Approved/Rejected), "
+            "confidence level, key factors, and improvement tips. "
+            "Must use Indian Credit Risk Scorer tool with Indian financial conventions."
+          ),
+          agent=agents["credit_risk_analyst_agent"],
+        )
+        # Return only the analyze task, skip collection
+        return [analyze_task]
+      else:
+        # No form data - use interactive collection mode
+        collect_task = Task(
+          description=(
+            "Collect borrower attributes for Indian credit-risk model one question at a time.\n"
+            "Required: applicant_income, coapplicant_income, credit_score, dti_ratio, collateral_value, "
+            "loan_amount, loan_term, savings.\n"
+            "Optional: employment_status, education_level, property_area, existing_loans, age, dependents, "
+            "marital_status, gender, employer_category, loan_purpose.\n"
+            "Note: All monetary values should be in Indian Rupees (₹).\n"
+            "Credit score range: 300-900 (CIBIL-style).\n"
+            "Ask one question at a time. Output valid JSON when all required collected."
+          ),
+          expected_output="JSON object with all required borrower attributes for Indian credit risk assessment.",
+          agent=agents["credit_risk_collector_agent"],
+        )
+        analyze_task = Task(
+          description=(
+            "⚠️ MANDATORY: You MUST call the 'Indian_Credit_Risk_Scorer' tool with the borrower data.\n\n"
+            "STEP 1 - Call the Tool:\n"
+            "Pass the borrower data from the previous task to 'Indian_Credit_Risk_Scorer'. "
+            "The tool accepts: applicant_income, coapplicant_income, credit_score, dti_ratio, "
+            "collateral_value, loan_amount, loan_term, savings, employment_status, education_level, "
+            "property_area, existing_loans, age, dependents, marital_status, gender, employer_category, loan_purpose.\n\n"
+            "STEP 2 - Tool Returns:\n"
+            "- approval_probability: 0-100% chance of approval\n"
+            "- verdict: 'Approved' or 'Rejected'\n"
+            "- confidence: High, Medium, or Low\n"
+            "- key_factors: List of factors influencing the decision\n"
+            "- improvement_tips: Suggestions to improve approval chances\n\n"
+            "STEP 3 - Produce Memo:\n"
+            "Generate a detailed credit-risk memo interpreting ALL results from the tool. "
+            "Include the approval probability percentage, verdict (Approved/Rejected), and key factors. "
+            "This is for India region - use CIBIL-style credit scores (300-900) and Indian lending conventions."
+          ),
+          expected_output=(
+            "Detailed credit-risk memo with: Approval Probability %, Verdict (Approved/Rejected), "
+            "confidence level, key factors, and improvement tips. "
+            "Must use Indian Credit Risk Scorer tool with Indian financial conventions."
+          ),
+          agent=agents["credit_risk_analyst_agent"],
+          context=[collect_task],
+        )
+    else:
+        # Unsupported region - return error task
+        collect_task = Task(
+            description=(
+                f"Credit risk assessment is not available for region: {region_code}. "
+                "Only US and India regions are supported. "
+                "Return an error message indicating the region is not supported."
+            ),
+            expected_output="Error message indicating region not supported.",
+            agent=agents["credit_risk_collector_agent"],
+        )
+        analyze_task = Task(
+            description=(
+                f"Report that credit risk assessment is unavailable for region {region_code}. "
+                "Suggest using alternative financial services available in that region."
+            ),
+            expected_output="Report indicating service unavailability for the region.",
+            agent=agents["credit_risk_analyst_agent"],
+            context=[collect_task],
+        )
+    
+    return [collect_task, analyze_task]
+
+
+# ===================================================================
+# Mortgage Analytics pipeline (unchanged)
+# ===================================================================
+
+
+def create_mortgage_analytics_tasks(agents, borrower_json: str = "{}"):
+    """Create tasks for mortgage analytics using Fannie Mae ML models."""
+    import json
+
+    try:
+        existing_data = json.loads(borrower_json) if borrower_json else {}
+    except json.JSONDecodeError:
+        existing_data = {}
+
+    required_fields = [
+        "Borrower_Credit_Score_at_Origination",
+        "Original_Loan_to_Value_Ratio_LTV",
+        "Debt_To_Income_DTI",
+        "Original_UPB",
+        "Loan_Purpose",
+        "Property_Type",
+        "Occupancy_Status",
+        "Property_State",
+        "Amortization_Type",
+        "Original_Interest_Rate",
+        "First_Time_Home_Buyer_Indicator",
+        "Modification_Flag",
+        "Channel",
+        "Number_of_Borrowers",
+        "Original_Loan_Term",
+    ]
+    has_all_data = all(field in existing_data for field in required_fields)
+
+    tasks = []
+    collect_task = None
+    if not has_all_data:
+        collect_task = Task(
+            description=(
+                "Collect 15 borrower attributes for Fannie Mae mortgage analytics one question at a time.\n"
+                "Fields: Credit Score (300-850), LTV (%), DTI (%), UPB ($), Loan Purpose, Property Type, "
+                "Occupancy Status, State, Amortization Type, Interest Rate, First-Time Buyer (Y/N), "
+                "Modification Flag (Y/N), Channel, Number of Borrowers, Loan Term (months).\n\n"
+                f"Existing data: {existing_data}\n"
+                "Skip provided fields. Output valid JSON when all collected."
+            ),
+            expected_output="JSON with all 15 required borrower attributes for mortgage analytics.",
+            agent=agents["mortgage_data_collector_agent"],
+        )
+        tasks.append(collect_task)
+
+    analyze_task = Task(
         description=(
-            f"Borrower data so far:\n{borrower_json}\n\n"
-            "Check if ALL required fields present: loan_amnt, term, int_rate, annual_inc, dti, "
-            "fico_score, home_ownership, delinq_2yrs, inq_last_6mths, pub_rec, earliest_cr_line, "
-            "revol_util, revol_bal, purpose, emp_length.\n\n"
-            "If missing: ask ONE question: 'QUESTION: [your question]'\n"
-            "If complete: output: DATA_READY: {full JSON}"
-        ),
-        expected_output="Either 'QUESTION: ...' or 'DATA_READY: {...}'",
-        agent=agents["credit_risk_collector_agent"],
-    )
-
-    analysis_task = Task(
-        description=(
-            "Pass borrower JSON from context to 'US Credit Risk Scorer'.\n"
-            "Write a professional credit-risk memo:\n\n"
-            "# Credit Risk Assessment Memo\n"
-            "**Grade:** [grade] | **Default Probability:** [pct] | **Risk:** [level]\n\n"
-            "## Borrower Profile Summary — one paragraph: income, debt burden, credit history.\n\n"
-            "## Key Risk Drivers\n"
-            "Table: Feature | Value | Importance | Interpretation (use top_features from tool).\n\n"
-            "## Credit Committee Recommendation — 2-3 sentences: approve/decline/conditional.\n\n"
-            "## Caveats\n"
-            "- Model trained on US Lending Club data (2007-2018); current-vintage performance unvalidated.\n"
-            "- Survivorship bias: only approved loans in training set.\n"
-            "- XGBoost may produce non-monotonic predictions; verify edge cases for regulatory use."
-        ),
-        expected_output="Credit-risk memo in Markdown with grade, probability, risk-driver table, recommendation.",
-        agent=agents["credit_risk_analyst_agent"],
-        context=[collect_task],
-    )
-
-    return [collect_task, analysis_task]
-
-
-# ---------------------------------------------------------------------------
-# Loan creation pipeline (Module 3 — Credit Risk Assessment)
-# ---------------------------------------------------------------------------
-
-def create_loan_creation_tasks(agents, borrower_context: str = ""):
-
-    decision_task = Task(
-        description=(
-            f"Borrower Credit Profile:\n{borrower_context}\n\n"
-            "Evaluate this borrower and produce a loan decision.\n\n"
-            "OUTPUT FORMAT (strict JSON — no markdown fences):\n"
-            "{\n"
-            '  "loan_decision": "LOAN_APPROVED" | "NEEDS_VERIFY" | "REJECTED",\n'
-            '  "rationale": "2-3 sentences explaining the decision",\n'
-            '  "conditions": ["condition1", "condition2"],\n'
-            '  "next_steps": ["step1", "step2"]\n'
-            "}\n\n"
-            "DECISION CRITERIA:\n"
-            "- LOAN_APPROVED: Grade A or B, FICO ≥ 740, DTI < 30%, default prob < 10%\n"
-            "- NEEDS_VERIFY: Grade C/D/E, FICO 660-739, DTI 30-45%, default prob 10-25%\n"
-            "- REJECTED: Grade F/G, FICO < 660, DTI > 45%, default prob > 25%\n"
-            "For borderline cases, lean toward NEEDS_VERIFY rather than flat rejection."
-        ),
-        expected_output="JSON with loan_decision, rationale, conditions, next_steps",
-        agent=agents["loan_creation_agent"],
-    )
-
-    summary_task = Task(
-        description=(
-            f"Borrower Credit Profile:\n{borrower_context}\n\n"
-            "Using the loan decision from context, generate a comprehensive, borrower-friendly "
-            "email summary. This will be sent directly to the borrower.\n\n"
-            "REQUIRED SECTIONS:\n\n"
-            "## Your Credit Assessment Summary\n\n"
-            "### What Your Scores Mean\n"
-            "Explain each metric in simple terms:\n"
-            "- FICO Score: what it is, where they stand (poor/fair/good/excellent), impact\n"
-            "- DTI Ratio: what it measures, why it matters, how theirs compares\n"
-            "- Default Probability: what it means in plain English\n"
-            "- Risk Grade: explain the grade scale (A=safest, G=highest risk)\n\n"
-            "### Why You Received This Decision\n"
-            "Detailed explanation of the factors that led to the decision. "
-            "Reference specific numbers from their profile. Be empathetic but honest.\n\n"
-            "### What You Can Do Next\n"
-            "Specific, actionable steps tailored to their profile:\n"
-            "- If APPROVED: what to expect, timeline, documents needed\n"
-            "- If NEEDS_VERIFY: what additional documents/info to provide, timeline\n"
-            "- If REJECTED: how to improve credit score, when to reapply, specific targets\n\n"
-            "### Tips to Improve Your Credit Health\n"
-            "3-5 personalized tips based on their weakest metrics.\n\n"
-            "TONE: Professional, empathetic, encouraging. Avoid jargon. "
-            "Write as if speaking directly to the borrower."
+            f"Run mortgage analytics and evaluate against bank policy.\n"
+            f"Borrower Data: {json.dumps(existing_data, indent=2) if existing_data else 'From previous task'}\n\n"
+            "⚠️ MANDATORY TOOL CALLS - Call EXACTLY 2 TOOLS in order:\n\n"
+            "STEP 1 - Run ML Model:\n"
+            "Call 'US_Mortgage_Analytics_Scorer' with the borrower JSON above. "
+            "This returns credit risk prediction, customer segmentation, and portfolio risk. "
+            "IMPORTANT: Pass ONLY borrower data (credit score, LTV, DTI, etc.), NOT any search results.\n\n"
+            "STEP 2 - Get Policy Information:\n"
+            "Call 'RAG_Policy_Complete' to get ALL policy information in ONE call. "
+            "This tool returns BOTH database status AND policy search results. "
+            "You do NOT need to call RAG_Policy_Stats or RAG_Policy_Search separately. "
+            "Just call it with no parameters - it uses sensible defaults for mortgage analytics.\n\n"
+            "STEP 3 - Generate Report:\n"
+            "After both tools return results, generate your comprehensive report combining:\n"
+            "- ML model results from US_Mortgage_Analytics_Scorer\n"
+            "- Policy database status and excerpts from RAG_Policy_Complete\n"
+            "- Your expert analysis and recommendations\n\n"
+            "⛔ CRITICAL RULES:\n"
+            "- You MUST call both tools before generating the report\n"
+            "- NEVER fabricate policy references - only cite what RAG_Policy_Complete returns\n"
+            "- If RAG returns no policies, state 'No matching policies found in database'\n\n"
+            "OUTPUT FORMAT REQUIREMENTS:\n"
+            "Your report MUST include these sections:\n"
+            "1. Executive Summary\n"
+            "2. Borrower Profile\n"
+            "3. ML Model Results (from US_Mortgage_Analytics_Scorer)\n"
+            "4. Policy Database Status (from RAG_Policy_Complete)\n"
+            "5. Policy Search Results (from RAG_Policy_Complete - with actual excerpts)\n"
+            "6. Policy Compliance Assessment (combining ML results with policy excerpts)\n"
+            "7. Risk Assessment and Recommendations"
         ),
         expected_output=(
-            "Borrower-friendly Markdown summary with all 4 sections. "
-            "Empathetic tone, no jargon, specific actionable advice."
+            "Comprehensive mortgage analytics report with credit risk, segmentation, and recommendations. "
+            "MUST include: Policy Database Status section and Policy Search Results section "
+            "with ACTUAL excerpts from RAG_Policy_Complete."
         ),
+        agent=agents["mortgage_analyst_agent"],
+        context=[collect_task] if collect_task else None,
+        async_execution=False,
+    )
+    tasks.append(analyze_task)
+    return tasks
+
+
+# ===================================================================
+# Loan creation pipeline (unchanged - 2 tasks)
+# ===================================================================
+
+
+def create_loan_creation_tasks(agents, borrower_context: str = ""):
+    decision_task = Task(
+        description=(
+            f"Borrower Context:\n{borrower_context}\n\n"
+            "⚠️ MANDATORY WORKFLOW - Follow these steps in order:\n\n"
+            "STEP 1 - Call US_Credit_Risk_Scorer:\n"
+            "You MUST call the 'US_Credit_Risk_Scorer' tool FIRST with the borrower_data from the context. "
+            "Pass a dictionary with all available borrower fields (fico_score, dti, annual_inc, loan_amnt, "
+            "delinq_2yrs, inq_last_6mths, pub_rec, revol_util, emp_length, home_ownership, purpose, etc.). "
+            "This tool returns:\n"
+            "  - implied_grade: A letter grade (A, B, C, D, E, or F)\n"
+            "  - default_probability: Likelihood of default (0.0-1.0)\n"
+            "  - risk_level: LOW, MEDIUM, HIGH, or CRITICAL\n"
+            "  - top_features: List of contributing factors\n"
+            "  - score_breakdown: Detailed component scores\n\n"
+            "STEP 2 - Check RAG Policy Database:\n"
+            "Call 'RAG_Policy_Stats' to verify policy documents are loaded.\n"
+            "Then call 'RAG_Policy_Search' with queries like: 'loan approval FICO score requirements; "
+            "DTI ratio thresholds; risk assessment for borderline applications'.\n\n"
+            "STEP 3 - Compare and Decide:\n"
+            "Compare the ML grade and risk level against policy requirements.\n"
+            "Grade A-B → Typically LOAN_APPROVED\n"
+            "Grade C-D → Typically NEEDS_VERIFY\n"
+            "Grade E-F → Typically REJECTED\n\n"
+            "STEP 4 - Output JSON:\n"
+            "Return a JSON object with this EXACT structure:\n"
+            "{\n"
+            '  "credit_assessment": {\n'
+            '    "implied_grade": "<A-F>",\n'
+            '    "default_probability": <float>,\n'
+            '    "default_probability_pct": "<X.XX%>",\n'
+            '    "risk_level": "<LOW|MEDIUM|HIGH|CRITICAL>",\n'
+            '    "top_features": [<list of factors>]\n'
+            "  },\n"
+            '  "loan_decision": "LOAN_APPROVED|NEEDS_VERIFY|REJECTED",\n'
+            '  "rationale": "<Clear explanation referencing ML scores AND policy rules>",\n'
+            '  "conditions": ["<condition 1>", "<condition 2>", ...],\n'
+            '  "next_steps": ["<step 1>", "<step 2>", ...]\n'
+            "}\n\n"
+            "CRITICAL RULES:\n"
+            "- ALWAYS call US_Credit_Risk_Scorer FIRST - do NOT skip this step\n"
+            "- Use ONLY the grade returned by the tool (A-F), never fabricate grades\n"
+            "- Reference ACTUAL policy excerpts from RAG, never fabricate thresholds\n"
+            "- If RAG returns no documents, state 'No policy documents found' and use ML scores\n"
+            "- conditions and next_steps MUST be arrays of strings, NOT single strings"
+        ),
+        expected_output="JSON object with credit_assessment (grade A-F, default probability, risk level), loan_decision, rationale, conditions array, and next_steps array.",
+        agent=agents["loan_creation_agent"],
+    )
+    summary_task = Task(
+        description=(
+            "Generate borrower-friendly credit summary explaining scores, metrics, next steps. "
+            "Verify thresholds with 'RAG_Policy_Search' before citing. "
+            "If unconfirmed, use 'below the bank's requirement'."
+        ),
+        expected_output="Borrower-friendly credit summary with explanations and improvement recommendations.",
         agent=agents["loan_summary_agent"],
         context=[decision_task],
     )
+    notification_task = Task(
+        description=(
+            "STEP 1 - EXTRACT DATA FROM UPSTREAM CONTEXT:\n"
+            "Extract the following from decision_task and summary_task outputs:\n"
+            "- loan_decision: LOAN_APPROVED, NEEDS_VERIFY, or REJECTED\n"
+            "- credit_assessment: implied_grade, default_probability, risk_level\n"
+            "- rationale, conditions, next_steps\n"
+            "- Borrower details: first_name, last_name, email, user_address, pin_number, mobile_number\n"
+            "- KYC details: kyc_details_1, kyc_details_2\n"
+            "- Loan details: loan_amnt (loan amount), loan_type, interest_rate, tenure_months\n\n"
+            
+            "STEP 2 - DATABASE INSERTION (LOAN_APPROVED CASE ONLY):\n"
+            "IF loan_decision == 'LOAN_APPROVED':\n"
+            "  Call 'Deposit Creator' tool to insert user details into database with:\n"
+            "  - first_name, last_name, email, user_address, pin_number, mobile_number\n"
+            "  - kyc_details_1, kyc_details_2\n"
+            "  - product_type: Use 'LOAN' or map loan_type to appropriate product_type\n"
+            "  - initial_amount: loan_amnt (loan amount)\n"
+            "  - tenure_months: from loan details\n"
+            "  - bank_name: 'Bank POC'\n"
+            "  - interest_rate: from loan details\n"
+            "  - compounding_freq: 'monthly' (default for loans)\n"
+            "  - country_code: 'IN' (default)\n"
+            "  - risk_score: Calculate from default_probability (e.g., risk_score = int(default_probability * 100))\n"
+            "  - status: 'approved' (since loan_decision is LOAN_APPROVED)\n\n"
+            
+            "STEP 3 - EMAIL SENDING (BOTH LOAN_APPROVED AND REJECTED CASES):\n"
+            "Call 'Email Sender' tool to send notification email:\n"
+            "- to_email: borrower's email address\n"
+            "- subject: 'Loan Application Decision — ' + ('APPROVED' if LOAN_APPROVED else 'REJECTED')\n"
+            "- body: Include:\n"
+            "  * Greeting with borrower's name\n"
+            "  * Decision: LOAN APPROVED or LOAN REJECTED\n"
+            "  * Credit assessment summary (grade, risk level, default probability)\n"
+            "  * Rationale for the decision\n"
+            "  * If APPROVED: Loan amount, interest rate, tenure, next steps for disbursement\n"
+            "  * If REJECTED: Reasons for rejection, conditions that could improve future applications\n"
+            "  * Contact information for questions\n"
+            "- attachment_paths: None (unless summary PDF is available)\n\n"
+            
+            "CRITICAL RULES:\n"
+            "- Database insertion ONLY happens when loan_decision == 'LOAN_APPROVED'\n"
+            "- Email sending happens in BOTH LOAN_APPROVED and REJECTED cases\n"
+            "- Extract all borrower details from the upstream context (decision_task and summary_task outputs)\n"
+            "- If any required field is missing, use sensible defaults or mark as 'Not provided'\n"
+            "- Email must be professional, clear, and actionable\n"
+        ),
+        expected_output=(
+            "Database insertion result (if LOAN_APPROVED): 'Success! LOAN Created. ID: X, Account: Y...' or error message.\n"
+            "Email sending result: 'EMAIL_SENT: Delivered to email@example.com. Attachments: none.' or error message.\n"
+            "If loan_decision is REJECTED: Only email sending result (no database insertion)."
+        ),
+        agent=agents["loan_creation_agent"],
+        context=[decision_task, summary_task],
+    )
+    return [decision_task, summary_task, notification_task]
 
-    return [decision_task, summary_task]
+
+# ===================================================================
+# Routing (unchanged - 1 task)
+# ===================================================================
 
 
-# ---------------------------------------------------------------------------
-# Routing
-# ---------------------------------------------------------------------------
-
-# Extended product keyword list for routing
-_PRODUCT_KEYWORDS = (
-    "fd", "fixed deposit", "rd", "recurring deposit", "td", "term deposit",
-    "ppf", "provident fund", "nsc", "savings certificate", "kvp", "kisan vikas",
-    "ssy", "sukanya", "scss", "senior citizen scheme", "sgb", "gold bond",
-    "nps", "pension", "mutual fund", "sip", "mf", "bond", "debenture",
-    "cd", "certificate of deposit", "t-bill", "treasury bill", "treasury note",
-    "treasury bond", "i-bond", "inflation bond", "isa", "individual savings",
-    "premium bond", "gic", "guaranteed investment", "singapore savings bond",
-    "ssb", "murabaha", "islamic deposit", "money market"
-)
-
-_ANALYSIS_SIGNALS = (
-    "amount", "tenure", "invest", "maturity", "options", "rates", "compare",
-    "returns", "calculate", "projection", "yield", "profit", "earn", "best rate",
-    "how much will i get", "what will i earn", "interest on", "return on"
-) + _PRODUCT_KEYWORDS
-
-
-def create_routing_task(agents, user_query: str):
+def create_routing_task(agents, user_query: str, region: str = "India"):
     return Task(
         description=(
-            f"Classify into ONE label: ANALYSIS, RESEARCH, DATABASE, or ONBOARDING.\n"
-            f"QUERY: \"{user_query}\"\n\n"
-            "ANALYSIS: compare/calculate returns for any investment product. "
-            "Signals: amount+tenure, options/rates/compare/returns/maturity/calculate, "
-            "or any product name (FD, RD, PPF, NSC, KVP, SSY, SCSS, SGB, NPS, MF, BOND, "
-            "CD, T-BILL, T-NOTE, T-BOND, I-BOND, ISA, GIC, MURABAHA, MMARKET).\n"
-            "RESEARCH: general info about products, no calculation. "
-            "Signals: explain/tell me/what is/how does/difference between.\n"
-            "DATABASE: existing system records. "
-            "Signals: my account/my FD/my PPF/my investment/show/list/check/account number.\n"
-            "ONBOARDING: open/create/apply RIGHT NOW. "
-            "Signals: open account/create FD/apply for RD/start PPF/invest in/register me.\n"
-            "Note: 'I have 500k to deposit' = ANALYSIS. When in doubt → ANALYSIS.\n\n"
-            "Respond with ONLY one word: ANALYSIS, RESEARCH, DATABASE, or ONBOARDING."
+            f"Analyze query: '{user_query}' | Region: {region}\n\n"
+            "Respond with EXACTLY ONE word:\n"
+            "- CREDIT_RISK: credit assessment, scoring, default probability (US only; else closest)\n"
+            "- LOAN_CREATION: loan approval, underwriting, FICO/DTI policy\n"
+            "- MORTGAGE_ANALYTICS: mortgage rates, LTV, DTI calc, Fannie Mae (US only; else closest)\n"
+            "- ANALYSIS: FD/TD calculations, maturity, rate comparisons, projections\n"
+            "- VISUALIZATION: charts, graphs, visualizations, plot data, bar/pie/line charts\n"
+            "- RESEARCH: provider comparisons, detailed reports (no calculations)\n"
+            "- DATABASE: existing users, accounts, KYC status, current records\n"
+            "- ONBOARDING: open account, create FD, start onboarding\n\n"
+            "ONLY one word: CREDIT_RISK, LOAN_CREATION, MORTGAGE_ANALYTICS, ANALYSIS, VISUALIZATION, RESEARCH, DATABASE, ONBOARDING."
         ),
-        expected_output="Single word: ANALYSIS, RESEARCH, DATABASE, or ONBOARDING",
+        expected_output="Single word: CREDIT_RISK, LOAN_CREATION, MORTGAGE_ANALYTICS, ANALYSIS, VISUALIZATION, RESEARCH, DATABASE, or ONBOARDING",
         agent=agents["manager_agent"],
     )
+
+
+# ===================================================================
+# FD Template Generation Pipeline (unchanged - 1 task)
+# ===================================================================
+
+
+def create_fd_template_tasks(
+    agents, fd_data: dict, template_type: str = "confirmation"
+):
+    """Create tasks for generating FD email templates using LLM."""
+    type_desc = {
+        "confirmation": "FD creation confirmation",
+        "maturity_reminder": "FD maturity reminder",
+        "renewal_offer": "FD renewal offer",
+    }
+    return [
+        Task(
+            description=(
+                f"Generate {type_desc.get(template_type, template_type)} email template using LLM.\n\n"
+                f"FD Data:\n{fd_data}\n\n"
+                "Create professional personalized HTML email: customer name/greeting, all deposit details "
+                "(FD number, bank, amount, rate, tenure, maturity date/amount), disclaimers, contact info, "
+                "inline CSS, mobile-responsive, icons. Generate dynamically — NOT hardcoded. "
+                "Output: Complete HTML ready to send."
+            ),
+            expected_output="Complete HTML email template with inline CSS, standalone, renders in all clients.",
+            agent=agents["fd_template_generator_agent"],
+        )
+    ]
+
+
+# ===================================================================
+# TD/FD Creation Pipeline (unchanged - 3 tasks)
+# ===================================================================
+
+
+def create_td_fd_tasks(
+    agents, user_query: str = None, user_email: str = "", user_id: int = None,
+    region: str = "India", tenure: int = 12
+):
+    """TD/FD creation: provider selection → deposit creation → email notification.
+    
+    Supports two calling patterns:
+    1. FD creation workflow: create_td_fd_tasks(agents, user_query, user_email, user_id)
+    2. FD advisor workflow: create_td_fd_tasks(agents, region=region, tenure=tenure_months)
+    """
+    
+    # Build user query if not provided (for FD advisor workflow)
+    if user_query is None:
+        user_query = f"Find best FD rates in {region} for {tenure} months tenure"
+
+    provider_selection_task = Task(
+        description=(
+            f"Analyze TD/FD request: '{user_query}'\n"
+            f"Extract: deposit type (FD/TD/RD), amount, tenure, intent (best rate/safest/gov/highest maturity), preferences.\n\n"
+            f"Search TOP 3 providers by intent. " + _SEARCH_BOILERPLATE + "\n"
+            f"Output: Markdown table with Provider, Rate, Credit Rating, Safety Profile, Features, recommendation."
+        ),
+        expected_output="Markdown table: 3 providers with Rate, Credit Rating, Safety Profile, Features, recommendation.",
+        agent=agents["td_fd_provider_selection_agent"],
+    )
+    td_fd_creation_task = Task(
+        description=(
+            "Create TD/FD using 'UniversalDepositCreationTool'.\n"
+            "Params: user_id, user_email, product_type, bank_name, initial_amount, tenure_months, "
+            "interest_rate, compounding_freq, currency_code ('INR'), country_code ('IN').\n"
+            "Tool validates, finds/creates account, creates deposit+transaction records.\n"
+            "Output: SUCCESS (fd_id, account_number, maturity_date, maturity_amount) or ERROR."
+        ),
+        expected_output="SUCCESS: fd_id, account_number, maturity_date, maturity_amount — or ERROR.",
+        agent=agents["td_fd_creation_agent"],
+        context=[provider_selection_task],
+    )
+    td_fd_notification_task = Task(
+        description=(
+            "Send TD/FD confirmation via 'EmailSenderTool'.\n"
+            "To: customer email. Subject: 'Your Fixed Deposit has been Created Successfully!'\n"
+            "Body: confirmation, FD number, bank, type, principal, rate, tenure, compounding, "
+            "maturity date, expected amount, premature withdrawal penalty, contact info.\n"
+            "If creation failed, send failure notification."
+        ),
+        expected_output="EMAIL_SENT confirmation or EMAIL_ERROR with details.",
+        agent=agents["td_fd_notification_agent"],
+        context=[td_fd_creation_task],
+    )
+    return [provider_selection_task, td_fd_creation_task, td_fd_notification_task]

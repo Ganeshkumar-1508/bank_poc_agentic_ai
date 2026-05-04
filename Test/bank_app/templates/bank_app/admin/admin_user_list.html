@@ -1,0 +1,113 @@
+{% extends 'bank_app/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}User Management{% endblock %}
+{% block page_title %}User Management{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="admin-filters">
+    <input type="text" class="admin-form-input admin-filter-input" placeholder="Search users..." value="{{ search }}" name="search">
+    <select class="admin-form-select admin-filter-select" name="country">
+        <option value="">All Countries</option>
+        {% for code in countries %}
+        <option value="{{ code }}" {% if country == code %}selected{% endif %}>{{ code }}</option>
+        {% endfor %}
+    </select>
+    <select class="admin-form-select admin-filter-select" name="is_active">
+        <option value="">All Status</option>
+        <option value="true" {% if is_active == 'true' %}selected{% endif %}>Active</option>
+        <option value="false" {% if is_active == 'false' %}selected{% endif %}>Inactive</option>
+    </select>
+    <button type="submit" class="btn-admin btn-admin-primary">Filter</button>
+</div>
+
+<!-- Users Table -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">All Users ({{ users.count }})</h2>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Session ID</th>
+                <th>IP Address</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Last Activity</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td><code style="font-size: 0.8rem;">{{ user.session_id|truncatechars:20 }}</code></td>
+                <td>{{ user.ip_address|default:"N/A" }}</td>
+                <td>
+                    {% if user.city %}{{ user.city }}, {% endif %}{{ user.country_name|default:"Unknown" }}
+                </td>
+                <td>
+                    <span class="status {% if user.is_active %}approved{% else %}rejected{% endif %}">
+                        {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </td>
+                <td>{{ user.last_activity|date:"M d, Y H:i" }}</td>
+                <td>
+                    <a href="{% url 'admin_panel:admin_user_detail' user.session_id %}" class="btn-admin btn-admin-secondary btn-admin-sm">View</a>
+                    <button onclick="toggleUserActive('{{ user.session_id }}')" class="btn-admin btn-admin-danger btn-admin-sm">
+                        {% if user.is_active %}Deactivate{% else %}Activate{% endif %}
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: var(--muted); padding: 40px;">No users found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleUserActive(sessionId) {
+    if (confirm('Are you sure you want to toggle this user\'s status?')) {
+        fetch('{% url "admin_panel:admin_toggle_user_active" "SESSION_ID" %}'.replace('SESSION_ID', sessionId), {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error toggling user status');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error toggling user status');
+        });
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,6 @@
+1. attach the "Check Approval Probability' button in the @/Test/bank_app/templates/bank_app/credit_risk.html @/Test/bank_app/views/credit_risk_views.py to Check Approval Probability crew. 
+2. check the input fileds and the agents/tasks/tools if they can process it and use it for doing their tasks. tools are in @/Test/tools.
+3. check the models in @/Test/models and see how and what they get input and checkt the UI if they have those. since there are two models one for US and india they expect different inputs for this we need to check the inputs in the UI accordinglly. 
+4. we need to region gate this credit risk thing if they're not from US and India.
+5. remove the EMI section in @/Test/bank_app/templates/bank_app/credit_risk.html @/Test/bank_app/views/credit_risk_views.py 
+6. 

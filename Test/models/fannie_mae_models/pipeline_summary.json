@@ -1,0 +1,62 @@
+{
+  "run_at": "2026-04-14T14:47:39.717513",
+  "train_years": [
+    2023,
+    2024
+  ],
+  "rows_per_train_year": 50000,
+  "total_train_rows": 7688576,
+  "test_year": 2025,
+  "test_rows": 388622,
+  "evaluation_strategy": "strict out-of-time (OOT)",
+  "mljar_mode": "Compete",
+  "time_limit_per_use_case_secs": 120,
+  "use_cases": [
+    "credit_risk",
+    "customer_segmentation",
+    "operational_efficiency",
+    "portfolio_risk",
+    "regional_performance"
+  ],
+  "results": {
+    "credit_risk": {
+      "train_accuracy": 0.9997555555555555,
+      "train_f1": 0.9894251105556624,
+      "test_accuracy": 0.999252,
+      "test_f1": 0.9183049366535605,
+      "test_precision": 0.8772954924874792,
+      "test_recall": 0.9633363886342805,
+      "test_auc": 0.9999105795215527
+    },
+    "customer_segmentation": {
+      "silhouette_score": 0.05466504398513584,
+      "n_clusters": 8
+    },
+    "operational_efficiency": {
+      "train_mae": 7.975063390822709e-05,
+      "train_rmse": 9.999229725108434e-05,
+      "train_r2": 0.0,
+      "test_mae": 8.001790172773574e-05,
+      "test_rmse": 0.00010022583952523566,
+      "test_r2": -6.368596049854958e-06
+    },
+    "portfolio_risk": {
+      "train_mae": 0.0012737673437043034,
+      "train_rmse": 0.0017322754561037755,
+      "train_r2": 0.999517652624647,
+      "test_mae": 0.001309893082297723,
+      "test_rmse": 0.0018040364233613128,
+      "test_r2": 0.9994980111862306
+    },
+    "regional_performance": {
+      "train_accuracy": 1.0,
+      "train_f1": 1.0,
+      "test_accuracy": 0.841848,
+      "test_f1": 0.8256368922086076,
+      "test_precision": 0.8264081193925596,
+      "test_recall": 0.8260224395882544
+    }
+  },
+  "model_directory": "C:\\Users\\Aravind\\Desktop\\Work\\AI\\fannie_mae\\fannie_mae_models",
+  "total_duration_seconds": 1355.6042404174805
+}

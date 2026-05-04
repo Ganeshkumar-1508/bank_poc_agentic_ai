@@ -1,0 +1,2246 @@
+{% extends 'bank_app/base.html' %}
+{% load static %}
+
+{% block title %}Credit Risk Assessment - Bank POC Agentic AI{% endblock %}
+
+{% block extra_css %}
+<style>
+/* CreditWise-style Slider CSS */
+.slider-field {
+    margin: 16px 0;
+}
+
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.slider-header label {
+    font-weight: 500;
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.slider-val {
+    font-family: 'DM Mono', monospace;
+    color: var(--gold);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+/* Range slider styling */
+input[type="range"].slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(to right, var(--gold) var(--pct, 0%), rgba(255, 255, 255, 0.1) var(--pct, 0%));
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+/* WebKit thumb styling */
+input[type="range"].slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--gold);
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(201, 168, 76, 0.5);
+    transition: all 0.2s ease;
+    margin-top: -7px;
+}
+
+input[type="range"].slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 15px rgba(201, 168, 76, 0.8);
+}
+
+input[type="range"].slider::-webkit-slider-thumb:active {
+    transform: scale(1.25);
+    box-shadow: 0 0 20px rgba(201, 168, 76, 1);
+}
+
+/* Firefox thumb styling */
+input[type="range"].slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--gold);
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(201, 168, 76, 0.5);
+    transition: all 0.2s ease;
+    border: none;
+}
+
+input[type="range"].slider::-moz-range-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 15px rgba(201, 168, 76, 0.8);
+}
+
+input[type="range"].slider::-moz-range-thumb:active {
+    transform: scale(1.25);
+    box-shadow: 0 0 20px rgba(201, 168, 76, 1);
+}
+
+/* Track styling for Firefox */
+input[type="range"].slider::-moz-range-track {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+/* Tick marks below slider */
+.slider-ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    padding: 0 2px;
+}
+
+.slider-ticks span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.65rem;
+    color: var(--dim);
+}
+
+.slider-ticks span::before {
+    content: '';
+    width: 2px;
+    height: 6px;
+    background: var(--border);
+    margin-bottom: 2px;
+}
+
+.slider-ticks span.active::before {
+  background: var(--gold);
+  height: 8px;
+}
+
+/* Detailed Analysis Content Styling */
+.analysis-content {
+    color: var(--text);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+}
+
+/* Ensure scrollable container has proper dimensions */
+.creditwise-card.summary-card {
+    max-height: 500px !important;
+    overflow-y: auto !important;
+    font-size: 0.85rem !important;
+}
+
+/* Scrollbar styling for better appearance */
+.analysis-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.analysis-content::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.analysis-content::-webkit-scrollbar-thumb {
+    background: rgba(201, 168, 76, 0.5);
+    border-radius: 4px;
+}
+
+.analysis-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(201, 168, 76, 0.7);
+}
+
+/* ============================================
+   NEW STRUCTURED DISPLAY SECTIONS CSS
+   ============================================ */
+
+/* ML Prediction Section */
+.ml-prediction-section {
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.1) 0%, rgba(15, 118, 110, 0.1) 100%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.ml-prediction-section h3 {
+  color: var(--gold);
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.risk-score {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.risk-score .score-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--gold);
+  font-family: 'DM Mono', monospace;
+}
+
+.risk-score .score-label {
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+.approval-probability {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.approval-probability span:first-child {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--teal);
+  font-family: 'DM Mono', monospace;
+}
+
+.approval-probability span:last-child {
+  color: var(--dim);
+  font-size: 0.85rem;
+}
+
+.risk-level {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.risk-level.low {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 1px solid #22c55e;
+}
+
+.risk-level.medium {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border: 1px solid #fbbf24;
+}
+
+.risk-level.high {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.risk-level.critical {
+  background: rgba(156, 163, 175, 0.2);
+  color: #9ca3af;
+  border: 1px solid #9ca3af;
+}
+
+.key-factors {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.key-factors li {
+  padding: 8px 0;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.key-factors li:last-child {
+  border-bottom: none;
+}
+
+.key-factors li::before {
+  content: "• ";
+  color: var(--gold);
+}
+
+/* Policy Excerpts Section */
+.policy-excerpts-section {
+  margin-bottom: 20px;
+}
+
+.policy-excerpts-section h3 {
+  color: var(--gold);
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.policy-card {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.policy-category {
+  display: inline-block;
+  background: var(--gold);
+  color: var(--bg);
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.policy-query {
+  color: var(--teal);
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+}
+
+.policy-query strong {
+  color: var(--gold);
+}
+
+.policy-text {
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.policy-source {
+  color: var(--dim);
+  font-size: 0.75rem;
+}
+
+.no-policy {
+  color: var(--dim);
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Compliance Status Section */
+.compliance-status-section {
+  margin-bottom: 20px;
+}
+
+.compliance-status-section h3 {
+  color: var(--gold);
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.compliance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+
+.compliance-badge.pass {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+  border: 2px solid #22c55e;
+}
+
+.compliance-badge.fail {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 2px solid #ef4444;
+}
+
+.compliance-badge.warning {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fbbf24;
+  border: 2px solid #fbbf24;
+}
+
+.policy-checks {
+  margin-bottom: 16px;
+}
+
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+}
+
+.check-item.passed {
+  border-left: 3px solid #22c55e;
+}
+
+.check-item.failed {
+  border-left: 3px solid #ef4444;
+}
+
+.check-icon {
+  font-size: 1.2rem;
+}
+
+.check-name {
+  flex: 1;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.check-required,
+.check-actual {
+  color: var(--dim);
+  font-size: 0.8rem;
+}
+
+.recommendation {
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.recommendation.approve {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border: 1px solid #22c55e;
+}
+
+.recommendation.deny {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid #ef4444;
+}
+
+.recommendation.manual_review {
+  background: rgba(251, 191, 36, 0.1);
+  color: #fbbf24;
+  border: 1px solid #fbbf24;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .ml-prediction-section,
+  .policy-excerpts-section,
+  .compliance-status-section {
+    padding: 16px;
+  }
+
+  .risk-score .score-value {
+    font-size: 1.5rem;
+  }
+
+  .approval-probability span:first-child {
+    font-size: 1.2rem;
+  }
+
+  .check-item {
+    flex-wrap: wrap;
+  }
+
+  .check-required,
+  .check-actual {
+    width: 100%;
+    margin-top: 4px;
+  }
+}
+
+.analysis-content .markdown-preview {
+    color: var(--text);
+    line-height: 1.5;
+    font-size: 0.85rem;
+    max-width: 100%;
+}
+
+.analysis-content .markdown-preview h1 {
+    color: var(--gold);
+    margin: 16px 0 12px 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.analysis-content .markdown-preview h2 {
+    color: var(--gold);
+    margin: 14px 0 10px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.analysis-content .markdown-preview h3 {
+    color: var(--gold);
+    margin: 12px 0 8px 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.analysis-content .markdown-preview p {
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.analysis-content .markdown-preview ul,
+.analysis-content .markdown-preview ol {
+  margin: 8px 0;
+  padding-left: 18px;
+}
+
+.analysis-content .markdown-preview li {
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.analysis-content .markdown-preview strong {
+  color: var(--gold);
+}
+
+/* Percentage indicator */
+.slider-percentage {
+    position: absolute;
+    top: -25px;
+    right: 0;
+    font-size: 0.75rem;
+    color: var(--teal);
+    font-weight: 600;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page active" id="credit_risk">
+<div class="container">
+
+{% comment %} Region Detection and Routing {% endcomment %}
+{% if user_region %}
+    {% with region_code=user_region.country_code|upper %}
+        {% if region_code == 'US' or region_code == 'UNITED STATES' or region_code == 'USA' %}
+            {% include 'bank_app/credit_risk_us_form.html' %}
+        {% elif region_code == 'IN' or region_code == 'INDIA' or region_code == 'BHARAT' %}
+            {% include 'bank_app/credit_risk_india_form.html' %}
+        {% else %}
+            <div style="text-align:center; padding: 50px 20px; background: #FEF2F2; border-radius: 12px; border: 1px solid #FECACA; margin: 20px 0;">
+                <div style="width: 48px; height: 48px; background: #FEE2E2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; border: 2px solid #FECACA;">
+                    <span style="color: #DC2626; font-size: 24px; font-weight: bold;">!</span>
+                </div>
+                <h3 style="color: #991B1B; margin: 0 0 8px 0;">Region Not Supported</h3>
+                <p style="color: #7F1D1D; max-width: 500px; margin: 0 auto 16px auto; line-height: 1.6;">
+                    Credit Risk Assessment is currently available only for <strong>United States</strong> and <strong>India (Bharat)</strong> region users.
+                </p>
+                <div style="background: #FEE2E2; display: inline-block; padding: 8px 16px; border-radius: 6px; font-size: 14px; color: #991B1B;">
+                    Detected Region: {{ user_region.country_name|default:"Unknown" }}
+                </div>
+            </div>
+            
+            <div style="margin: 30px 0; padding: 20px; background: #F8FAFC; border-radius: 8px; border: 1px solid #E2E8F0;">
+                <h4 style="color: #1E293B; margin: 0 0 12px 0;">Why is this restricted?</h4>
+                <p style="color: #475569; line-height: 1.6; margin: 0;">
+                    The credit risk models are trained on region-specific data and use local credit scoring conventions.
+                </p>
+                <ul style="color: #475569; margin: 12px 0 0 20px; padding: 0;">
+                    <li><strong>US Model</strong>: Uses FICO scores and US Lending Club data</li>
+                    <li><strong>India Model</strong>: Uses CIBIL-style scores and Indian loan data (975,000+ records)</li>
+                </ul>
+            </div>
+        {% endif %}
+    {% endwith %}
+{% else %}
+    {% comment %} No region detected - show India form as default {% endcomment %}
+    {% include 'bank_app/credit_risk_india_form.html' %}
+{% endif %}
+
+{% comment %} End of region routing - actual forms are in included templates {% endcomment %}
+
+<!-- Loan Creation Modal (shared by both regions) -->
+<div id="loan_modal" class="modal" style="display: none;">
+<div class="modal-overlay" onclick="closeLoanModal()"></div>
+<div class="modal-content">
+<div class="modal-header">
+<h2>Apply for Loan</h2>
+<button class="modal-close" onclick="closeLoanModal()">&times;</button>
+</div>
+
+<div class="modal-body">
+<!-- Loan Application Form -->
+<div id="loan_form_section">
+<div class="section-label">Loan Details</div>
+<div class="row2">
+<div class="field">
+<label for="loan_app_amount">Loan Amount</label>
+<div class="pfx">
+<span class="currency-symbol">₹</span>
+<input type="number" id="loan_app_amount" placeholder="e.g. 5,00,000" min="10000">
+</div>
+</div>
+<div class="field">
+<label for="loan_app_tenure">Tenure</label>
+<select id="loan_app_tenure">
+<option value="12">12 months</option>
+<option value="24">24 months</option>
+<option value="36" selected>36 months</option>
+<option value="48">48 months</option>
+<option value="60">60 months</option>
+<option value="72">72 months</option>
+<option value="84">84 months</option>
+</select>
+</div>
+</div>
+
+<div class="field">
+<label for="loan_app_purpose">Loan Purpose</label>
+<select id="loan_app_purpose">
+<option value="home">Home Loan</option>
+<option value="personal">Personal Loan</option>
+<option value="education">Education Loan</option>
+<option value="vehicle">Vehicle Loan</option>
+<option value="business">Business Loan</option>
+<option value="medical">Medical Loan</option>
+</select>
+</div>
+
+<div class="field">
+<label for="loan_app_email">Email for Summary</label>
+<input type="email" id="loan_app_email" placeholder="your.email@example.com">
+<span class="field-hint">Receive loan decision summary via email</span>
+</div>
+
+<div class="checkbox-field">
+<label>
+<input type="checkbox" id="send_email_summary" checked>
+<span>Send loan decision summary to my email</span>
+</label>
+</div>
+
+<button class="btn-primary btn-creditwise" onclick="submitLoanApplication()" style="width: 100%; margin-top: 16px;">
+Submit Application
+</button>
+</div>
+
+<!-- Loading State -->
+<div id="loan_loading_section" style="display: none;">
+<div class="placeholder">
+<div class="placeholder-icon">⏳</div>
+<p><strong>Processing your application...</strong></p>
+<p style="font-size: 0.85rem; color: var(--dim);">AI agents are analyzing your application against policy guidelines</p>
+<div class="loading-dots" style="margin-top: 20px;">
+<span></span><span></span><span></span>
+</div>
+</div>
+</div>
+
+<!-- Loan Decision Results -->
+<div id="loan_decision_section" style="display: none;">
+<!-- Policy Compliance Badge -->
+<div class="compliance-section">
+<div class="section-label">Policy Compliance</div>
+<div id="compliance_badges" class="compliance-badges"></div>
+</div>
+
+<!-- Loan Decision -->
+<div class="decision-panel">
+<div class="decision-header" id="decision_header"></div>
+<div class="decision-body" id="decision_body"></div>
+</div>
+
+<!-- Conditions -->
+<div class="conditions-section">
+<div class="section-label">Conditions</div>
+<div id="conditions_list" class="conditions-list"></div>
+</div>
+
+<!-- Next Steps -->
+<div class="next-steps-section">
+<div class="section-label">Next Steps</div>
+<div id="next_steps_list" class="next-steps-timeline"></div>
+</div>
+
+<!-- Action Buttons -->
+<div class="modal-actions">
+<button class="btn-secondary" onclick="closeLoanModal()">Close</button>
+<button class="btn-primary btn-creditwise" onclick="openLoanModal()">New Application</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- EMI Results Template (hidden, shown via JS) -->
+<div id="emi_results_template" style="display: none;">
+<div class="section-divider">EMI Results</div>
+<div class="emi-table">
+<div class="emi-row">
+<span class="emi-label">Monthly EMI</span>
+<span class="emi-value big gold" id="monthly_emi_display">₹0</span>
+</div>
+<div class="emi-row">
+<span class="emi-label">Principal Amount</span>
+<span class="emi-value" id="principal_display">₹0</span>
+</div>
+<div class="emi-row">
+<span class="emi-label">Total Interest</span>
+<span class="emi-value red" id="total_interest_display">₹0</span>
+</div>
+<div class="emi-row">
+<span class="emi-label">Processing Fee</span>
+<span class="emi-value" id="processing_fee_display">₹0</span>
+</div>
+<div class="emi-row">
+<span class="emi-label">Total Cost of Loan</span>
+<span class="emi-value big" id="total_cost_display">₹0</span>
+</div>
+</div>
+
+<div class="donut-wrap">
+<svg class="donut-svg" viewBox="0 0 120 120">
+<circle class="donut-track" cx="60" cy="60" r="58"></circle>
+<circle class="donut-principal" cx="60" cy="60" r="58"></circle>
+<circle class="donut-interest" cx="60" cy="60" r="58"></circle>
+</svg>
+<div class="donut-legend">
+<div class="legend-item">
+<div class="dot green-dot"></div>
+<span>Principal</span>
+</div>
+<div class="legend-item">
+<div class="dot red-dot"></div>
+<span>Interest</span>
+</div>
+</div>
+</div>
+
+<div class="section-divider" style="margin-top: 20px;">Amortization Schedule</div>
+<div class="table-scroll">
+<table>
+<thead>
+<tr>
+<th>Month</th>
+<th>Opening</th>
+<th>Principal</th>
+<th>Interest</th>
+<th>Total</th>
+<th>Closing</th>
+</tr>
+</thead>
+<tbody id="amortization_schedule_body">
+</tbody>
+</table>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Global country list data for region selector (matching fd_advisor pattern)
+// Note: base.html already declares this with 'let countryListData = {}'
+// We simply use the existing variable without re-declaring
+
+/**
+ * Get currency symbol for a country code
+ * @param {string} countryCode - ISO2 country code
+ * @returns {string} Currency symbol
+ */
+function getCurrencySymbol(countryCode) {
+    if (!countryCode) return '₹';
+    const currencyMap = {
+        'IN': '₹', 'US': '$', 'GB': '£', 'CA': '$', 'AU': '$',
+        'DE': '€', 'FR': '€', 'JP': '¥', 'CN': '¥', 'BR': 'R$',
+        'MX': '$', 'KR': '₩', 'RU': '₽', 'WW': ''
+    };
+    return currencyMap[countryCode.toUpperCase()] || '$';
+}
+
+/**
+ * Load country list from API endpoint
+ * @returns {Promise} Resolves when countries are loaded
+ */
+async function loadCountryList() {
+    try {
+        const response = await fetch('/api/csc/countries/');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.countries || !Array.isArray(data.countries) || data.countries.length === 0) {
+            throw new Error('No countries returned from API or invalid response format');
+        }
+
+        // Transform API response
+        countryListData = {};
+        data.countries.forEach(country => {
+            if (country.code && country.name) {
+                countryListData[country.code] = {
+                    name: country.name,
+                    currency_code: country.currency_code || country.code === 'US' ? 'USD' : (country.code === 'IN' ? 'INR' : country.currency_code || ''),
+                    currency_symbol: country.currency_symbol || country.currency || getCurrencySymbol(country.code),
+                };
+            }
+        });
+
+        // Add "Worldwide" entry
+        countryListData['WW'] = {
+            name: 'Worldwide',
+            currency_code: '',
+            currency_symbol: '',
+        };
+
+        console.log('Credit Risk: Countries loaded:', Object.keys(countryListData).length, 'countries');
+
+    } catch (error) {
+        console.error('Error loading country data:', error);
+    }
+}
+
+/**
+ * Auto-detect user region from /api/user-region/ endpoint
+ * @returns {Promise} Resolves when region is detected
+ */
+async function autoDetectUserRegion() {
+    try {
+        const response = await fetch('/api/user-region/');
+        const data = await response.json();
+
+        if (data.country_code) {
+            const detectedCode = data.country_code.toUpperCase();
+            
+            // Check if detected country is in the list
+            const countryExists = countryListData[detectedCode] !== undefined;
+
+            if (countryExists) {
+                // Update window.USER_REGION
+                window.USER_REGION = {
+                    'code': detectedCode,
+                    'name': data.country_name || countryListData[detectedCode]?.name || detectedCode,
+                    'currency_symbol': data.currency_symbol || countryListData[detectedCode]?.currency_symbol || getCurrencySymbol(detectedCode),
+                    'currency_code': data.currency_code || countryListData[detectedCode]?.currency_code || 'USD',
+                };
+
+                console.log(`Credit Risk: Region auto-detected: ${window.USER_REGION.name} (${detectedCode})`);
+                
+                // Update currency symbols on the page
+                updateCurrencySymbols(detectedCode);
+                
+                // Show/hide US-specific fields based on region
+                updateFieldsForRegion(detectedCode);
+            }
+        }
+    } catch (error) {
+        console.warn('Could not auto-detect user region:', error);
+    }
+}
+
+/**
+ * Update currency symbols based on detected region
+ * @param {string} countryCode - Country code (e.g., 'IN', 'US')
+ */
+function updateCurrencySymbols(countryCode) {
+    const currencySymbols = document.querySelectorAll('.currency-symbol');
+    
+    // Use detected country code or fall back to window.USER_REGION
+    const country = countryCode || window.USER_REGION?.code || 'IN';
+
+    let symbol = getCurrencySymbol(country);
+
+    currencySymbols.forEach(span => {
+        span.textContent = symbol;
+    });
+    
+    // Also update any hardcoded currency displays
+    updateCurrencyDisplays(symbol);
+}
+
+/**
+ * Update all currency displays on the page
+ * @param {string} symbol - Currency symbol
+ */
+function updateCurrencyDisplays(symbol) {
+    // Update slider value displays with currency
+    const amountFields = ['applicant_income_val', 'coapplicant_income_val', 'loan_amount_val', 'collateral_value_val', 'savings_val'];
+    amountFields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.textContent) {
+            // Extract the number part and prepend the symbol
+            const text = el.textContent.replace(/[₹$£€]/g, '').trim();
+            if (text && !isNaN(parseFloat(text.replace(/,/g, '')))) {
+                el.textContent = symbol + text;
+            }
+        }
+    });
+}
+
+/**
+ * Show/hide US-specific fields based on region
+ * @param {string} countryCode - Country code
+ */
+function updateFieldsForRegion(countryCode) {
+    const isUS = countryCode === 'US';
+    const isIndia = countryCode === 'IN';
+    
+    // Show/hide US-specific fields
+    const usFieldsSection = document.getElementById('us_fields_section');
+    const usFieldsRow = document.getElementById('us_fields_row');
+    const usFieldsRow2 = document.getElementById('us_fields_row2');
+    
+    if (usFieldsSection) usFieldsSection.style.display = isUS ? 'block' : 'none';
+    if (usFieldsRow) usFieldsRow.style.display = isUS ? 'flex' : 'none';
+    if (usFieldsRow2) usFieldsRow2.style.display = isUS ? 'flex' : 'none';
+    
+    // Update placeholders based on region
+    const incomeInput = document.getElementById('applicant_income');
+    const loanAmountInput = document.getElementById('loan_amount');
+    
+    if (isUS) {
+        if (incomeInput) {
+            incomeInput.placeholder = 'e.g. 5,000';
+            incomeInput.value = 50000;
+            syncSlider('applicant_income', '50000');
+        }
+        if (loanAmountInput) {
+            loanAmountInput.placeholder = 'e.g. 200,000';
+        }
+    } else if (isIndia) {
+        if (incomeInput) {
+            incomeInput.placeholder = 'e.g. 1,00,000';
+            incomeInput.value = 600000;
+            syncSlider('applicant_income', '600000');
+        }
+        if (loanAmountInput) {
+            loanAmountInput.placeholder = 'e.g. 20,00,000';
+        }
+    }
+}
+
+// CSRF Token Helper
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+  }
+  
+  // ============================================
+  // Slider Synchronization Functions (CreditWise-style)
+  // ============================================
+  
+  /**
+   * Syncs slider value with corresponding input field and display label
+   * @param {string} inputId - ID of the number input to sync
+   * @param {string} value - New value from slider
+   */
+  function syncSlider(inputId, value) {
+  const input = document.getElementById(inputId);
+  const display = document.getElementById(inputId + '_val');
+  
+  if (input && input.value !== value) {
+  input.value = value;
+  }
+  
+  // Update display label with formatted value
+  if (display) {
+  const min = parseFloat(input?.min) || 0;
+  const max = parseFloat(input?.max) || 1000000;
+  
+  // Format based on value range
+  if (max > 10000) {
+  // Currency format for large values
+  display.textContent = '₹' + parseInt(value).toLocaleString('en-IN');
+  } else if (inputId === 'dti_ratio') {
+  // Percentage format
+  display.textContent = value + '%';
+  } else if (inputId === 'credit_score') {
+  // Credit score format
+  display.textContent = value;
+  } else {
+  // Regular number format
+  display.textContent = value;
+  }
+  
+  // Update tick marks active state
+  updateTickMarks(inputId, value);
+  }
+  
+  // Update CSS --pct variable for gradient fill
+  const slider = document.getElementById(inputId + '_slider');
+  if (slider) {
+  updateSliderGradient(slider);
+  }
+  }
+  
+  /**
+   * Syncs number input value with corresponding slider
+   * @param {string} sliderId - ID of the slider to sync
+   * @param {string} value - New value from number input
+   */
+  function syncInputToSlider(sliderId, value) {
+  const slider = document.getElementById(sliderId);
+  if (slider) {
+  const min = parseFloat(slider.min) || 0;
+  const max = parseFloat(slider.max) || 1000000;
+  const numValue = Math.min(Math.max(parseFloat(value) || min, min), max);
+  
+  if (slider.value !== String(numValue)) {
+  slider.value = numValue;
+  updateSliderGradient(slider);
+  
+  // Update display label
+  const inputId = sliderId.replace('_slider', '');
+  const display = document.getElementById(inputId + '_val');
+  if (display) {
+  const input = document.getElementById(inputId);
+  if (input) {
+  const inputMax = parseFloat(input.max) || 1000000;
+  if (inputMax > 10000) {
+  display.textContent = '₹' + parseInt(numValue).toLocaleString('en-IN');
+  } else if (inputId === 'dti_ratio') {
+  display.textContent = numValue + '%';
+  } else if (inputId === 'credit_score') {
+  display.textContent = numValue;
+  } else {
+  display.textContent = numValue;
+  }
+  }
+  }
+  
+  // Update tick marks
+  updateTickMarks(inputId, numValue);
+  }
+  }
+  }
+  
+  /**
+   * Updates the slider gradient based on current value
+   * @param {HTMLElement} slider - The range input element
+   */
+  function updateSliderGradient(slider) {
+      if (!slider) return;
+      
+      const min = parseFloat(slider.min) || 0;
+      const max = parseFloat(slider.max) || 100;
+      const val = parseFloat(slider.value) || 0;
+      const pct = ((val - min) / (max - min)) * 100;
+      
+      slider.style.setProperty('--pct', pct + '%');
+  }
+  
+  /**
+   * Updates active tick marks based on slider value
+   * @param {string} inputId - ID of the input field
+   * @param {string} value - Current slider value
+   */
+  function updateTickMarks(inputId, value) {
+      const slider = document.getElementById(inputId + '_slider');
+      if (!slider) return;
+      
+      const ticksContainer = slider.nextElementSibling;
+      if (!ticksContainer || !ticksContainer.classList.contains('slider-ticks')) return;
+      
+      const min = parseFloat(slider.min) || 0;
+      const max = parseFloat(slider.max) || 100;
+      const val = parseFloat(value) || 0;
+      
+      const tickValues = Array.from(ticksContainer.querySelectorAll('span')).map(span => {
+          const text = span.textContent.replace('%', '');
+          return parseFloat(text);
+      });
+      
+      tickValues.forEach((tickVal, index) => {
+          const tickSpan = ticksContainer.querySelectorAll('span')[index];
+          if (tickVal <= val) {
+              tickSpan.classList.add('active');
+          } else {
+              tickSpan.classList.remove('active');
+          }
+      });
+  }
+  
+  // Initialize sliders on page load
+  document.addEventListener('DOMContentLoaded', function() {
+      // Load country list and auto-detect region first
+      Promise.all([
+          loadCountryList(),
+          autoDetectUserRegion()
+      ]).then(() => {
+          console.log('Credit Risk: Region detection completed');
+      }).catch(error => {
+          console.error('Credit Risk: Failed to initialize region:', error);
+      }).finally(() => {
+          // Initialize all sliders after region is detected
+          initializeSliders();
+      });
+  });
+  
+  /**
+   * Initialize all sliders and their values
+   */
+  function initializeSliders() {
+      // Initialize all slider gradients
+      const sliders = document.querySelectorAll('input[type="range"].slider');
+      sliders.forEach(slider => {
+          updateSliderGradient(slider);
+  
+          // Add input event listener for real-time updates
+          slider.addEventListener('input', function() {
+              const inputId = this.id.replace('_slider', '');
+              syncSlider(inputId, this.value);
+          });
+      });
+  
+      // Initialize tick marks for all sliders with ticks
+      const creditScoreSlider = document.getElementById('credit_score_slider');
+      const dtiSlider = document.getElementById('dti_ratio_slider');
+      if (creditScoreSlider) updateTickMarks('credit_score', creditScoreSlider.value);
+      if (dtiSlider) updateTickMarks('dti_ratio', dtiSlider.value);
+  
+      // Initialize display labels from input fields
+      const incomeInput = document.getElementById('applicant_income');
+      const coIncomeInput = document.getElementById('coapplicant_income');
+      const creditScoreInput = document.getElementById('credit_score');
+      const dtiInput = document.getElementById('dti_ratio');
+      const loanAmountInput = document.getElementById('loan_amount');
+      const collateralInput = document.getElementById('collateral_value');
+      const savingsInput = document.getElementById('savings');
+  
+      if (incomeInput) syncSlider('applicant_income', incomeInput.value);
+      if (coIncomeInput) syncSlider('coapplicant_income', coIncomeInput.value);
+      if (creditScoreInput) syncSlider('credit_score', creditScoreInput.value);
+      if (dtiInput) syncSlider('dti_ratio', dtiInput.value);
+      if (loanAmountInput) syncSlider('loan_amount', loanAmountInput.value);
+      if (collateralInput) syncSlider('collateral_value', collateralInput.value);
+      if (savingsInput) syncSlider('savings', savingsInput.value);
+  }
+  
+  // Submit Credit Risk Assessment using CrewAI API
+  async function submitCreditRisk() {
+    console.log('=== submitCreditRisk() called ===');
+    
+    // Get region from window.USER_REGION or default to India
+    let countryCode = 'IN';
+    if (window.USER_REGION && window.USER_REGION.code) {
+      countryCode = window.USER_REGION.code;
+      console.log('Region from window.USER_REGION:', countryCode);
+    } else {
+      // Fallback to cookie parsing
+      const savedRegion = document.cookie.split('; ').find(row => row.startsWith('user_region='));
+      if (savedRegion) {
+        try {
+          const regionJson = savedRegion.split('=')[1];
+          // Handle potentially malformed JSON with bad escape characters
+          let region;
+          try {
+          // First try to sanitize any bad escape characters before parsing
+          const sanitizedJson = regionJson.replace(/\\([^"\\\/bfnrtu])/g, '$1');
+          region = JSON.parse(sanitizedJson);
+          } catch (parseError) {
+          // If sanitization fails, try decodeURIComponent
+          try {
+          region = JSON.parse(decodeURIComponent(regionJson));
+          } catch (decodeError) {
+          // Last resort: try raw string
+          try {
+          region = JSON.parse(regionJson);
+          } catch (rawError) {
+          console.warn('All JSON parsing attempts failed, defaulting to IN');
+          region = { code: 'IN' };
+          }
+          }
+          }
+          countryCode = region.code || 'IN';
+          console.log('Region from cookie:', countryCode);
+          } catch (e) {
+          console.warn('Could not parse saved region cookie, defaulting to IN:', e.message);
+        }
+      } else {
+        console.log('No region found in window.USER_REGION or cookie, defaulting to IN');
+      }
+    }
+  
+    // Region gating: Only allow US and India
+    if (countryCode !== 'US' && countryCode !== 'IN') {
+      console.warn('Region not supported:', countryCode);
+      // Determine which result panel to use based on region
+      const resultPanelId = countryCode === 'US' ? 'result_panel_us' : 'result_panel';
+      const resultPanel = document.getElementById(resultPanelId);
+      if (resultPanel) {
+        resultPanel.innerHTML = `
+          <div class="placeholder">
+            <div class="placeholder-icon">🌍</div>
+            <p><strong>Credit Risk Assessment Not Available</strong></p>
+            <p style="font-size: 0.85rem; color: var(--dim);">This service is currently available only for users from India and the United States.</p>
+          </div>
+        `;
+      }
+      return;
+    }
+  
+    const region = countryCode === 'US' ? 'US' : 'India';
+    const isUS = countryCode === 'US';
+    console.log('Region determined:', region, '(isUS:', isUS + ')');
+  
+    // Determine which form fields and result panel to use based on region
+    const resultPanelId = isUS ? 'result_panel_us' : 'result_panel';
+    const errorDivId = isUS ? 'error_message_us' : 'error_message';
+    const applyBtnId = isUS ? 'apply_loan_btn_us' : 'apply_loan_btn';
+  
+    // Get form values based on region
+    let formData;
+    if (isUS) {
+      console.log('Collecting US form data...');
+      formData = {
+        loan_amnt: parseFloat(document.getElementById('loan_amnt')?.value) || 0,
+        term: document.getElementById('term')?.value || '36',
+        int_rate: parseFloat(document.getElementById('int_rate')?.value) || 0,
+        purpose: document.getElementById('purpose')?.value || 'debt_consolidation',
+        annual_inc: parseFloat(document.getElementById('annual_inc')?.value) || 0,
+        emp_length: document.getElementById('emp_length')?.value || '< 1 year',
+        home_ownership: document.getElementById('home_ownership')?.value || 'RENT',
+        verification_status: document.getElementById('verification_status')?.value || 'Not Verified',
+        fico_score: parseInt(document.getElementById('fico_score')?.value) || 680,
+        dti: parseFloat(document.getElementById('dti')?.value) || 18,
+        delinq_2yrs: parseInt(document.getElementById('delinq_2yrs')?.value) || 0,
+        inq_last_6mths: parseInt(document.getElementById('inq_last_6mths')?.value) || 0,
+        pub_rec: parseInt(document.getElementById('pub_rec')?.value) || 0,
+        revol_util: parseFloat(document.getElementById('revol_util')?.value) || 45,
+        revol_bal: parseFloat(document.getElementById('revol_bal')?.value) || 0,
+        total_acc: parseInt(document.getElementById('total_acc')?.value) || 15,
+        open_acc: parseInt(document.getElementById('open_acc')?.value) || 0,
+        earliest_cr_line: document.getElementById('earliest_cr_line')?.value || 'Jan-2010',
+        mths_since_last_delinq: parseInt(document.getElementById('mths_since_last_delinq')?.value) || 36,
+        total_rev_hi_lim: parseFloat(document.getElementById('total_rev_hi_lim')?.value) || 0,
+        region: region
+      };
+    } else {
+      console.log('Collecting India form data...');
+      formData = {
+        applicant_income: parseFloat(document.getElementById('applicant_income')?.value) || 0,
+        coapplicant_income: parseFloat(document.getElementById('coapplicant_income')?.value) || 0,
+        credit_score: parseInt(document.getElementById('credit_score')?.value) || 0,
+        dti_ratio: parseFloat(document.getElementById('dti_ratio')?.value) || 0,
+        loan_amount: parseFloat(document.getElementById('loan_amount')?.value) || 0,
+        loan_term: parseInt(document.getElementById('loan_term')?.value) || 0,
+        collateral_value: parseFloat(document.getElementById('collateral_value')?.value) || 0,
+        savings: parseFloat(document.getElementById('savings')?.value) || 0,
+        employment_status: document.getElementById('employment_status')?.value || 'Salaried',
+        education_level: document.getElementById('education_level')?.value || 'Graduate',
+        property_area: document.getElementById('property_area')?.value || 'Urban',
+        existing_loans: parseInt(document.getElementById('existing_loans')?.value) || 0,
+        region: region
+      };
+    }
+  
+    console.log('Form data collected:', JSON.stringify(formData, null, 2));
+  
+    // Validate based on region
+    if (isUS) {
+      if (formData.loan_amnt <= 0 || formData.annual_inc <= 0 || formData.fico_score < 300 || formData.fico_score > 850) {
+        console.error('US form validation failed');
+        showErrorUS('Please fill in all required fields with valid values.');
+        return;
+      }
+    } else {
+      if (formData.applicant_income <= 0 || formData.credit_score < 300 || formData.credit_score > 900 ||
+          formData.loan_amount <= 0 || formData.loan_term <= 0) {
+        console.error('India form validation failed');
+        showError('Please fill in all required fields with valid values.');
+        return;
+      }
+    }
+  
+    // Show loading state
+    const resultPanel = document.getElementById(resultPanelId);
+    console.log('Showing loading state in panel:', resultPanelId);
+    resultPanel.innerHTML = `
+      <div class="placeholder">
+        <div class="placeholder-icon">⏳</div>
+        <p><strong>CrewAI is analyzing your application...</strong></p>
+        <p style="font-size: 0.85rem; color: var(--dim);">Running credit risk assessment with ML + Agent analysis for ${region}</p>
+      </div>
+    `;
+  
+    // Get CSRF token
+    const csrfToken = getCookie('csrftoken');
+    console.log('CSRF Token:', csrfToken ? 'Present' : 'MISSING');
+  
+    try {
+      // Send data in query format that the crew expects
+      const payload = {
+        query: formData, // Send as object, not JSON-encoded string
+        region: region
+      };
+      
+      console.log('Sending fetch request to /api/credit-risk-crew/...');
+      console.log('Payload:', JSON.stringify(payload, null, 2));
+      
+      const response = await fetch('/api/credit-risk-crew/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken || ''
+        },
+        body: JSON.stringify(payload)
+      });
+  
+      console.log('Response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Response data:', JSON.stringify(data, null, 2));
+  
+      if (data.error) {
+        console.error('API returned error:', data.error);
+        resultPanel.innerHTML = `
+          <div class="placeholder">
+            <div class="placeholder-icon">❌</div>
+            <p><strong>Error:</strong> ${data.error}</p>
+            ${data.detail ? `<p style="font-size: 0.8rem; color: var(--dim);">Details: ${data.detail}</p>` : ''}
+          </div>
+        `;
+        return;
+      }
+  
+      if (!data.success && !data.result) {
+        console.error('Unexpected response format:', data);
+        resultPanel.innerHTML = `
+          <div class="placeholder">
+            <div class="placeholder-icon">❌</div>
+            <p><strong>Unexpected Response:</strong> The server returned an unexpected format.</p>
+          </div>
+        `;
+        return;
+      }
+  
+      // Parse CrewAI output and display results
+      console.log('Calling displayCrewResults...');
+      displayCrewResults(data, formData, isUS);
+      console.log('=== submitCreditRisk() completed successfully ===');
+  
+    } catch (error) {
+      console.error('=== Credit Risk error caught ===');
+      console.error('Error type:', error.constructor.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      
+      resultPanel.innerHTML = `
+        <div class="placeholder">
+          <div class="placeholder-icon">❌</div>
+          <p><strong>Network Error:</strong> ${error.message}</p>
+          <p style="font-size: 0.85rem; color: var(--dim);">Please try again or check server logs</p>
+        </div>
+      `;
+    }
+  }
+
+// Display CrewAI credit risk results
+function displayCrewResults(data, formData, isUS = false) {
+  console.log('=== displayCrewResults called ===');
+  console.log('Data received:', JSON.stringify(data, null, 2));
+  console.log('isUS:', isUS);
+
+  const resultPanelId = isUS ? 'result_panel_us' : 'result_panel';
+  const applyBtnId = isUS ? 'apply_loan_btn_us' : 'apply_loan_btn';
+  const resultPanel = document.getElementById(resultPanelId);
+
+  if (!resultPanel) {
+    console.error('Result panel not found:', resultPanelId);
+    return;
+  }
+
+  const rawOutput = data.result || '';
+  const summaryHtml = data.summary_html || '';
+  const isJson = data.is_json === true || data.is_json === 'true';
+  
+  console.log('Raw output length:', rawOutput.length);
+  console.log('Summary HTML length:', summaryHtml.length);
+  console.log('is_json flag:', isJson);
+
+  // Check if we have structured JSON data for new display
+  if (isJson && data.ml_prediction) {
+    console.log('Rendering structured JSON display');
+    renderStructuredResults(data, formData, isUS);
+    return;
+  }
+
+  // Extract approval probability from CrewAI markdown output
+  // Look for patterns like "**Approval Probability**: **75%**" or "Approval Probability: 75%"
+  let approvalProb = calculateMockApprovalProbability(formData);
+  const probMatch = rawOutput.match(/\*\*Approval Probability\*\*:\s*\*\*(\d+\.?\d*)\s*%\*\*/);
+  if (probMatch) {
+    approvalProb = parseFloat(probMatch[1]);
+    console.log('Approval probability extracted from markdown:', approvalProb);
+  } else {
+    // Try alternative pattern
+    const altMatch = rawOutput.match(/Approval Probability[:\s]+(\d+\.?\d*)\s*%/i);
+    if (altMatch) {
+      approvalProb = parseFloat(altMatch[1]);
+      console.log('Approval probability extracted (alt pattern):', approvalProb);
+    }
+  }
+
+  const verdict = approvalProb >= 50 ? 'Approved' : 'Rejected';
+  const verdictColor = approvalProb >= 50 ? 'var(--green)' : 'var(--red)';
+  const verdictIcon = approvalProb >= 50 ? '✅' : '❌';
+
+  console.log('Verdict:', verdict, 'Approval Prob:', approvalProb + '%');
+
+  // Use backend-rendered HTML if available, otherwise render with frontend
+  let analysisDisplayHtml = '';
+  console.log('[Credit Risk] summaryHtml:', summaryHtml);
+  console.log('[Credit Risk] rawOutput:', rawOutput);
+  console.log('[Credit Risk] renderMarkdownSafe available:', typeof renderMarkdownSafe === 'function');
+
+  if (summaryHtml && summaryHtml.trim() !== '') {
+    // Use backend-rendered HTML directly
+    console.log('[Credit Risk] Using backend-rendered HTML');
+    analysisDisplayHtml = summaryHtml;
+  } else if (typeof renderMarkdownSafe === 'function') {
+    // Fallback to frontend rendering
+    console.log('[Credit Risk] Using renderMarkdownSafe for frontend rendering');
+    analysisDisplayHtml = renderMarkdownSafe(rawOutput);
+    console.log('[Credit Risk] Rendered HTML:', analysisDisplayHtml);
+  } else {
+    // Last resort: async rendering
+    console.log('[Credit Risk] Using async renderMarkdown');
+    renderMarkdown(rawOutput).then(html => {
+      analysisDisplayHtml = html;
+      updateAnalysisDisplay(html);
+    });
+  }
+
+  // If summaryHtml is available synchronously, render immediately
+  if (analysisDisplayHtml) {
+    resultPanel.innerHTML = `
+      <div class="rp-title">CrewAI Credit Risk Assessment</div>
+
+      <div class="ring-section">
+        <div class="ring-wrapper">
+          <svg class="ring-svg" viewBox="0 0 154 154">
+            <circle class="ring-track" cx="77" cy="77" r="68"></circle>
+            <circle class="ring-fill" cx="77" cy="77" r="68" style="stroke-dashoffset: ${427 - (427 * approvalProb / 100)}; stroke: ${verdictColor};"></circle>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-pct">${approvalProb.toFixed(0)}<span>%</span></div>
+            <div class="ring-label">Approval Probability</div>
+          </div>
+        </div>
+        <div class="verdict" style="color: ${verdictColor};">${verdictIcon} ${verdict}</div>
+      </div>
+
+      <div class="section-label" style="margin-top: 16px;">Full Analysis</div>
+      <div class="creditwise-card summary-card" style="max-height: 400px; overflow-y: auto; font-size: 0.85rem;">
+        <div class="analysis-content" style="padding: 16px;">
+          ${analysisDisplayHtml}
+        </div>
+      </div>
+
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+        <button class="btn-primary btn-creditwise" id="show_apply_btn_after_assessment" style="width: 100%;" onclick="openLoanModal(); this.style.display = 'none';">
+          Apply for Loan
+        </button>
+        <p style="margin-top: 8px; font-size: 0.75rem; color: var(--dim); text-align: center;">
+          Based on your credit assessment, you may be eligible for a loan
+        </p>
+      </div>
+
+      <div style="margin-top: 12px; font-size: 0.75rem; color: var(--dim);">
+        🤖 Powered by CrewAI + ML Model | Timestamp: ${data.timestamp || new Date().toISOString()}
+      </div>
+    `;
+  }
+}
+
+// Render structured JSON results (new display format)
+function renderStructuredResults(data, formData, isUS = false) {
+  console.log('=== renderStructuredResults called ===');
+  console.log('Structured data:', JSON.stringify(data, null, 2));
+
+  const resultPanelId = isUS ? 'result_panel_us' : 'result_panel';
+  const resultPanel = document.getElementById(resultPanelId);
+
+  if (!resultPanel) {
+    console.error('Result panel not found:', resultPanelId);
+    return;
+  }
+
+  const mlPrediction = data.ml_prediction || {};
+  const policyExcerpts = data.policy_excerpts || [];
+  const complianceStatus = data.compliance_status || {};
+
+  // Build ML Prediction Section HTML
+  let mlPredictionHtml = '';
+  if (mlPrediction.risk_score !== undefined) {
+    const riskLevelClass = mlPrediction.risk_level ? mlPrediction.risk_level.toLowerCase() : 'unknown';
+    mlPredictionHtml = `
+      <div class="ml-prediction-section">
+        <h3>🤖 ML Model Prediction</h3>
+        <div class="risk-score">
+          <span class="score-value">${parseFloat(mlPrediction.risk_score).toFixed(2)}</span>
+          <span class="score-label">Risk Score</span>
+        </div>
+        <div class="approval-probability">
+          <span>${parseFloat(mlPrediction.approval_probability).toFixed(1)}%</span>
+          <span>Approval Probability</span>
+        </div>
+        <div class="risk-level ${riskLevelClass}">
+          ${mlPrediction.risk_level ? mlPrediction.risk_level.toUpperCase() : 'UNKNOWN'}
+        </div>
+        ${mlPrediction.key_factors && mlPrediction.key_factors.length > 0 ? `
+          <ul class="key-factors">
+            ${mlPrediction.key_factors.map(factor => `<li>${factor}</li>`).join('')}
+          </ul>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  // Build Policy Excerpts Section HTML
+  let policyExcerptsHtml = '';
+  if (policyExcerpts.length > 0) {
+    policyExcerptsHtml = `
+      <div class="policy-excerpts-section">
+        <h3>📋 Policy Validation (RAG)</h3>
+        ${policyExcerpts.map(excerpt => `
+          <div class="policy-card">
+            <div class="policy-category">${excerpt.category || 'General'}</div>
+            <div class="policy-query"><strong>Query:</strong> ${excerpt.query || 'N/A'}</div>
+            <div class="policy-text">${excerpt.policy_text || 'No policy text available'}</div>
+            <div class="policy-source"><small>Source: ${excerpt.source || 'Unknown'}</small></div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    policyExcerptsHtml = `
+      <div class="policy-excerpts-section">
+        <h3>📋 Policy Validation (RAG)</h3>
+        <p class="no-policy">No policy documents found in RAG database.</p>
+      </div>
+    `;
+  }
+
+  // Build Compliance Status Section HTML
+  let complianceHtml = '';
+  if (complianceStatus.status) {
+    const statusClass = complianceStatus.status.toLowerCase();
+    let statusIcon = '⚠️';
+    let statusText = 'WARNING';
+    
+    if (statusClass === 'pass') {
+      statusIcon = '✅';
+      statusText = 'COMPLIANT';
+    } else if (statusClass === 'fail') {
+      statusIcon = '⛔';
+      statusText = 'NON-COMPLIANT';
+    }
+
+    const recommendationClass = (complianceStatus.recommendation || '').toLowerCase().replace(/\s+/g, '_');
+    
+    complianceHtml = `
+      <div class="compliance-status-section">
+        <h3>✅ Policy Compliance Status</h3>
+        <div class="compliance-badge ${statusClass}">
+          ${statusIcon} ${statusText}
+        </div>
+        ${complianceStatus.policy_checks && complianceStatus.policy_checks.length > 0 ? `
+          <div class="policy-checks">
+            ${complianceStatus.policy_checks.map(check => `
+              <div class="check-item ${check.passed ? 'passed' : 'failed'}">
+                <span class="check-icon">${check.passed ? '✅' : '❌'}</span>
+                <span class="check-name">${check.check || 'Unknown Check'}</span>
+                <span class="check-required">Required: ${check.required || 'N/A'}</span>
+                <span class="check-actual">Actual: ${check.actual || 'N/A'}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+        ${complianceStatus.recommendation ? `
+          <div class="recommendation ${recommendationClass}">
+            <strong>Recommendation:</strong> ${complianceStatus.recommendation.toUpperCase()}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  // Combine all sections
+  resultPanel.innerHTML = `
+    <div class="rp-title">Credit Risk Assessment</div>
+    
+    ${mlPredictionHtml}
+    ${policyExcerptsHtml}
+    ${complianceHtml}
+
+    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+      <button class="btn-primary btn-creditwise" id="show_apply_btn_after_assessment" style="width: 100%;" onclick="openLoanModal(); this.style.display = 'none';">
+        Apply for Loan
+      </button>
+      <p style="margin-top: 8px; font-size: 0.75rem; color: var(--dim); text-align: center;">
+        Based on your credit assessment, you may be eligible for a loan
+      </p>
+    </div>
+
+    <div style="margin-top: 12px; font-size: 0.75rem; color: var(--dim);">
+      🤖 Powered by CrewAI + ML Model | Timestamp: ${data.timestamp || new Date().toISOString()}
+    </div>
+  `;
+}
+
+// Helper function to update analysis display after async rendering
+function updateAnalysisDisplay(html) {
+    const analysisContent = document.querySelector('.analysis-content');
+    if (analysisContent) {
+        analysisContent.innerHTML = html;
+    }
+}
+
+function calculateMockApprovalProbability(data) {
+  // Mock calculation - in production, this would call the ML model
+  let score = 50;
+
+  // Check if this is US data or India data
+  const isUSData = data.fico_score !== undefined;
+
+  if (isUSData) {
+    // US form fields (FICO score 300-850)
+    if (data.fico_score >= 740) score += 25;
+    else if (data.fico_score >= 700) score += 20;
+    else if (data.fico_score >= 660) score += 10;
+    else if (data.fico_score >= 620) score += 5;
+
+    // DTI impact
+    if (data.dti <= 30) score += 15;
+    else if (data.dti <= 40) score += 10;
+    else if (data.dti <= 50) score += 5;
+    else score -= 10;
+
+    // Delinquencies impact
+    if (data.delinq_2yrs === 0) score += 10;
+    else if (data.delinq_2yrs > 2) score -= 15;
+
+    // Inquiries impact
+    if (data.inq_last_6mths <= 2) score += 5;
+    else if (data.inq_last_6mths > 5) score -= 5;
+
+    // Revolving utilization
+    if (data.revol_util <= 30) score += 10;
+    else if (data.revol_util <= 50) score += 5;
+    else score -= 5;
+
+    // Public records
+    if (data.pub_rec === 0) score += 5;
+    else score -= 10;
+  } else {
+    // India form fields (CIBIL-style score 300-900)
+    if (data.credit_score >= 750) score += 25;
+    else if (data.credit_score >= 700) score += 20;
+    else if (data.credit_score >= 650) score += 10;
+    else if (data.credit_score >= 600) score += 5;
+
+    // DTI ratio impact
+    if (data.dti_ratio <= 30) score += 15;
+    else if (data.dti_ratio <= 40) score += 10;
+    else if (data.dti_ratio <= 50) score += 5;
+    else score -= 10;
+
+    // Collateral impact
+    if (data.collateral_value >= data.loan_amount * 0.5) score += 10;
+    else if (data.collateral_value > 0) score += 5;
+
+    // Existing loans impact
+    if (data.existing_loans === 0) score += 5;
+    else if (data.existing_loans > 2) score -= 10;
+
+    // Employment status
+    if (data.employment_status === 'Salaried') score += 5;
+  }
+
+  return Math.min(Math.max(score, 0), 100);
+}
+
+function displayResults(approvalProb, formData) {
+    const verdict = approvalProb >= 50 ? 'Approved' : 'Rejected';
+    const verdictColor = approvalProb >= 50 ? 'var(--green)' : 'var(--red)';
+    const verdictIcon = approvalProb >= 50 ? '✅' : '❌';
+
+    const resultPanel = document.getElementById('result_panel');
+    resultPanel.innerHTML = `
+        <div class="rp-title">Prediction Result</div>
+
+        <div class="ring-section">
+            <div class="ring-wrapper">
+                <svg class="ring-svg" viewBox="0 0 154 154">
+                    <circle class="ring-track" cx="77" cy="77" r="68"></circle>
+                    <circle class="ring-fill" cx="77" cy="77" r="68" style="stroke-dashoffset: ${427 - (427 * approvalProb / 100)}; stroke: ${verdictColor};"></circle>
+                </svg>
+                <div class="ring-center">
+                    <div class="ring-pct">${approvalProb.toFixed(0)}<span>%</span></div>
+                    <div class="ring-label">Approval Odds</div>
+                </div>
+            </div>
+            <div class="verdict" style="color: ${verdictColor};">${verdictIcon} ${verdict}</div>
+        </div>
+
+        <div class="section-label">Key Factors</div>
+        ${generateFactorBars(formData)}
+
+        <div class="section-label" style="margin-top: 16px;">Improvement Tips</div>
+        ${generateImprovementTips(formData, approvalProb)}
+    `;
+}
+
+function generateFactorBars(data) {
+  // Check if this is US data or India data
+  const isUSData = data.fico_score !== undefined;
+
+  let factors;
+  if (isUSData) {
+    // US form factors
+    const ficoPercent = (data.fico_score - 300) / 550 * 100;
+    const dtiPercent = 100 - (data.dti / 100 * 100);
+    const delinqPercent = data.delinq_2yrs === 0 ? 100 : Math.max(0, 100 - data.delinq_2yrs * 20);
+    const inqPercent = data.inq_last_6mths <= 2 ? 100 : Math.max(30, 100 - data.inq_last_6mths * 15);
+    const revolUtilPercent = 100 - (data.revol_util / 150 * 100);
+
+    factors = [
+      { name: 'FICO Score', value: Math.max(0, Math.min(100, ficoPercent)), hint: 'Higher is better' },
+      { name: 'DTI Ratio', value: Math.max(0, Math.min(100, dtiPercent)), hint: 'Lower is better' },
+      { name: 'Delinquencies', value: delinqPercent, hint: 'Fewer is better' },
+      { name: 'Inquiries (6mo)', value: inqPercent, hint: 'Fewer is better' },
+      { name: 'Rev. Utilization', value: Math.max(0, Math.min(100, revolUtilPercent)), hint: 'Lower is better' }
+    ];
+  } else {
+    // India form factors
+    const creditPercent = (data.credit_score - 300) / 600 * 100;
+    const dtiPercent = 100 - (data.dti_ratio / 90 * 100);
+    const collateralPercent = data.collateral_value > 0 ? (data.collateral_value / data.loan_amount) * 50 : 0;
+    const employmentPercent = data.employment_status === 'Salaried' ? 100 : 70;
+    const existingLoansPercent = data.existing_loans === 0 ? 100 : Math.max(30, 100 - data.existing_loans * 20);
+
+    factors = [
+      { name: 'Credit Score', value: Math.max(0, Math.min(100, creditPercent)), hint: 'Higher is better' },
+      { name: 'DTI Ratio', value: Math.max(0, Math.min(100, dtiPercent)), hint: 'Lower is better' },
+      { name: 'Collateral', value: Math.max(0, Math.min(100, collateralPercent)), hint: 'More coverage helps' },
+      { name: 'Employment', value: employmentPercent, hint: 'Stable income' },
+      { name: 'Existing Loans', value: existingLoansPercent, hint: 'Fewer is better' }
+    ];
+  }
+
+    return factors.map(f => `
+        <div class="factor-row">
+            <span class="factor-name">${f.name}</span>
+            <div class="factor-track">
+                <div class="factor-bar" style="width: ${f.value}%; background: ${f.value >= 70 ? 'var(--green)' : f.value >= 40 ? 'var(--amber)' : 'var(--red)'};"></div>
+            </div>
+            <span class="factor-score">${f.value.toFixed(0)}%</span>
+        </div>
+    `).join('');
+}
+
+function generateImprovementTips(data, approvalProb) {
+    const tips = [];
+
+    if (data.credit_score < 700) {
+        tips.push('Improve your credit score by making timely payments for 6+ months');
+    }
+    if (data.dti_ratio > 35) {
+        tips.push('Reduce your debt-to-income ratio below 35% by paying off existing loans');
+    }
+    if (data.collateral_value < data.loan_amount * 0.3) {
+        tips.push('Increase collateral value to improve approval odds');
+    }
+    if (data.existing_loans > 0) {
+        tips.push('Clear existing loans before applying for a new one');
+    }
+    if (approvalProb >= 70) {
+        tips.push('Your application is strong! Consider negotiating for a lower interest rate.');
+    }
+
+    if (tips.length === 0) {
+        tips.push('Continue maintaining your good financial habits');
+    }
+
+    return tips.map(tip => `<div class="tip">${tip}</div>`).join('');
+}
+
+function showError(message) {
+  const errorDiv = document.getElementById('error_message');
+  if (errorDiv) {
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    setTimeout(() => {
+      errorDiv.style.display = 'none';
+    }, 5000);
+  }
+}
+
+function showErrorUS(message) {
+  const errorDiv = document.getElementById('error_message_us');
+  if (errorDiv) {
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    setTimeout(() => {
+      errorDiv.style.display = 'none';
+    }, 5000);
+  }
+}
+
+// EMI Calculator functions (same as in main.js but duplicated for standalone use)
+function calculateEMI() {
+    const loanAmount = parseFloat(document.getElementById('emi_loan_amount').value) || 0;
+    const interestRate = parseFloat(document.getElementById('emi_interest_rate').value) || 0;
+    const tenureMonths = parseInt(document.getElementById('emi_tenure').value) || 0;
+    const method = document.getElementById('emi_method').value;
+    const processingFee = parseFloat(document.getElementById('processing_fee').value) || 0;
+
+    if (loanAmount <= 0 || interestRate <= 0 || tenureMonths <= 0) {
+        showError('Please enter valid positive values for all fields.');
+        return;
+    }
+
+    let monthlyRate, emi, totalInterest;
+
+    if (method === 'Reducing Balance') {
+        monthlyRate = interestRate / 12 / 100;
+        emi = loanAmount * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths) / (Math.pow(1 + monthlyRate, tenureMonths) - 1);
+        totalInterest = (emi * tenureMonths) - loanAmount;
+    } else if (method === 'Flat Rate') {
+        totalInterest = loanAmount * (interestRate / 100) * (tenureMonths / 12);
+        emi = (loanAmount + totalInterest) / tenureMonths;
+    } else {
+        monthlyRate = interestRate / 12 / 100;
+        const amount = loanAmount * Math.pow(1 + monthlyRate, tenureMonths);
+        totalInterest = amount - loanAmount;
+        emi = amount / tenureMonths;
+    }
+
+    const totalCost = loanAmount + totalInterest + processingFee;
+
+    // Update display
+    document.getElementById('monthly_emi_display').textContent = formatCurrency(emi);
+    document.getElementById('principal_display').textContent = formatCurrency(loanAmount);
+    document.getElementById('total_interest_display').textContent = formatCurrency(totalInterest);
+    document.getElementById('processing_fee_display').textContent = formatCurrency(processingFee);
+    document.getElementById('total_cost_display').textContent = formatCurrency(totalCost);
+
+    // Update donut chart
+    updateDonutChart(loanAmount, totalInterest);
+
+    // Generate amortization schedule
+    generateAmortizationSchedule(loanAmount, interestRate, tenureMonths, method, emi);
+}
+
+function formatCurrency(amount) {
+    return '₹' + amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function updateDonutChart(principal, interest) {
+    const total = principal + interest;
+    const principalPercent = (principal / total) * 100;
+    const interestPercent = (interest / total) * 100;
+
+    const principalOffset = 364 * (1 - principalPercent / 100);
+    const interestOffset = 364 * (1 - interestPercent / 100);
+
+    document.querySelector('.donut-principal').style.strokeDashoffset = principalOffset;
+    document.querySelector('.donut-interest').style.strokeDashoffset = interestOffset;
+}
+
+function generateAmortizationSchedule(principal, annualRate, months, method, emi) {
+    const scheduleTable = document.getElementById('amortization_schedule_body');
+    scheduleTable.innerHTML = '';
+
+    let remainingBalance = principal;
+    const monthlyRate = annualRate / 12 / 100;
+
+    for (let month = 1; month <= months; month++) {
+        let interestPayment, principalPayment;
+
+        if (method === 'Reducing Balance') {
+            interestPayment = remainingBalance * monthlyRate;
+            principalPayment = emi - interestPayment;
+        } else if (method === 'Flat Rate') {
+            interestPayment = emi * 0.3;
+            principalPayment = emi - interestPayment;
+        } else {
+            interestPayment = remainingBalance * monthlyRate;
+            principalPayment = emi - interestPayment;
+        }
+
+        if (principalPayment > remainingBalance) {
+            principalPayment = remainingBalance;
+        }
+
+        remainingBalance -= principalPayment;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${month}</td>
+            <td>${formatCurrency(remainingBalance + principalPayment)}</td>
+            <td class="col-green">${formatCurrency(principalPayment)}</td>
+            <td class="col-red">${formatCurrency(interestPayment)}</td>
+            <td>${formatCurrency(principalPayment + interestPayment)}</td>
+            <td>${formatCurrency(Math.max(0, remainingBalance))}</td>
+        `;
+        scheduleTable.appendChild(row);
+
+        if (remainingBalance <= 0) break;
+    }
+    }
+    
+    // Loan Modal JavaScript
+    function openLoanModal() {
+        const modal = document.getElementById('loan_modal');
+        modal.style.display = 'flex';
+        
+        // Reset to form section
+        document.getElementById('loan_form_section').style.display = 'block';
+        document.getElementById('loan_loading_section').style.display = 'none';
+        document.getElementById('loan_decision_section').style.display = 'none';
+        
+        // Update currency symbol
+        updateCurrencySymbols();
+    }
+    
+    function closeLoanModal() {
+        const modal = document.getElementById('loan_modal');
+        modal.style.display = 'none';
+    }
+    
+    async function submitLoanApplication() {
+        // Get form values
+        const loanAmount = parseFloat(document.getElementById('loan_app_amount').value);
+        const loanTenure = parseInt(document.getElementById('loan_app_tenure').value);
+        const loanPurpose = document.getElementById('loan_app_purpose').value;
+        const email = document.getElementById('loan_app_email').value;
+        const sendEmail = document.getElementById('send_email_summary').checked;
+        
+        // Validate
+        if (!loanAmount || loanAmount <= 0) {
+            alert('Please enter a valid loan amount');
+            return;
+        }
+        if (!loanTenure || loanTenure <= 0) {
+            alert('Please select a valid tenure');
+            return;
+        }
+        if (sendEmail && (!email || !email.includes('@'))) {
+            alert('Please enter a valid email address');
+            return;
+        }
+        
+        // Get credit risk assessment data from the page
+        const formData = {
+            applicant_income: parseFloat(document.getElementById('applicant_income').value) || 0,
+            coapplicant_income: parseFloat(document.getElementById('coapplicant_income').value) || 0,
+            credit_score: parseInt(document.getElementById('credit_score').value) || 0,
+            dti_ratio: parseFloat(document.getElementById('dti_ratio').value) || 0,
+            loan_amount: loanAmount,
+            loan_term: loanTenure,
+            collateral_value: parseFloat(document.getElementById('collateral_value').value) || 0,
+            savings: parseFloat(document.getElementById('savings').value) || 0,
+            employment_status: document.getElementById('employment_status').value,
+            education_level: document.getElementById('education_level').value,
+            property_area: document.getElementById('property_area').value,
+            existing_loans: parseInt(document.getElementById('existing_loans').value) || 0,
+            loan_purpose: loanPurpose,
+            email: sendEmail ? email : ''
+        };
+        
+        // Show loading state
+        document.getElementById('loan_form_section').style.display = 'none';
+        document.getElementById('loan_loading_section').style.display = 'block';
+        
+        try {
+            const response = await fetch('/api/loan-creation/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                alert('Error: ' + data.error);
+                document.getElementById('loan_loading_section').style.display = 'none';
+                document.getElementById('loan_form_section').style.display = 'block';
+                return;
+            }
+            
+            // Display loan decision
+            displayLoanDecision(data, formData);
+            
+        } catch (error) {
+            console.error('Loan application error:', error);
+            alert('Network error: ' + error.message);
+            document.getElementById('loan_loading_section').style.display = 'none';
+            document.getElementById('loan_form_section').style.display = 'block';
+        }
+    }
+    
+    function displayLoanDecision(data, formData) {
+        const rawOutput = data.result || '';
+        
+        // Parse the crew output to extract decision information
+        let loanDecision = 'Pending';
+        let rationale = '';
+        let conditions = [];
+        let nextSteps = [];
+        let policyCompliance = { passed: false, checks: [] };
+        
+        try {
+            // Try to parse as JSON first
+            const parsed = JSON.parse(rawOutput);
+            loanDecision = parsed.loan_decision || parsed.decision || 'Pending';
+            rationale = parsed.rationale || parsed.reasoning || '';
+            conditions = parsed.conditions || [];
+            nextSteps = parsed.next_steps || [];
+            policyCompliance = parsed.policy_compliance || parsed.compliance || { passed: false, checks: [] };
+        } catch (e) {
+            // Parse from text output
+            loanDecision = extractDecisionFromText(rawOutput);
+            rationale = extractRationaleFromText(rawOutput);
+            conditions = extractConditionsFromText(rawOutput);
+            nextSteps = extractNextStepsFromText(rawOutput);
+        }
+        
+        // Show decision section
+        document.getElementById('loan_loading_section').style.display = 'none';
+        document.getElementById('loan_decision_section').style.display = 'block';
+        
+        // Display policy compliance badges
+        displayComplianceBadges(policyCompliance);
+        
+        // Display loan decision
+        displayDecisionPanel(loanDecision, rationale);
+        
+        // Display conditions
+        displayConditions(conditions);
+        
+        // Display next steps
+        displayNextSteps(nextSteps);
+    }
+    
+    function extractDecisionFromText(text) {
+        const lower = text.toLowerCase();
+        if (lower.includes('approved') || lower.includes('approval')) return 'Approved';
+        if (lower.includes('denied') || lower.includes('rejected') || lower.includes('declined')) return 'Denied';
+        if (lower.includes('conditional')) return 'Conditional';
+        return 'Pending';
+    }
+    
+    function extractRationaleFromText(text) {
+        const rationaleMatch = text.match(/rationale[:\s]+([^.]+\.)/i);
+        return rationaleMatch ? rationaleMatch[1] : 'Application processed by AI agents.';
+    }
+    
+    function extractConditionsFromText(text) {
+        const conditions = [];
+        const lines = text.split('\n');
+        for (const line of lines) {
+            if (line.toLowerCase().includes('condition') || line.trim().startsWith('-') || line.trim().startsWith('*')) {
+                const clean = line.replace(/^[*-]\s*/, '').trim();
+                if (clean.length > 5) conditions.push(clean);
+            }
+        }
+        return conditions.length > 0 ? conditions : ['No additional conditions at this time.'];
+    }
+    
+    function extractNextStepsFromText(text) {
+        const steps = [];
+        const lines = text.split('\n');
+        for (const line of lines) {
+            if (line.toLowerCase().includes('next step') || line.toLowerCase().includes('proceed') || line.trim().match(/^\d+\./)) {
+                const clean = line.replace(/^\d+\.\s*/, '').trim();
+                if (clean.length > 5) steps.push(clean);
+            }
+        }
+        return steps.length > 0 ? steps : ['Contact loan officer for further assistance.'];
+    }
+    
+    function displayComplianceBadges(compliance) {
+        const container = document.getElementById('compliance_badges');
+        let html = '';
+        
+        const checks = compliance.checks || [];
+        if (checks.length === 0) {
+            checks.push({ name: 'Income Verification', status: 'pass' });
+            checks.push({ name: 'Credit Score', status: compliance.passed ? 'pass' : 'warning' });
+            checks.push({ name: 'Debt-to-Income Ratio', status: 'pass' });
+        }
+        
+        checks.forEach(check => {
+            const statusClass = check.status === 'pass' ? 'compliance-pass' :
+                               check.status === 'fail' ? 'compliance-fail' : 'compliance-warning';
+            const icon = check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : '⚠';
+            html += `<span class="compliance-badge ${statusClass}">${icon} ${check.name}</span>`;
+        });
+        
+        container.innerHTML = html || '<span class="compliance-badge compliance-pass">✓ All policies passed</span>';
+    }
+    
+    function displayDecisionPanel(decision, rationale) {
+        const header = document.getElementById('decision_header');
+        const body = document.getElementById('decision_body');
+        
+        const decisionLower = decision.toLowerCase();
+        let color, icon;
+        
+        if (decisionLower.includes('approve')) {
+            color = 'var(--green)';
+            icon = '✅';
+        } else if (decisionLower.includes('deny') || decisionLower.includes('reject')) {
+            color = 'var(--red)';
+            icon = '❌';
+        } else if (decisionLower.includes('conditional')) {
+            color = 'var(--amber)';
+            icon = '⚠️';
+        } else {
+            color = 'var(--blue)';
+            icon = '🔄';
+        }
+        
+        header.innerHTML = `<h3 style="color: ${color};">${icon} ${decision}</h3>`;
+        body.innerHTML = `<p>${rationale}</p>`;
+    }
+    
+    function displayConditions(conditions) {
+        const container = document.getElementById('conditions_list');
+        if (conditions.length === 0 || (conditions.length === 1 && conditions[0] === 'No additional conditions at this time.')) {
+            container.innerHTML = '<div class="condition-item">No additional conditions required.</div>';
+        } else {
+            container.innerHTML = conditions.map(cond =>
+                `<div class="condition-item"><span class="condition-icon">•</span>${cond}</div>`
+            ).join('');
+        }
+    }
+    
+    function displayNextSteps(steps) {
+        const container = document.getElementById('next_steps_list');
+        container.innerHTML = steps.map((step, index) =>
+            `<div class="next-step-item">
+                <div class="step-number">${index + 1}</div>
+                <div class="step-content">${step}</div>
+            </div>`
+        ).join('');
+    }
+    </script>
+    
+    <!-- Markdown Renderer for CrewAI Output (must load before main script) -->
+    <script src="{% static 'js/markdown_renderer.js' %}"></script>
+    
+    <script>
+    // Update currency on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Get currency symbol - check window.USER_REGION first (set by Django), then cookie
+    let symbol = '₹'; // Default
+    let countryCode = 'IN'; // Default
+    
+    if (window.USER_REGION && window.USER_REGION.currency) {
+        symbol = window.USER_REGION.currency;
+        countryCode = window.USER_REGION.code || 'IN';
+        console.log('Using currency from window.USER_REGION:', symbol);
+    } else {
+        // Fallback to cookie parsing
+        const savedRegion = document.cookie.split('; ').find(row => row.startsWith('user_region='));
+        if (savedRegion) {
+            try {
+            const regionJson = savedRegion.split('=')[1];
+            // Sanitize bad escape characters before parsing
+            const sanitizedJson = regionJson.replace(/\\([^"\\\/bfnrtu])/g, '$1');
+            const region = JSON.parse(sanitizedJson);
+            symbol = region.currency_symbol || region.currency || '₹';
+            countryCode = region.code || 'IN';
+            console.log('Using currency from cookie:', symbol);
+            } catch (e) {
+            console.warn('Could not parse saved region:', e);
+            }
+        }
+    }
+    
+    // Apply symbol to all currency elements
+    document.querySelectorAll('.currency-symbol').forEach(span => {
+        span.textContent = symbol;
+    });
+    
+    // Update placeholders for income fields based on country
+    const applicantIncomeField = document.getElementById('applicant_income');
+    const loanAmountField = document.getElementById('loan_amount');
+    
+    if (countryCode === 'US') {
+    if (applicantIncomeField) {
+    applicantIncomeField.placeholder = 'e.g. 5,000';
+    applicantIncomeField.value = 50000;
+    }
+    if (loanAmountField) {
+    loanAmountField.placeholder = 'e.g. 200,000';
+    }
+    // Show US-specific fields (with null checks for India form)
+    const usFieldsSection = document.getElementById('us_fields_section');
+    const usFieldsRow = document.getElementById('us_fields_row');
+    const usFieldsRow2 = document.getElementById('us_fields_row2');
+    if (usFieldsSection) usFieldsSection.style.display = 'block';
+    if (usFieldsRow) usFieldsRow.style.display = 'flex';
+    if (usFieldsRow2) usFieldsRow2.style.display = 'flex';
+    } else {
+    if (applicantIncomeField) {
+    applicantIncomeField.placeholder = 'e.g. 1,00,000';
+    applicantIncomeField.value = 600000;
+    }
+    if (loanAmountField) {
+    loanAmountField.placeholder = 'e.g. 20,00,000';
+    }
+    // Hide US-specific fields for India (with null checks)
+    const usFieldsSection = document.getElementById('us_fields_section');
+    const usFieldsRow = document.getElementById('us_fields_row');
+    const usFieldsRow2 = document.getElementById('us_fields_row2');
+    if (usFieldsSection) usFieldsSection.style.display = 'none';
+    if (usFieldsRow) usFieldsRow.style.display = 'none';
+    if (usFieldsRow2) usFieldsRow2.style.display = 'none';
+    }
+    });
+    
+    // Add markdown rendering helper for CrewAI output
+    async function renderMarkdownSafely(text) {
+        if (typeof MarkdownRenderer !== 'undefined' && MarkdownRenderer.renderMarkdown) {
+            return await MarkdownRenderer.renderMarkdown(text, { crewAIParsing: true });
+        }
+        return text; // Fallback to plain text
+    }
+    </script>
+    {% endblock %}

@@ -1,0 +1,260 @@
+{% comment %}
+India Credit Risk Assessment Form
+Trained on 975,000+ Indian loan records using Logistic Regression
+Credit Score Range: 300-900 (CIBIL-style)
+{% endcomment %}
+
+<div class="hero" style="padding: 40px 24px 30px;">
+    <div class="badge">🇮🇳 India Credit Risk Assessment</div>
+    <h1 class="gradient-text-gold">Know Your <em>Approval Odds</em> Before You Apply</h1>
+    <p>Trained logistic regression model predicts loan approval probability using Indian credit data.</p>
+    <div style="margin-top: 12px; padding: 12px 16px; background: #ECFDF5; border-radius: 6px; border: 1px solid #A7F3D0; display: inline-block;">
+        <span style="color: #047857; font-size: 14px;">🇮🇳 India Region Detected -- Using Indian Logistic Regression Credit Risk Model</span>
+    </div>
+</div>
+
+<div class="two-col">
+    <!-- Left Column: Form -->
+    <div>
+        <div class="creditwise-card">
+            <div class="section-divider">Income & Personal</div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="applicant_income">Applicant Income</label>
+                        <span class="slider-val" id="applicant_income_val">₹6,00,000</span>
+                    </div>
+                    <div class="pfx">
+                        <span>₹</span>
+                        <input type="range" id="applicant_income_slider" class="slider" min="10000" max="5000000" step="10000" value="600000" oninput="syncSlider('applicant_income', this.value); updateSliderGradient(this)">
+                    </div>
+                    <input type="number" id="applicant_income" value="600000" min="10000" max="5000000" step="10000" oninput="syncInputToSlider('applicant_income_slider', this.value); updateSliderGradient(document.getElementById('applicant_income_slider'))" style="margin-top: 8px;">
+                    <span class="field-hint">Annual income in Indian Rupees</span>
+                </div>
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="coapplicant_income">Co-applicant Income</label>
+                        <span class="slider-val" id="coapplicant_income_val">₹0</span>
+                    </div>
+                    <div class="pfx">
+                        <span>₹</span>
+                        <input type="range" id="coapplicant_income_slider" class="slider" min="0" max="3000000" step="5000" value="0" oninput="syncSlider('coapplicant_income', this.value); updateSliderGradient(this)">
+                    </div>
+                    <input type="number" id="coapplicant_income" value="0" min="0" max="3000000" step="5000" oninput="syncInputToSlider('coapplicant_income_slider', this.value); updateSliderGradient(document.getElementById('coapplicant_income_slider'))" style="margin-top: 8px;">
+                    <span class="field-hint">Enter 0 if none</span>
+                </div>
+            </div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="credit_score">Credit Score (CIBIL-style)</label>
+                        <span class="slider-val" id="credit_score_val">720</span>
+                    </div>
+                    <input type="range" id="credit_score_slider" class="slider" min="300" max="900" step="1" value="720" oninput="syncSlider('credit_score', this.value); updateSliderGradient(this)">
+                    <div class="slider-ticks">
+                        <span>300</span>
+                        <span>450</span>
+                        <span>600</span>
+                        <span>750</span>
+                        <span>900</span>
+                    </div>
+                    <input type="number" id="credit_score" value="720" min="300" max="900" step="1" oninput="syncInputToSlider('credit_score_slider', this.value); updateSliderGradient(document.getElementById('credit_score_slider'))" style="margin-top: 8px;">
+                    <span class="field-hint">300 (Poor) to 900 (Excellent)</span>
+                </div>
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="dti_ratio">Debt-to-Income Ratio</label>
+                        <span class="slider-val" id="dti_ratio_val">35%</span>
+                    </div>
+                    <input type="range" id="dti_ratio_slider" class="slider" min="0" max="90" step="0.5" value="35" oninput="syncSlider('dti_ratio', this.value); updateSliderGradient(this)">
+                    <div class="slider-ticks">
+                        <span>0%</span>
+                        <span>20%</span>
+                        <span>40%</span>
+                        <span>60%</span>
+                        <span>90%</span>
+                    </div>
+                    <input type="number" id="dti_ratio" value="35" min="0" max="90" step="0.5" oninput="syncInputToSlider('dti_ratio_slider', this.value); updateSliderGradient(document.getElementById('dti_ratio_slider'))" style="margin-top: 8px;">
+                    <span class="field-hint">Percentage of income going to debt</span>
+                </div>
+            </div>
+
+            <div class="section-divider">Loan Details</div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="loan_amount">Loan Amount</label>
+                        <span class="slider-val" id="loan_amount_val">₹5,00,000</span>
+                    </div>
+                    <div class="pfx">
+                        <span>₹</span>
+                        <input type="range" id="loan_amount_slider" class="slider" min="10000" max="5000000" step="10000" value="500000" oninput="syncSlider('loan_amount', this.value); updateSliderGradient(this)">
+                    </div>
+                    <input type="number" id="loan_amount" value="500000" min="10000" max="5000000" step="10000" oninput="syncInputToSlider('loan_amount_slider', this.value); updateSliderGradient(document.getElementById('loan_amount_slider'))" style="margin-top: 8px;">
+                </div>
+                <div class="field">
+                    <label for="loan_term">Loan Term</label>
+                    <select id="loan_term">
+                        <option value="12">12 months</option>
+                        <option value="24">24 months</option>
+                        <option value="36" selected>36 months</option>
+                        <option value="48">48 months</option>
+                        <option value="60">60 months</option>
+                        <option value="72">72 months</option>
+                        <option value="84">84 months</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="collateral_value">Collateral Value</label>
+                        <span class="slider-val" id="collateral_value_val">₹0</span>
+                    </div>
+                    <div class="pfx">
+                        <span>₹</span>
+                        <input type="range" id="collateral_value_slider" class="slider" min="0" max="10000000" step="10000" value="0" oninput="syncSlider('collateral_value', this.value); updateSliderGradient(this)">
+                    </div>
+                    <input type="number" id="collateral_value" value="0" min="0" max="10000000" step="10000" oninput="syncInputToSlider('collateral_value_slider', this.value); updateSliderGradient(document.getElementById('collateral_value_slider'))" style="margin-top: 8px;">
+                    <span class="field-hint">Property or asset value (optional)</span>
+                </div>
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="savings">Total Savings</label>
+                        <span class="slider-val" id="savings_val">₹50,000</span>
+                    </div>
+                    <div class="pfx">
+                        <span>₹</span>
+                        <input type="range" id="savings_slider" class="slider" min="0" max="5000000" step="5000" value="50000" oninput="syncSlider('savings', this.value); updateSliderGradient(this)">
+                    </div>
+                    <input type="number" id="savings" value="50000" min="0" max="5000000" step="5000" oninput="syncInputToSlider('savings_slider', this.value); updateSliderGradient(document.getElementById('savings_slider'))" style="margin-top: 8px;">
+                </div>
+            </div>
+
+            <div class="section-divider">Employment & Background</div>
+            
+            <div class="row2">
+              <div class="field">
+                <label for="age">Age</label>
+                <select id="age">
+                  <option value="18">18-24</option>
+                  <option value="25">25-29</option>
+                  <option value="30" selected>30-34</option>
+                  <option value="35">35-39</option>
+                  <option value="40">40-44</option>
+                  <option value="45">45-49</option>
+                  <option value="50">50-54</option>
+                  <option value="55">55-59</option>
+                  <option value="60">60+</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="dependents">Dependents</label>
+                <select id="dependents">
+                  <option value="0" selected>0</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5+</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="row2">
+              <div class="field">
+                <label for="marital_status">Marital Status</label>
+                <select id="marital_status">
+                  <option value="Single" selected>Single</option>
+                  <option value="Married">Married</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="gender">Gender</label>
+                <select id="gender">
+                  <option value="Male" selected>Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="row2">
+              <div class="field">
+                <label for="employment_status">Employment Status</label>
+                <select id="employment_status">
+                  <option value="Salaried" selected>Salaried</option>
+                  <option value="Self-employed">Self-employed</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="employer_category">Employer Category</label>
+                <select id="employer_category">
+                  <option value="Private" selected>Private Sector</option>
+                  <option value="MNC">Multinational (MNC)</option>
+                  <option value="Government">Government</option>
+                  <option value="Unemployed">Unemployed</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="row2">
+              <div class="field">
+                <label for="education_level">Education Level</label>
+                <select id="education_level">
+                  <option value="Not Graduate">Not Graduate</option>
+                  <option value="Graduate" selected>Graduate</option>
+                  <option value="Post Graduate">Post Graduate</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="loan_purpose">Loan Purpose</label>
+                <select id="loan_purpose">
+                  <option value="Personal" selected>Personal</option>
+                  <option value="Home">Home</option>
+                  <option value="Car">Car</option>
+                  <option value="Education">Education</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="row2">
+              <div class="field">
+                <label for="property_area">Property Area</label>
+                <select id="property_area">
+                  <option value="Urban" selected>Urban</option>
+                  <option value="Semi-Urban">Semi-Urban</option>
+                  <option value="Rural">Rural</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="existing_loans">Existing Loans</label>
+                <input type="number" id="existing_loans" placeholder="Number of loans" min="0" value="0">
+              </div>
+            </div>
+
+            <button class="btn-primary btn-creditwise" onclick="submitCreditRisk()">Check Approval Probability</button>
+
+            <!-- Apply for Loan Button - shown after credit risk assessment -->
+            <button id="apply_loan_btn" class="btn-primary btn-creditwise" onclick="openLoanModal()" style="display: none; margin-top: 12px;">
+                Apply for Loan
+            </button>
+
+            <div id="error_message" class="error-msg" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Right Column: Results -->
+    <div>
+        <div class="result-panel fadeUp" id="result_panel">
+            <div class="placeholder">
+                <div class="placeholder-icon">🔮</div>
+                <p><strong>Fill in your details</strong> and click Check Approval Probability to see your result.</p>
+            </div>
+        </div>
+    </div>
+</div>

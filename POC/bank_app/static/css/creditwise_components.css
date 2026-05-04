@@ -1,0 +1,202 @@
+/* =============================================================================
+   CREDITWISE REUSABLE COMPONENT CLASSES (Item #8)
+   ============================================================================= */
+
+/* CreditWise Card Component */
+.creditwise-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.creditwise-card:hover {
+    border-color: var(--gold);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    transform: translateY(-4px);
+}
+
+/* Gradient Text - Gold to Teal */
+.gradient-text-gold {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--teal) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Gradient Text - Blue to Purple */
+.gradient-text-blue {
+    background: linear-gradient(135deg, var(--blue) 0%, var(--purple) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Result Ring Pulse Animation */
+@keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(201, 168, 76, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0); }
+}
+
+.result-ring {
+    animation: pulse-ring 2s infinite;
+}
+
+/* CreditWise Button Gradient */
+.btn-creditwise {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--teal) 100%);
+    color: var(--bg);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-creditwise:hover {
+    background: linear-gradient(135deg, var(--gold2) 0%, var(--teal) 100%);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+}
+
+/* =============================================================================
+   ENHANCED FORM FIELD STYLING (Item #9)
+   ============================================================================= */
+
+/* Enhanced Input Fields - CreditWise Style */
+input[type="email"],
+input[type="tel"],
+input[type="date"],
+input[type="password"],
+input[type="url"],
+input[type="search"],
+textarea {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    padding: 10px 14px;
+    outline: none;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+input[type="email"]:focus,
+input[type="tel"]:focus,
+input[type="date"]:focus,
+input[type="password"]:focus,
+input[type="url"]:focus,
+input[type="search"]:focus,
+textarea:focus {
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-glow);
+    background: rgba(201, 168, 76, 0.04);
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--dim);
+    opacity: 1;
+}
+
+/* Enhanced Label Styling */
+.field label,
+label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block;
+}
+
+/* Focus Ring for All Interactive Elements */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-glow);
+}
+
+/* Date Input Specific Styling */
+input[type="date"] {
+    color-scheme: dark;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+}
+
+/* Checkbox and Radio Styling */
+input[type="checkbox"],
+input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--gold);
+    cursor: pointer;
+}
+
+/* File Input Styling */
+input[type="file"] {
+    background: var(--bg2);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+}
+
+input[type="file"]:hover {
+    border-color: var(--gold);
+}
+
+/* Range/Slider Input */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+    width: 100%;
+}
+
+input[type="range"]::-webkit-slider-track {
+    background: var(--border);
+    height: 6px;
+    border-radius: 3px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    margin-top: -5px;
+    background: var(--gold);
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+}
+
+input[type="range"]::-moz-range-track {
+    background: var(--border);
+    height: 6px;
+    border-radius: 3px;
+}
+
+input[type="range"]::-moz-range-thumb {
+    background: var(--gold);
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+}

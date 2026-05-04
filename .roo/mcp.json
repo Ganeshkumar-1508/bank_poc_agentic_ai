@@ -1,0 +1,69 @@
+{
+	"mcpServers": {
+		"web-search": {
+			"command": "node",
+			"args": [
+				"C:/Users/Aravind/Desktop/Work/MCP/web-search-mcp-v0.3.2/dist/index.js"
+			],
+			"alwaysAllow": [
+				"get-single-web-page-content",
+				"get-web-search-summaries",
+				"full-web-search"
+			]
+		},
+		"sequentialthinking": {
+			"command": "docker",
+			"args": [
+				"run",
+				"--rm",
+				"-i",
+				"mcp/sequentialthinking"
+			],
+			"alwaysAllow": [
+				"sequentialthinking"
+			],
+			"timeout": 300
+		},
+		"memory": {
+			"command": "docker",
+			"args": [
+				"run",
+				"-i",
+				"-v",
+				"claude-memory:/app/dist",
+				"--rm",
+				"mcp/memory"
+			],
+			"alwaysAllow": [
+				"create_entities",
+				"create_relations",
+				"add_observations",
+				"delete_entities",
+				"delete_observations",
+				"delete_relations",
+				"read_graph",
+				"search_nodes",
+				"open_nodes"
+			],
+			"timeout": 300
+		},
+		"mcp-python-refactoring": {
+			"command": "docker",
+			"args": [
+				"run",
+				"-i",
+				"--rm",
+				"mcp/mcp-python-refactoring"
+			],
+			"alwaysAllow": [
+				"analyze_python_file",
+				"get_extraction_guidance",
+				"find_long_functions",
+				"analyze_python_package",
+				"get_package_metrics",
+				"find_package_issues",
+				"analyze_security_and_patterns"
+			]
+		}
+	}
+}

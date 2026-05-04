@@ -20,52 +20,71 @@ from pydantic import BaseModel, Field
 
 PRODUCT_REGISTRY: Dict[str, Dict] = {
     # ── Global / widely available ───────────────────────────────────────────
-    "FD":           {"name": "Fixed Deposit",                    "regions": "ALL"},
-    "TD":           {"name": "Term Deposit",                     "regions": "ALL"},
-    "RD":           {"name": "Recurring Deposit",                "regions": ["IN", "PK", "BD", "LK", "NP", "MY"]},
-    "MF":           {"name": "Mutual Fund / SIP",                "regions": "ALL"},
-    "BOND":         {"name": "Corporate / Government Bond",      "regions": "ALL"},
-    "MMARKET":      {"name": "Money Market Account",             "regions": "ALL"},
-
+    "FD": {"name": "Fixed Deposit", "regions": "ALL"},
+    "TD": {"name": "Term Deposit", "regions": "ALL"},
+    "RD": {
+        "name": "Recurring Deposit",
+        "regions": ["IN", "PK", "BD", "LK", "NP", "MY"],
+    },
+    "MF": {"name": "Mutual Fund / SIP", "regions": "ALL"},
+    "BOND": {"name": "Corporate / Government Bond", "regions": "ALL"},
+    "MMARKET": {"name": "Money Market Account", "regions": "ALL"},
     # ── India ───────────────────────────────────────────────────────────────
-    "PPF":          {"name": "Public Provident Fund",            "regions": ["IN"]},
-    "NSC":          {"name": "National Savings Certificate",     "regions": ["IN"]},
-    "KVP":          {"name": "Kisan Vikas Patra",                "regions": ["IN"]},
-    "SSY":          {"name": "Sukanya Samriddhi Yojana",         "regions": ["IN"]},
-    "SCSS":         {"name": "Senior Citizens Savings Scheme",   "regions": ["IN"]},
-    "SGB":          {"name": "Sovereign Gold Bond",              "regions": ["IN"]},
-    "NPS":          {"name": "National Pension System",          "regions": ["IN"]},
-
+    "PPF": {"name": "Public Provident Fund", "regions": ["IN"]},
+    "NSC": {"name": "National Savings Certificate", "regions": ["IN"]},
+    "KVP": {"name": "Kisan Vikas Patra", "regions": ["IN"]},
+    "SSY": {"name": "Sukanya Samriddhi Yojana", "regions": ["IN"]},
+    "SCSS": {"name": "Senior Citizens Savings Scheme", "regions": ["IN"]},
+    "SGB": {"name": "Sovereign Gold Bond", "regions": ["IN"]},
+    "NPS": {"name": "National Pension System", "regions": ["IN"]},
     # ── United States ───────────────────────────────────────────────────────
-    "CD":           {"name": "Certificate of Deposit",          "regions": ["US"]},
-    "T-BILL":       {"name": "Treasury Bill",                   "regions": ["US"]},
-    "T-NOTE":       {"name": "Treasury Note",                   "regions": ["US"]},
-    "T-BOND":       {"name": "Treasury Bond",                   "regions": ["US"]},
-    "I-BOND":       {"name": "I Bond (Inflation-Protected)",    "regions": ["US"]},
-
+    "CD": {"name": "Certificate of Deposit", "regions": ["US"]},
+    "T-BILL": {"name": "Treasury Bill", "regions": ["US"]},
+    "T-NOTE": {"name": "Treasury Note", "regions": ["US"]},
+    "T-BOND": {"name": "Treasury Bond", "regions": ["US"]},
+    "I-BOND": {"name": "I Bond (Inflation-Protected)", "regions": ["US"]},
     # ── United Kingdom ──────────────────────────────────────────────────────
-    "ISA":          {"name": "Individual Savings Account",      "regions": ["GB", "UK"]},
-    "PREMIUM_BOND": {"name": "Premium Bond (NS&I)",             "regions": ["GB", "UK"]},
-
+    "ISA": {"name": "Individual Savings Account", "regions": ["GB", "UK"]},
+    "PREMIUM_BOND": {"name": "Premium Bond (NS&I)", "regions": ["GB", "UK"]},
     # ── Canada ──────────────────────────────────────────────────────────────
-    "GIC":          {"name": "Guaranteed Investment Certificate","regions": ["CA"]},
-
+    "GIC": {"name": "Guaranteed Investment Certificate", "regions": ["CA"]},
     # ── Singapore ───────────────────────────────────────────────────────────
-    "SSB":          {"name": "Singapore Savings Bond",          "regions": ["SG"]},
-
+    "SSB": {"name": "Singapore Savings Bond", "regions": ["SG"]},
     # ── Gulf / Islamic finance ──────────────────────────────────────────────
-    "MURABAHA":     {"name": "Murabaha / Islamic Term Deposit",  "regions": ["AE", "SA", "KW", "BH", "OM", "QA", "MY"]},
+    "MURABAHA": {
+        "name": "Murabaha / Islamic Term Deposit",
+        "regions": ["AE", "SA", "KW", "BH", "OM", "QA", "MY"],
+    },
 }
 
 # Region-name → ISO-2 code lookup (for human-readable region strings)
 _REGION_NAME_TO_CODE: Dict[str, str] = {
-    "INDIA": "IN", "UNITED STATES": "US", "USA": "US", "AMERICA": "US",
-    "UK": "GB", "UNITED KINGDOM": "GB", "BRITAIN": "GB", "ENGLAND": "GB",
-    "AUSTRALIA": "AU", "CANADA": "CA", "SINGAPORE": "SG",
-    "UAE": "AE", "DUBAI": "AE", "GULF": "AE", "MALAYSIA": "MY",
-    "PAKISTAN": "PK", "BANGLADESH": "BD", "SRI LANKA": "LK", "NEPAL": "NP",
-    "SAUDI ARABIA": "SA", "KUWAIT": "KW", "BAHRAIN": "BH", "OMAN": "OM", "QATAR": "QA",
-    "WORLDWIDE": "WW", "GLOBAL": "WW",
+    "INDIA": "IN",
+    "UNITED STATES": "US",
+    "USA": "US",
+    "AMERICA": "US",
+    "UK": "GB",
+    "UNITED KINGDOM": "GB",
+    "BRITAIN": "GB",
+    "ENGLAND": "GB",
+    "AUSTRALIA": "AU",
+    "CANADA": "CA",
+    "SINGAPORE": "SG",
+    "UAE": "AE",
+    "DUBAI": "AE",
+    "GULF": "AE",
+    "MALAYSIA": "MY",
+    "PAKISTAN": "PK",
+    "BANGLADESH": "BD",
+    "SRI LANKA": "LK",
+    "NEPAL": "NP",
+    "SAUDI ARABIA": "SA",
+    "KUWAIT": "KW",
+    "BAHRAIN": "BH",
+    "OMAN": "OM",
+    "QATAR": "QA",
+    "WORLDWIDE": "WW",
+    "GLOBAL": "WW",
 }
 
 # Ordered product lists per region (shown in prompts / Streamlit UI)
@@ -90,7 +109,9 @@ def get_available_products(region: str) -> List[str]:
 
     *region* may be a country name (e.g. 'India') or ISO-2 code (e.g. 'IN').
     """
-    code = _REGION_NAME_TO_CODE.get(region.upper(), region.upper()[:2] if len(region) >= 2 else "IN")
+    code = _REGION_NAME_TO_CODE.get(
+        region.upper(), region.upper()[:2] if len(region) >= 2 else "IN"
+    )
     return _REGION_PRODUCT_LISTS.get(code, _REGION_PRODUCT_LISTS["DEFAULT"])
 
 
@@ -105,6 +126,7 @@ def get_products_display_str(region: str) -> str:
 # Per-product calculation helpers
 # ---------------------------------------------------------------------------
 
+
 def _freq_n(compounding_freq: str) -> int:
     return {"monthly": 12, "quarterly": 4, "half_yearly": 2, "yearly": 1}.get(
         compounding_freq.lower().replace("-", "_").replace(" ", "_"), 4
@@ -113,9 +135,14 @@ def _freq_n(compounding_freq: str) -> int:
 
 def _pay_n(payment_freq: str) -> int:
     """Periods per year for coupon / interest payouts."""
-    return {"monthly": 12, "quarterly": 4, "semi_annual": 2, "half_yearly": 2, "annual": 1, "yearly": 1}.get(
-        payment_freq.lower().replace("-", "_").replace(" ", "_"), 2
-    )
+    return {
+        "monthly": 12,
+        "quarterly": 4,
+        "semi_annual": 2,
+        "half_yearly": 2,
+        "annual": 1,
+        "yearly": 1,
+    }.get(payment_freq.lower().replace("-", "_").replace(" ", "_"), 2)
 
 
 def _calc_compound(principal: float, rate: float, tenure_months: float, n: int):
@@ -136,7 +163,11 @@ def _calc_rd(monthly: float, rate: float, tenure_months: float, n: int):
     if periods_per_month == 0:
         raise ValueError(f"Compounding frequency yields 0 periods/month.")
     growth_factor = (1 + rate_per_period) ** total_periods
-    maturity = monthly * (growth_factor - 1) / (1 - (1 + rate_per_period) ** (-periods_per_month))
+    maturity = (
+        monthly
+        * (growth_factor - 1)
+        / (1 - (1 + rate_per_period) ** (-periods_per_month))
+    )
     invested = monthly * tenure_months
     return round(maturity, 2), round(maturity - invested, 2), round(invested, 2)
 
@@ -144,7 +175,10 @@ def _calc_rd(monthly: float, rate: float, tenure_months: float, n: int):
 def _calc_ppf(annual_deposit: float, rate: float, tenure_years: int = 15):
     """PPF — annual deposits compounded yearly; interest exempt under 80C."""
     r = rate / 100
-    maturity = sum(annual_deposit * (1 + r) ** (tenure_years - y + 1) for y in range(1, tenure_years + 1))
+    maturity = sum(
+        annual_deposit * (1 + r) ** (tenure_years - y + 1)
+        for y in range(1, tenure_years + 1)
+    )
     invested = annual_deposit * tenure_years
     return round(maturity, 2), round(maturity - invested, 2), round(invested, 2)
 
@@ -170,10 +204,15 @@ def _calc_scss(principal: float, rate: float, tenure_years: int = 5):
     return principal, total_interest, quarterly_payout
 
 
-def _calc_ssy(annual_deposit: float, rate: float, deposit_years: int = 15, total_years: int = 21):
+def _calc_ssy(
+    annual_deposit: float, rate: float, deposit_years: int = 15, total_years: int = 21
+):
     """SSY — deposits for first *deposit_years*; corpus grows until *total_years*."""
     r = rate / 100
-    maturity = sum(annual_deposit * (1 + r) ** (total_years - y + 1) for y in range(1, deposit_years + 1))
+    maturity = sum(
+        annual_deposit * (1 + r) ** (total_years - y + 1)
+        for y in range(1, deposit_years + 1)
+    )
     invested = annual_deposit * deposit_years
     return round(maturity, 2), round(maturity - invested, 2), round(invested, 2)
 
@@ -194,7 +233,13 @@ def _calc_nps(monthly: float, expected_return: float, tenure_years: int):
     invested = monthly * n
     lump = round(corpus * 0.6, 2)
     annuity_corpus = round(corpus * 0.4, 2)
-    return round(corpus, 2), round(corpus - invested, 2), round(invested, 2), lump, annuity_corpus
+    return (
+        round(corpus, 2),
+        round(corpus - invested, 2),
+        round(invested, 2),
+        lump,
+        annuity_corpus,
+    )
 
 
 def _calc_mf_sip(monthly: float, expected_return: float, tenure_months: float):
@@ -206,7 +251,12 @@ def _calc_mf_sip(monthly: float, expected_return: float, tenure_months: float):
     return round(maturity, 2), round(maturity - invested, 2), round(invested, 2)
 
 
-def _calc_bond(face_value: float, coupon_rate: float, tenure_years: float, payment_freq: str = "semi_annual"):
+def _calc_bond(
+    face_value: float,
+    coupon_rate: float,
+    tenure_years: float,
+    payment_freq: str = "semi_annual",
+):
     """Bond — periodic coupon payments + face value returned at maturity."""
     n = _pay_n(payment_freq)
     coupon_per_period = face_value * coupon_rate / 100 / n
@@ -223,12 +273,16 @@ def _calc_tbill(face_value: float, discount_rate: float, weeks: int = 26):
     return round(face_value, 2), round(gain, 2), round(purchase_price, 2)
 
 
-def _calc_ibond(principal: float, fixed_rate: float, inflation_rate: float, tenure_years: int = 1):
+def _calc_ibond(
+    principal: float, fixed_rate: float, inflation_rate: float, tenure_years: int = 1
+):
     """I-Bond (US) — composite rate ≈ fixed_rate + 2*inflation_rate + fixed_rate*inflation_rate."""
     f = fixed_rate / 100
     i = inflation_rate / 100
     composite = f + 2 * i + f * i
-    maturity = principal * (1 + composite / 2) ** (2 * tenure_years)  # semi-annual compounding
+    maturity = principal * (1 + composite / 2) ** (
+        2 * tenure_years
+    )  # semi-annual compounding
     return round(maturity, 2), round(maturity - principal, 2), round(composite * 100, 4)
 
 
@@ -242,6 +296,7 @@ def _calc_premium_bond(principal: float, prize_rate: float = 4.4):
 # Input schema
 # ---------------------------------------------------------------------------
 
+
 class UniversalDepositCalculatorInput(BaseModel):
     deposit_type: str = Field(
         ...,
@@ -252,19 +307,44 @@ class UniversalDepositCalculatorInput(BaseModel):
             "UK: ISA, PREMIUM_BOND. Canada: GIC. Singapore: SSB. Gulf: MURABAHA."
         ),
     )
-    amount: float = Field(..., description="Principal (FD/NSC/BOND/SGB/…), monthly installment (RD/MF-SIP/NPS), or annual deposit (PPF/SSY).")
-    rate: float = Field(..., description="Annual interest / coupon / expected-return rate (%). For I-BOND: fixed-rate component.")
-    tenure_months: int = Field(..., description="Tenure in months. PPF default=180, NSC=60, KVP=115, SSY=252, SCSS=60, SGB=96.")
-    compounding_freq: str = Field(default="quarterly", description="monthly / quarterly / half_yearly / yearly (ignored for payout products like SCSS, BOND).")
-    senior_rate: Optional[float] = Field(default=None, description="Senior citizen rate — when set, returns both General and Senior projections.")
-    payment_freq: Optional[str] = Field(default="semi_annual", description="Coupon / interest payout frequency for BOND, SGB, SCSS: annual / semi_annual / quarterly.")
-    inflation_rate: Optional[float] = Field(default=None, description="Inflation rate (%) — required for I-BOND composite calculation.")
-    is_sip: Optional[bool] = Field(default=False, description="Set True for MF/NPS when amount is a monthly SIP installment.")
+    amount: float = Field(
+        ...,
+        description="Principal (FD/NSC/BOND/SGB/…), monthly installment (RD/MF-SIP/NPS), or annual deposit (PPF/SSY).",
+    )
+    rate: float = Field(
+        ...,
+        description="Annual interest / coupon / expected-return rate (%). For I-BOND: fixed-rate component.",
+    )
+    tenure_months: int = Field(
+        ...,
+        description="Tenure in months. PPF default=180, NSC=60, KVP=115, SSY=252, SCSS=60, SGB=96.",
+    )
+    compounding_freq: str = Field(
+        default="quarterly",
+        description="monthly / quarterly / half_yearly / yearly (ignored for payout products like SCSS, BOND).",
+    )
+    senior_rate: Optional[float] = Field(
+        default=None,
+        description="Senior citizen rate — when set, returns both General and Senior projections.",
+    )
+    payment_freq: Optional[str] = Field(
+        default="semi_annual",
+        description="Coupon / interest payout frequency for BOND, SGB, SCSS: annual / semi_annual / quarterly.",
+    )
+    inflation_rate: Optional[float] = Field(
+        default=None,
+        description="Inflation rate (%) — required for I-BOND composite calculation.",
+    )
+    is_sip: Optional[bool] = Field(
+        default=False,
+        description="Set True for MF/NPS when amount is a monthly SIP installment.",
+    )
 
 
 # ---------------------------------------------------------------------------
 # Tool
 # ---------------------------------------------------------------------------
+
 
 class UniversalDepositCalculatorTool(BaseTool):
     name: str = "Deposit_Calculator"
@@ -298,17 +378,36 @@ class UniversalDepositCalculatorTool(BaseTool):
             # ── Dispatch ─────────────────────────────────────────────────────
 
             # FD / TD / CD / GIC / MMARKET / MURABAHA / SSB / ISA (lump-sum) / T-NOTE / T-BOND
-            if dtype in ("FD", "TD", "CD", "GIC", "MMARKET", "MURABAHA", "SSB",
-                         "T_NOTE", "T_BOND"):
+            if dtype in (
+                "FD",
+                "TD",
+                "CD",
+                "GIC",
+                "MMARKET",
+                "MURABAHA",
+                "SSB",
+                "T_NOTE",
+                "T_BOND",
+            ):
                 product_label = PRODUCT_REGISTRY.get(
                     deposit_type.upper().replace("_", "-"), {}
                 ).get("name", deposit_type.upper())
                 if senior_rate is not None:
                     g_mat, g_int = _calc_compound(amount, rate, tenure_months, n)
                     s_mat, s_int = _calc_compound(amount, senior_rate, tenure_months, n)
-                    return self._dual_rate_output(product_label, amount, tenure_months, compounding_freq,
-                                                  rate, senior_rate, g_mat, g_int, s_mat, s_int,
-                                                  f"Principal: {amount:,.2f}")
+                    return self._dual_rate_output(
+                        product_label,
+                        amount,
+                        tenure_months,
+                        compounding_freq,
+                        rate,
+                        senior_rate,
+                        g_mat,
+                        g_int,
+                        s_mat,
+                        s_int,
+                        f"Principal: {amount:,.2f}",
+                    )
                 mat, interest = _calc_compound(amount, rate, tenure_months, n)
                 return (
                     f"Product: {product_label}\nPrincipal: {amount:,.2f}\n"
@@ -321,9 +420,19 @@ class UniversalDepositCalculatorTool(BaseTool):
                 if senior_rate is not None:
                     g_mat, g_int, g_inv = _calc_rd(amount, rate, tenure_months, n)
                     s_mat, s_int, _ = _calc_rd(amount, senior_rate, tenure_months, n)
-                    return self._dual_rate_output("Recurring Deposit", amount, tenure_months, compounding_freq,
-                                                  rate, senior_rate, g_mat, g_int, s_mat, s_int,
-                                                  f"Monthly Installment: {amount:,.2f} | Total Invested: {g_inv:,.2f}")
+                    return self._dual_rate_output(
+                        "Recurring Deposit",
+                        amount,
+                        tenure_months,
+                        compounding_freq,
+                        rate,
+                        senior_rate,
+                        g_mat,
+                        g_int,
+                        s_mat,
+                        s_int,
+                        f"Monthly Installment: {amount:,.2f} | Total Invested: {g_inv:,.2f}",
+                    )
                 mat, interest, invested = _calc_rd(amount, rate, tenure_months, n)
                 return (
                     f"Product: Recurring Deposit\nMonthly Installment: {amount:,.2f}\n"
@@ -519,10 +628,19 @@ class UniversalDepositCalculatorTool(BaseTool):
                 if senior_rate is not None:
                     g_mat, g_int = _calc_compound(amount, rate, tenure_months, n)
                     s_mat, s_int = _calc_compound(amount, senior_rate, tenure_months, n)
-                    return self._dual_rate_output("Guaranteed Investment Certificate (GIC)",
-                                                  amount, tenure_months, compounding_freq,
-                                                  rate, senior_rate, g_mat, g_int, s_mat, s_int,
-                                                  f"Principal: {amount:,.2f}")
+                    return self._dual_rate_output(
+                        "Guaranteed Investment Certificate (GIC)",
+                        amount,
+                        tenure_months,
+                        compounding_freq,
+                        rate,
+                        senior_rate,
+                        g_mat,
+                        g_int,
+                        s_mat,
+                        s_int,
+                        f"Principal: {amount:,.2f}",
+                    )
                 mat, interest = _calc_compound(amount, rate, tenure_months, n)
                 return (
                     f"Product: Guaranteed Investment Certificate (GIC)\nPrincipal: {amount:,.2f}\n"
@@ -533,7 +651,9 @@ class UniversalDepositCalculatorTool(BaseTool):
 
             # MURABAHA (Islamic)
             if dtype == "MURABAHA":
-                mat, profit = _calc_compound(amount, rate, tenure_months, 1)  # annual for simplicity
+                mat, profit = _calc_compound(
+                    amount, rate, tenure_months, 1
+                )  # annual for simplicity
                 return (
                     f"Product: Murabaha / Islamic Term Deposit\nPrincipal: {amount:,.2f}\n"
                     f"Profit Rate: {rate}% p.a. | Tenure: {tenure_months} months\n"
@@ -553,8 +673,19 @@ class UniversalDepositCalculatorTool(BaseTool):
             return f"Calculation Error ({deposit_type}): {str(e)}"
 
     @staticmethod
-    def _dual_rate_output(product_label, amount, tenure_months, compounding_freq,
-                          rate, senior_rate, g_mat, g_int, s_mat, s_int, desc):
+    def _dual_rate_output(
+        product_label,
+        amount,
+        tenure_months,
+        compounding_freq,
+        rate,
+        senior_rate,
+        g_mat,
+        g_int,
+        s_mat,
+        s_int,
+        desc,
+    ):
         return (
             f"Product: {product_label}\n"
             f"{desc}\nTenure: {tenure_months} months | Compounding: {compounding_freq.capitalize()}\n"

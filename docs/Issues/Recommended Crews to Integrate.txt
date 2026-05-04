@@ -1,0 +1,64 @@
+ Recommended Crews to Integrate into Django UI
+Priority 1: High Value, Easy Integration
+1. Analysis Crew (run_analysis_crew())
+- Purpose: Investment analysis with provider comparison
+- Why integrate: Already implemented, provides comprehensive FD/Investment analysis with real-time data
+- UI Changes Needed:
+  - Enhance fd_advisor.html to show detailed analysis (currently only shows basic comparison)
+  - Add sections for: Provider deep-dive, Risk analysis, Strategic recommendations
+  - Add visualization panel for charts
+2. Visualization Crew (run_visualization_crew())
+- Purpose: Generate ECharts for FD rates, investment comparisons
+- Why integrate: Complements the analysis crew, provides visual insights
+- UI Changes Needed:
+  - Add chart container in fd_advisor.html results panel
+  - Add toggle between table and chart view
+  - Include Apache ECharts library
+3. Database Crew (run_database_crew())
+- Purpose: Natural language queries to bank database
+- Why integrate: Powerful feature for customers to query their accounts/deposits
+- UI Changes Needed:
+  - Create new page: database_query.html with chat-like interface
+  - Add to navigation menu
+  - Template: Query input + Results display with Markdown rendering
+---
+Priority 2: Medium Value
+4. Loan Creation Crew (run_loan_creation_crew())
+- Purpose: End-to-end loan application with ML + RAG policy compliance
+- Why integrate: More comprehensive than basic credit risk - includes policy compliance
+- UI Changes Needed:
+  - Enhance credit_risk.html to show loan decision (not just approval probability)
+  - Add section for policy compliance explanation
+  - Add email summary feature
+  - Add conditions and next-steps display
+5. Router Crew (run_router_crew())
+- Purpose: Intent classification and routing
+- Why integrate: Can create a unified "Ask Anything" interface
+- UI Changes Needed:
+  - Add new "Smart Assistant" page with chat interface
+  - Route to appropriate crew based on intent
+  - Single entry point for all banking queries
+---
+Priority 3: Nice to Have
+6. TD/FD Creation Crew (run_td_fd_creation())
+- Purpose: Create actual FD/TD deposits in database
+- Why integrate: Completes the FD workflow (currently only advisory)
+- UI Changes Needed:
+  - Add "Create FD" button to fd_advisor.html results
+  - Add confirmation modal with FD details
+  - Add email notification feature
+  - Add FD certificate download
+7. FD Template Crew (generate_fd_template())
+- Purpose: Generate FD email templates
+- Why integrate: Professional customer communication
+- UI Changes Needed:
+  - Backend feature - no UI needed
+  - Integrate with FD creation workflow
+---
+---
+ Recommended Implementation Order
+1. Phase 1: Add Analysis + Visualization crews to FD Advisor (immediate value)
+2. Phase 2: Create Database Query page (unique feature)
+3. Phase 3: Enhance Credit Risk with Loan Creation crew
+4. Phase 4: Add Smart Assistant with Router crew
+5. Phase 5: Add TD/FD creation workflow

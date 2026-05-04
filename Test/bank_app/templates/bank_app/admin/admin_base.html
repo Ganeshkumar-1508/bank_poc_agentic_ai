@@ -1,0 +1,84 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin Panel{% endblock %} - Bank POC Agentic AI</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/admin.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="admin-body">
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">Bank<span>POC</span></div>
+                <div class="sidebar-subtitle">Admin Panel</div>
+            </div>
+            
+            <nav class="sidebar-nav">
+            <a href="{% url 'admin_panel:admin_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
+            <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="{% url 'admin_panel:admin_user_list' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_user_list' %}active{% endif %}">
+            <span class="nav-text">Users</span>
+            </a>
+            <a href="{% url 'admin_panel:admin_audit_log' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_audit_log' %}active{% endif %}">
+            <span class="nav-text">Audit Trail</span>
+            </a>
+            <a href="{% url 'admin_panel:admin_transaction_list' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_transaction_list' %}active{% endif %}">
+            <span class="nav-text">Transactions</span>
+            </a>
+            <a href="{% url 'admin_panel:admin_analytics' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_analytics' %}active{% endif %}">
+            <span class="nav-text">Analytics</span>
+            </a>
+            <a href="{% url 'admin_panel:admin_config' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_config' %}active{% endif %}">
+            <span class="nav-text">Settings</span>
+            </a>
+            <a href="{% url 'admin_panel:admin_content' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_content' %}active{% endif %}">
+            <span class="nav-text">Content</span>
+            </a>
+            <a href="{% url 'admin_panel:admin_crew_logs' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_crew_logs' %}active{% endif %}">
+            <span class="nav-text">Crew Logs</span>
+            </a>
+            <a href="{% url 'admin_panel:admin_database_query' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_database_query' %}active{% endif %}">
+            <span class="nav-text">Database Query</span>
+            </a>
+            <a href="{% url 'admin_panel:admin_model_management' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_model_management' %}active{% endif %}">
+            <span class="nav-text">Model Management</span>
+            </a>
+            <a href="{% url 'admin_panel:admin_email_campaigns' %}" class="nav-item {% if request.resolver_match.url_name == 'admin_email_campaigns' %}active{% endif %}">
+            <span class="nav-text">Email Campaigns</span>
+            </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+            <a href="{% url 'home' %}" class="nav-item">
+            <span class="nav-text">Back to Site</span>
+            </a>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="admin-main">
+            <header class="admin-header">
+                <h1 class="admin-page-title">{% block page_title %}Admin Panel{% endblock %}</h1>
+                <div class="admin-user-info">
+                    <span class="user-avatar">👤</span>
+                    <span class="user-name">{{ request.user.username|default:"Admin" }}</span>
+                </div>
+            </header>
+            
+            <div class="admin-content">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    
+    <script src="{% static 'js/main.js' %}"></script>
+    <script src="{% static 'js/admin.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

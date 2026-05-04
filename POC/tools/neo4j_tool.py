@@ -1,6 +1,7 @@
 # tools/neo4j_tool.py
 import random
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -12,30 +13,20 @@ from pydantic import BaseModel, Field, PrivateAttr
 
 from tools.config import (
     GRAPH_OUTPUT_DIR,
-    NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD,
+    NEO4J_URI,
+    NEO4J_USER,
+    NEO4J_PASSWORD,
     _get_neo4j_graph,
     _get_native_neo4j_driver,
     get_neo4j_schema_context,
 )
 
 # ---------------------------------------------------------------------------
-# Lazy singletons for LangChain Neo4j integration
+# Use shared Neo4j functions from tools.config
 # ---------------------------------------------------------------------------
 
-_neo4j_graph_lc = None
-_cypher_qa_chain = None
-
-
-def _get_neo4j_graph_lc():
-    global _neo4j_graph_lc
-    if _neo4j_graph_lc is not None:
-        return _neo4j_graph_lc
-    from langchain_community.graphs import Neo4jGraph
-    _neo4j_graph_lc = Neo4jGraph(
-        url=NEO4J_URI, username=NEO4J_USER, password=NEO4J_PASSWORD,
-        refresh_schema=True, timeout=10,
-    )
-    return _neo4j_graph_lc
+# Note: _get_neo4j_graph() is now imported from tools.config
+# No need for duplicate singleton implementation
 
 
 def _get_cypher_qa_chain(llm=None):
@@ -44,15 +35,26 @@ def _get_cypher_qa_chain(llm=None):
         return _cypher_qa_chain
 
     from langchain_community.chains.graph_qa.cypher import GraphCypherQAChain
-    graph = _get_neo4j_graph_lc()
+
+    # Use the shared _get_neo4j_graph() from tools.config
+    graph = _get_neo4j_graph()
+
+    if graph is None:
+        raise RuntimeError(
+            "Neo4j connection not available. Check NEO4J_URI and credentials."
+        )
 
     if llm is None:
         from tools.config import get_llm_3
+
         llm = get_llm_3()
 
     _cypher_qa_chain = GraphCypherQAChain.from_llm(
-        llm=llm, graph=graph, verbose=True,
-        allow_dangerous_requests=True, return_intermediate_steps=True,
+        llm=llm,
+        graph=graph,
+        verbose=True,
+        allow_dangerous_requests=True,
+        return_intermediate_steps=True,
     )
     return _cypher_qa_chain
 
@@ -67,6 +69,7 @@ def build_chain_with_llm(llm):
 # ---------------------------------------------------------------------------
 # Network graph image generator
 # ---------------------------------------------------------------------------
+
 
 def _generate_network_graph_from_results(records: list) -> Optional[str]:
     try:
@@ -84,19 +87,24 @@ def _generate_network_graph_from_results(records: list) -> Optional[str]:
                 nid = str(value.element_id)
                 if nid not in nodes:
                     label = (
-                        value.get("name") or value.get("caption") or
-                        value.get("title") or
-                        (list(value.labels)[0] if value.labels else nid[:8])
+                        value.get("name")
+                        or value.get("caption")
+                        or value.get("title")
+                        or (list(value.labels)[0] if value.labels else nid[:8])
                     )
                     nodes[nid] = str(label)[:40]
-                    node_labels[nid] = list(value.labels)[0] if value.labels else "Unknown"
+                    node_labels[nid] = (
+                        list(value.labels)[0] if value.labels else "Unknown"
+                    )
             elif isinstance(value, Relationship):
                 src = str(value.start_node.element_id)
                 tgt = str(value.end_node.element_id)
                 for n in (value.start_node, value.end_node):
                     nid = str(n.element_id)
                     if nid not in nodes:
-                        nodes[nid] = str(n.get("name") or n.get("caption") or nid[:8])[:40]
+                        nodes[nid] = str(n.get("name") or n.get("caption") or nid[:8])[
+                            :40
+                        ]
                         node_labels[nid] = list(n.labels)[0] if n.labels else "Unknown"
                 edge_key = (src, tgt, value.type)
                 if edge_key not in edges:
@@ -105,7 +113,9 @@ def _generate_network_graph_from_results(records: list) -> Optional[str]:
                 for n in value.nodes:
                     nid = str(n.element_id)
                     if nid not in nodes:
-                        nodes[nid] = str(n.get("name") or n.get("caption") or nid[:8])[:40]
+                        nodes[nid] = str(n.get("name") or n.get("caption") or nid[:8])[
+                            :40
+                        ]
                         node_labels[nid] = list(n.labels)[0] if n.labels else "Unknown"
                 for r in value.relationships:
                     src = str(r.start_node.element_id)
@@ -132,8 +142,9 @@ def _generate_network_graph_from_results(records: list) -> Optional[str]:
 
         if len(nodes) > MAX_NODES:
             import networkx as _nx
+
             _G_tmp = _nx.DiGraph()
-            for (s, t, _) in edges.keys():
+            for s, t, _ in edges.keys():
                 if s in nodes and t in nodes:
                     _G_tmp.add_edge(s, t)
             try:
@@ -143,11 +154,15 @@ def _generate_network_graph_from_results(records: list) -> Optional[str]:
             except Exception:
                 cycle_nodes = set()
             deg = dict(_G_tmp.degree())
-            priority = sorted(nodes.keys(), key=lambda n: (n not in cycle_nodes, -deg.get(n, 0)))
+            priority = sorted(
+                nodes.keys(), key=lambda n: (n not in cycle_nodes, -deg.get(n, 0))
+            )
             kept_ids = set(priority[:MAX_NODES])
             nodes = {k: v for k, v in nodes.items() if k in kept_ids}
             node_labels = {k: v for k, v in node_labels.items() if k in kept_ids}
-            edges = {k: v for k, v in edges.items() if k[0] in kept_ids and k[1] in kept_ids}
+            edges = {
+                k: v for k, v in edges.items() if k[0] in kept_ids and k[1] in kept_ids
+            }
 
         if len(edges) > MAX_EDGES:
             edges = dict(list(edges.items())[:MAX_EDGES])
@@ -171,17 +186,39 @@ def _generate_network_graph_from_results(records: list) -> Optional[str]:
             pos = nx.spring_layout(G, seed=42, k=2.5)
 
         TYPE_COLORS = {
-            "Person": "#4CAF50", "Company": "#2196F3",
-            "Account": "#FF9800", "Transaction": "#9C27B0", "Unknown": "#607D8B",
+            "Person": "#4CAF50",
+            "Company": "#2196F3",
+            "Account": "#FF9800",
+            "Transaction": "#9C27B0",
+            "Unknown": "#607D8B",
         }
-        node_colors = [TYPE_COLORS.get(G.nodes[n].get("node_type", "Unknown"), "#607D8B") for n in G.nodes()]
+        node_colors = [
+            TYPE_COLORS.get(G.nodes[n].get("node_type", "Unknown"), "#607D8B")
+            for n in G.nodes()
+        ]
         nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=800, alpha=0.9)
-        nx.draw_networkx_edges(G, pos, edge_color="#555555", arrows=True,
-                               arrowsize=20, width=1.5, alpha=0.7, connectionstyle="arc3,rad=0.1")
-        nx.draw_networkx_edge_labels(G, pos,
-            edge_labels={(u, v): d.get("label", "") for u, v, d in G.edges(data=True)}, font_size=7)
-        nx.draw_networkx_labels(G, pos,
-            labels={n: G.nodes[n].get("label", str(n)[:20]) for n in G.nodes()}, font_size=9)
+        nx.draw_networkx_edges(
+            G,
+            pos,
+            edge_color="#555555",
+            arrows=True,
+            arrowsize=20,
+            width=1.5,
+            alpha=0.7,
+            connectionstyle="arc3,rad=0.1",
+        )
+        nx.draw_networkx_edge_labels(
+            G,
+            pos,
+            edge_labels={(u, v): d.get("label", "") for u, v, d in G.edges(data=True)},
+            font_size=7,
+        )
+        nx.draw_networkx_labels(
+            G,
+            pos,
+            labels={n: G.nodes[n].get("label", str(n)[:20]) for n in G.nodes()},
+            font_size=9,
+        )
 
         GRAPH_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         filename = f"graph_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{random.randint(1000, 9999)}.png"
@@ -198,6 +235,7 @@ def _generate_network_graph_from_results(records: list) -> Optional[str]:
 # ---------------------------------------------------------------------------
 # Tool 1: Neo4jQueryTool — raw Cypher execution + graph image
 # ---------------------------------------------------------------------------
+
 
 class CypherQueryInput(BaseModel):
     query: str = Field(..., description="A valid Cypher query string.")
@@ -235,24 +273,32 @@ class Neo4jQueryTool(BaseTool):
                         schema_hint = "\n\nNEO4J_SCHEMA:\n" + schema_ctx
                 except Exception:
                     pass
-                return "Query executed but returned no results. Check Cypher for typos." + schema_hint
+                return (
+                    "Query executed but returned no results. Check Cypher for typos."
+                    + schema_hint
+                )
 
             image_path = _generate_network_graph_from_results(records)
 
             node_count = rel_count = 0
             try:
                 from neo4j.graph import Node, Relationship, Path
+
                 for record in records:
                     for val in record.values():
-                        if isinstance(val, Node): node_count += 1
-                        elif isinstance(val, Relationship): rel_count += 1
+                        if isinstance(val, Node):
+                            node_count += 1
+                        elif isinstance(val, Relationship):
+                            rel_count += 1
                         elif isinstance(val, Path):
                             node_count += len(list(val.nodes))
                             rel_count += len(list(val.relationships))
                         elif isinstance(val, (list, tuple)):
                             for item in val:
-                                if isinstance(item, Node): node_count += 1
-                                elif isinstance(item, Relationship): rel_count += 1
+                                if isinstance(item, Node):
+                                    node_count += 1
+                                elif isinstance(item, Relationship):
+                                    rel_count += 1
             except ImportError:
                 pass
 
@@ -263,13 +309,20 @@ class Neo4jQueryTool(BaseTool):
                 except Exception:
                     sample_lines.append(str(rec))
 
-            return "\n".join([
-                "Query executed successfully.",
-                f"Found approximately {node_count} nodes and {rel_count} relationships.",
-                f"GRAPH_IMAGE_PATH: {image_path}" if image_path else "GRAPH_IMAGE_PATH: NONE",
-                "---",
-                "Sample Data (first 3 records):",
-            ] + sample_lines)
+            return "\n".join(
+                [
+                    "Query executed successfully.",
+                    f"Found approximately {node_count} nodes and {rel_count} relationships.",
+                    (
+                        f"GRAPH_IMAGE_PATH: {image_path}"
+                        if image_path
+                        else "GRAPH_IMAGE_PATH: NONE"
+                    ),
+                    "---",
+                    "Sample Data (first 3 records):",
+                ]
+                + sample_lines
+            )
 
         except Exception as e:
             schema_hint = ""
@@ -277,7 +330,9 @@ class Neo4jQueryTool(BaseTool):
                 g = _get_neo4j_graph()
                 if g:
                     schema_hint = "\n\nNEO4J_SCHEMA:\n" + (
-                        getattr(g, "schema", None) or get_neo4j_schema_context() or "Schema unavailable."
+                        getattr(g, "schema", None)
+                        or get_neo4j_schema_context()
+                        or "Schema unavailable."
                     )
             except Exception:
                 pass
@@ -288,8 +343,11 @@ class Neo4jQueryTool(BaseTool):
 # Tool 2: Neo4jSchemaInspectorTool — live schema introspection
 # ---------------------------------------------------------------------------
 
+
 class SchemaInspectorInput(BaseModel):
-    refresh: bool = Field(default=False, description="Force a live schema refresh from Neo4j.")
+    refresh: bool = Field(
+        default=False, description="Force a live schema refresh from Neo4j."
+    )
 
 
 class Neo4jSchemaInspectorTool(BaseTool):
@@ -308,7 +366,11 @@ class Neo4jSchemaInspectorTool(BaseTool):
             if refresh:
                 graph.refresh_schema()
             schema = graph.schema
-            return f"NEO4J_SCHEMA:\n{schema}" if schema else "NEO4J_SCHEMA: Empty — database may have no data."
+            return (
+                f"NEO4J_SCHEMA:\n{schema}"
+                if schema
+                else "NEO4J_SCHEMA: Empty — database may have no data."
+            )
         except Exception as e:
             return f"NEO4J_SCHEMA_ERROR: {e}"
 
@@ -316,6 +378,7 @@ class Neo4jSchemaInspectorTool(BaseTool):
 # ---------------------------------------------------------------------------
 # Tool 3: GraphCypherQATool — natural-language → Cypher → answer
 # ---------------------------------------------------------------------------
+
 
 class CypherQAInput(BaseModel):
     question: str = Field(
@@ -331,12 +394,19 @@ class CypherQAInput(BaseModel):
 # Tool 4: Neo4jNameSearchTool — direct name search (no schema introspection)
 # ---------------------------------------------------------------------------
 
+
 class NameSearchInput(BaseModel):
     first_name: str = Field(..., description="Entity first name (e.g. 'Alaa')")
     last_name: str = Field(..., description="Entity last name (e.g. 'Mubarak')")
-    max_hops: int = Field(default=4, description="Maximum relationship hops for network expansion (1-4)")
-    limit_nodes: int = Field(default=20, description="Max starting nodes to match in Phase 1")
-    limit_results: int = Field(default=50, description="Max total results (p, r, connected) in Phase 2")
+    max_hops: int = Field(
+        default=4, description="Maximum relationship hops for network expansion (1-4)"
+    )
+    limit_nodes: int = Field(
+        default=20, description="Max starting nodes to match in Phase 1"
+    )
+    limit_results: int = Field(
+        default=50, description="Max total results (p, r, connected) in Phase 2"
+    )
 
 
 class Neo4jNameSearchTool(BaseTool):
@@ -374,7 +444,7 @@ WHERE any(label IN labels(p) WHERE label IN ['Officer','Entity','Intermediary','
     OR toLower(p.name) CONTAINS toLower($last_first)
     OR toLower(p.original_name) CONTAINS toLower($full_name)
     OR toLower(p.translit_name) CONTAINS toLower($full_name)
-    OR (toLower(p.name) CONTAINS toLower($first_name) AND toLower(p.name) CONTAINS toLower($last_name))
+    OR (toLower(p.name) CONTAINS toLower($full_name))
   )
 WITH p LIMIT {limit_nodes}
 
@@ -384,8 +454,14 @@ RETURN p, r, connected
 LIMIT {limit_results}
 """
 
-    def _run(self, first_name: str, last_name: str, max_hops: int = 4,
-             limit_nodes: int = 20, limit_results: int = 50) -> str:
+    def _run(
+        self,
+        first_name: str,
+        last_name: str,
+        max_hops: int = 4,
+        limit_nodes: int = 20,
+        limit_results: int = 50,
+    ) -> str:
         driver = _get_native_neo4j_driver()
         if not driver:
             g = _get_neo4j_graph()
@@ -428,32 +504,10 @@ LIMIT {limit_results}
                     records.append(record)
 
             if not records:
-                # Retry with a broader query — match first OR last only
-                fallback_query = """
-MATCH (p)
-WHERE any(label IN labels(p) WHERE label IN ['Officer','Entity','Intermediary','Other'])
-  AND (
-    toLower(p.name) CONTAINS toLower($first_name)
-    OR toLower(p.name) CONTAINS toLower($last_name)
-    OR toLower(p.original_name) CONTAINS toLower($first_name)
-    OR toLower(p.original_name) CONTAINS toLower($last_name)
-    OR toLower(p.translit_name) CONTAINS toLower($first_name)
-    OR toLower(p.translit_name) CONTAINS toLower($last_name)
-  )
-WITH p LIMIT 10
-MATCH (p)-[r*1..{max_hops}]-(connected)
-RETURN p, r, connected
-LIMIT 30
-""".format(max_hops=max(1, max_hops - 1))
-                with driver.session() as session:
-                    for record in session.run(fallback_query, params):
-                        records.append(record)
-
-            if not records:
                 return (
-                    f"No graph results found for '{full_name}'. "
-                    f"Checked Officer/Entity/Intermediary/Other labels with name variations: "
-                    f"'{full_name}', '{last_comma_first}', '{last_first}', original_name, translit_name."
+                    f"No exact match for '{full_name}' in ICIJ Offshore Leaks database. "
+                    f"Checked name variations: '{full_name}', '{last_comma_first}', '{last_first}', "
+                    f"original_name, translit_name. The full name must appear together in the entity name."
                 )
 
             image_path = _generate_network_graph_from_results(records)
@@ -462,6 +516,7 @@ LIMIT 30
             node_count = rel_count = 0
             try:
                 from neo4j.graph import Node, Relationship, Path
+
                 for record in records:
                     for val in record.values():
                         if isinstance(val, Node):
@@ -473,8 +528,10 @@ LIMIT 30
                             rel_count += len(list(val.relationships))
                         elif isinstance(val, (list, tuple)):
                             for item in val:
-                                if isinstance(item, Node): node_count += 1
-                                elif isinstance(item, Relationship): rel_count += 1
+                                if isinstance(item, Node):
+                                    node_count += 1
+                                elif isinstance(item, Relationship):
+                                    rel_count += 1
             except ImportError:
                 pass
 
@@ -485,14 +542,21 @@ LIMIT 30
                 except Exception:
                     sample_lines.append(str(rec))
 
-            return "\n".join([
-                f"Name search for: '{full_name}' (first='{first_name}', last='{last_name}')",
-                "Query executed successfully (no schema introspection — direct parameterized Cypher).",
-                f"Found approximately {node_count} nodes and {rel_count} relationships.",
-                f"GRAPH_IMAGE_PATH: {image_path}" if image_path else "GRAPH_IMAGE_PATH: NONE",
-                "---",
-                "Sample Data (first 3 records):",
-            ] + sample_lines)
+            return "\n".join(
+                [
+                    f"Name search for: '{full_name}' (first='{first_name}', last='{last_name}')",
+                    "Query executed successfully (no schema introspection — direct parameterized Cypher).",
+                    f"Found approximately {node_count} nodes and {rel_count} relationships.",
+                    (
+                        f"GRAPH_IMAGE_PATH: {image_path}"
+                        if image_path
+                        else "GRAPH_IMAGE_PATH: NONE"
+                    ),
+                    "---",
+                    "Sample Data (first 3 records):",
+                ]
+                + sample_lines
+            )
 
         except Exception as e:
             return f"Neo4j Name Search Error: {str(e)}"
@@ -501,6 +565,7 @@ LIMIT 30
 # ---------------------------------------------------------------------------
 # Tool 3: GraphCypherQATool — natural-language → Cypher → answer
 # ---------------------------------------------------------------------------
+
 
 class GraphCypherQATool(BaseTool):
     """
@@ -531,7 +596,9 @@ class GraphCypherQATool(BaseTool):
             if intermediate:
                 first_step = intermediate[0] if isinstance(intermediate, list) else {}
                 cypher_used = first_step.get("query", "")
-            return answer + (f"\n\nCYPHER_EXECUTED:\n{cypher_used}" if cypher_used else "")
+            return answer + (
+                f"\n\nCYPHER_EXECUTED:\n{cypher_used}" if cypher_used else ""
+            )
         except Exception as e:
             return f"NEO4J_QA_ERROR: {e}"
 

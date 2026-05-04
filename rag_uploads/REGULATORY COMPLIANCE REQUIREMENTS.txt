@@ -1,0 +1,238 @@
+REGULATORY COMPLIANCE REQUIREMENTS FOR LENDING OPERATIONS
+===========================================================
+Document Reference: RCR-2024-003
+Effective Date: January 2024
+Version: 1.5
+Department: Legal & Compliance
+
+1. FEDERAL LENDING REGULATIONS OVERVIEW
+========================================
+
+1.1 Truth in Lending Act (TILA) / Regulation Z
+-----------------------------------------------
+All consumer loan disclosures must comply with TILA requirements:
+
+Mandatory Disclosures:
+  - Annual Percentage Rate (APR) must be clearly stated
+  - Finance charges must be itemized
+  - Total payment amount over the life of the loan
+  - Payment schedule with due dates and amounts
+  - Total interest payable
+  - Late payment fees and penalties
+  - Prepayment penalties (if applicable)
+  - Security interest details
+
+Timing Requirements:
+  - Truth in Lending disclosure must be provided at least 3 business days before loan closing
+  - Right of Rescission: 3 business days for refinances on primary residence
+  - APR changes exceeding 0.125% require a new disclosure
+
+1.2 Equal Credit Opportunity Act (ECOA) / Regulation B
+--------------------------------------------------------
+Prohibited Factors in Credit Decisions:
+  - Race, color, religion, national origin
+  - Sex, marital status, age (provided applicant has capacity to contract)
+  - Receipt of public assistance income
+  - Exercise of rights under the Consumer Credit Protection Act
+
+Adverse Action Notice Requirements:
+  - Must be provided within 30 days of the adverse action
+  - Must include specific reasons for denial
+  - Must include the applicant's credit score and score range
+  - Must identify the credit bureau that provided the report
+  - Must inform the applicant of their right to obtain a free credit report
+
+Record Retention:
+  - All loan applications must be retained for 25 months
+  - Adverse action notices must be retained for 25 months
+  - All supporting documentation must be retained for the life of the loan plus 5 years
+
+1.3 Fair Credit Reporting Act (FCRA)
+--------------------------------------
+Permissible Purpose Requirements:
+  - Credit reports may only be obtained with written authorization from the applicant
+  - Permissible purposes include: credit application review, collection, employment, insurance underwriting
+
+Consumer Rights:
+  - Right to one free credit report per year from each bureau
+  - Right to dispute inaccurate information
+  - Right to limit prescreened offers
+  - Right to seek damages for willful FCRA violations
+
+Furnisher Requirements:
+  - Must report accurate information to credit bureaus
+  - Must investigate disputes within 30 days
+  - Must notify consumers when negative information is reported
+  - Must correct or delete inaccurate information promptly
+
+1.4 Home Mortgage Disclosure Act (HMDA) / Regulation C
+---------------------------------------------------------
+HMDA Reporting Requirements:
+  - All mortgage applications must be reported regardless of outcome
+  - Data fields include: loan type, purpose, amount, property type, occupancy, applicant demographics, action taken, pricing information
+  - Reports due annually by March 1st for the preceding calendar year
+  - Data submitted via the HMDA Platform (LAR formatting)
+
+Prohibited Practices:
+  - Steering borrowers to specific loan products based on protected characteristics
+  - Redlining or geographic discrimination
+  - Discriminatory pricing based on protected characteristics
+
+2. ANTI-MONEY LAUNDERING (AML) REQUIREMENTS
+=============================================
+
+2.1 Customer Identification Program (CIP)
+------------------------------------------
+Required Information for All Loan Applicants:
+  - Full legal name
+  - Date of birth
+  - Residential address (no P.O. boxes for primary residence loans)
+  - Identification number (SSN for US persons, passport number for non-US persons)
+  - Government-issued photo identification
+
+Verification Procedures:
+  - At least one document-based verification (driver's license, passport, state ID)
+  - At least one non-document-based verification (credit bureau cross-reference, database check)
+  - Enhanced verification for applicants flagged by AML screening systems
+
+2.2 Suspicious Activity Monitoring
+------------------------------------
+Transactions That Must Be Flagged:
+  - Loan proceeds transferred to high-risk jurisdictions
+  - Multiple loan applications within 90 days
+  - Applicants with unverifiable income sources
+  - Cash deposits exceeding $10,000 related to loan transactions
+  - Applicants on OFAC SDN list or other sanctions lists
+  - Structured deposits designed to evade reporting thresholds
+
+Suspicious Activity Reports (SAR):
+  - Must be filed within 30 days of detection
+  - Filed via FinCEN BSA E-Filing system
+  - Confidentiality maintained - cannot notify the subject
+  - Minimum filing threshold: Suspicious activity involving $5,000 or more
+
+2.3 Currency Transaction Reporting (CTR)
+-----------------------------------------
+- CTR required for all cash transactions exceeding $10,000 in a single business day
+- Multiple cash transactions totaling over $10,000 must be aggregated and reported
+- CTR filed via FinCEN BSA E-Filing within 15 calendar days
+
+3. INTEREST RATE AND FEE REGULATIONS
+======================================
+
+3.1 Usury Laws by State
+-------------------------
+Interest rate caps vary by state. The following are maximum allowable APRs:
+
+No Usury Limit States: Delaware, South Dakota, Nevada (for nationally chartered banks)
+Strict Usury States:
+  - Arkansas: 17% (consumer loans)
+  - Connecticut: 12% (non-bank lenders)
+  - West Virginia: 18% (consumer loans)
+  - New York: 16% (civil usury), 25% (criminal usury)
+
+3.2 Military Lending Act (MLA) Compliance
+------------------------------------------
+Special Protections for Active Duty Military:
+  - Maximum APR: 36% (Military Annual Percentage Rate - MAPR)
+  - MAPR includes: interest, fees, credit insurance premiums, debt cancellation fees, ancillary products
+  - Prohibited: mandatory arbitration clauses, prepayment penalties, wage garnishment (except spousal/child support)
+  - Required: MLA disclosures before loan consummation
+  - Verification: Must check DMDC database to confirm active duty status
+
+3.3 Dodd-Frank Act Requirements
+---------------------------------
+Qualified Mortgage (QM) Standards:
+  - No excessive upfront points and fees (total must not exceed 3% of loan amount)
+  - No loan terms exceeding 30 years
+  - No negative amortization
+  - No interest-only loans (with limited exceptions)
+  - DTI must not exceed 43% (for general QM)
+  - Must verify income using IRS Form 4506-T or equivalent
+
+Ability-to-Repay (ATR) Requirements:
+  - Lender must make reasonable good faith determination of borrower's ability to repay
+  - Must consider: income, assets, employment, current debt obligations, credit history
+  - Must verify income and assets through reliable documentation
+  - Total monthly debt payments must not exceed reasonable percentage of verified income
+
+4. DATA PRIVACY AND SECURITY
+=============================
+
+4.1 Gramm-Leach-Bliley Act (GLBA)
+-----------------------------------
+Privacy Notice Requirements:
+  - Initial privacy notice provided at the start of the customer relationship
+  - Annual privacy notice sent to all customers
+  - Opt-out notice for sharing nonpublic personal information with non-affiliated third parties
+  - Notice must describe: information collected, how information is shared, how information is protected
+
+Safeguards Rule:
+  - Written information security plan required
+  - Designation of employee(s) to coordinate the information security program
+  - Risk assessment of potential threats to customer information
+  - Regular testing of safeguards
+  - Service provider oversight and contractual requirements
+
+4.2 State Privacy Laws
+-----------------------
+California Consumer Privacy Act (CCPA):
+  - Right to know what personal information is collected
+  - Right to delete personal information
+  - Right to opt-out of the sale of personal information
+  - Right to non-discrimination for exercising privacy rights
+
+4.3 Data Breach Notification
+------------------------------
+- Notification to affected individuals within 60 days of discovery
+- Notification to state attorneys general for breaches affecting 500+ residents
+- Notification to federal regulators as required by breach severity
+- Document all breach response actions and remediation efforts
+
+5. CONSUMER PROTECTION REQUIREMENTS
+=====================================
+
+5.1 Telephone Consumer Protection Act (TCPA)
+---------------------------------------------
+- Prior express written consent required for auto-dialed calls and texts
+- Do-Not-Call list compliance mandatory
+- Time restrictions: Calls only between 8 AM and 9 PM local time
+- Mobile numbers require express consent regardless of relationship
+
+5.2 Electronic Signatures in Global and National Commerce Act (ESIGN)
+-----------------------------------------------------------------------
+- Electronic signatures are legally valid for loan documents
+- Consumer must consent to electronic delivery before signing
+- Consumer must be informed of their right to receive paper copies
+- System must maintain audit trail of all electronic signatures
+
+5.3 Servicemembers Civil Relief Act (SCRA)
+-------------------------------------------
+Protections for Active Military:
+  - Interest rate cap: 6% on pre-service obligations (mortgages, auto loans, credit cards)
+  - Protection from eviction: For rent up to a certain threshold
+  - Right to terminate leases upon deployment or PCS orders
+  - Stay of proceedings: Civil court proceedings must be stayed during active service
+  - Must verify military status using DMDC database
+  - Benefits apply from the date of active duty notification
+
+6. EXAMINATION AND AUDIT REQUIREMENTS
+======================================
+
+6.1 Internal Audit Schedule
+-----------------------------
+- Quarterly: Loan file sampling review (minimum 5% of originated loans)
+- Semi-Annual: Compliance with TILA, ECOA, FCRA, HMDA
+- Annual: Full AML compliance review and BSA risk assessment
+- Annual: Fair lending analysis including disparate impact testing
+
+6.2 Regulatory Examination Readiness
+--------------------------------------
+Files That Must Be Maintained and Current:
+  - Written policies and procedures for all compliance areas
+  - Board-approved compliance program charter
+  - Training records for all lending staff (annual certification required)
+  - Sample loan files demonstrating compliance
+  - Complaint log and resolution tracking
+  - HMDA LAR data with quality control reviews
+  - BSA/AML risk assessment and SAR filing records

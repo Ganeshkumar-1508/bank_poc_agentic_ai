@@ -1,0 +1,529 @@
+{% extends 'bank_app/base.html' %}
+{% load static %}
+
+{% block title %}Financial News - Bank POC Agentic AI{% endblock %}
+
+{% block content %}
+<div class="page active" id="financial_news">
+  <div class="container">
+    <div class="hero" style="padding: 40px 24px 30px;">
+      <div class="badge">📰 Financial News</div>
+      <h1 class="gradient-text-gold">Stay <em>Informed</em> with Latest Market Updates</h1>
+      <p>Real-time financial news, market analysis, and banking insights from trusted sources.</p>
+    </div>
+
+    <!-- Search Section -->
+    <div class="creditwise-card" style="margin-bottom: 24px;">
+    <div class="field">
+    <label for="news_search">Search News</label>
+    <div class="pfx">
+    <span>🔍</span>
+    <input type="text" id="news_search" placeholder="Search for stocks, banks, markets..." style="padding-left: 36px;">
+    </div>
+    </div>
+    <div class="row3" style="margin-top: 16px;">
+    <div class="field">
+    <label for="news_country">Country</label>
+    <select id="news_country">
+    <option value="">Loading countries...</option>
+    </select>
+    </div>
+    <div class="field">
+    <label for="news_category">Category</label>
+    <select id="news_category">
+    <option value="all">All Categories</option>
+    <option value="banking">Banking</option>
+    <option value="markets">Markets</option>
+    <option value="crypto">Cryptocurrency</option>
+    <option value="economy">Economy</option>
+    <option value="regulation">Regulation</option>
+    </select>
+    </div>
+    <div class="field">
+    <label for="news_date">Date Range</label>
+    <select id="news_date">
+    <option value="7">Last 7 days</option>
+    <option value="30">Last 30 days</option>
+    <option value="90">Last 90 days</option>
+    <option value="all">All time</option>
+    </select>
+    </div>
+    </div>
+    <button class="btn-primary btn-creditwise" onclick="searchNews()">Search News</button>
+    </div>
+
+    <!-- News Grid -->
+    <div class="two-col">
+      <div>
+        <div class="section-label" style="margin-bottom: 16px;">Latest Articles</div>
+        <div id="news_list">
+          <!-- News articles will be populated here -->
+          <div class="creditwise-card" style="margin-bottom: 16px; cursor: pointer;" onclick="showArticle(0)">
+            <div style="display: flex; gap: 16px; align-items: start;">
+              <div style="width: 80px; height: 60px; background: linear-gradient(135deg, var(--gold), var(--gold2)); border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">📈</div>
+              <div style="flex: 1;">
+                <h4 style="font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 6px;">Federal Reserve Signals Rate Decision</h4>
+                <p style="font-size: 0.75rem; color: var(--muted); line-height: 1.5;">The Federal Reserve hints at potential rate adjustments in the upcoming meeting...</p>
+                <div style="display: flex; gap: 12px; margin-top: 8px; font-size: 0.68rem; color: var(--dim);">
+                  <span>🏦 Banking</span>
+                  <span>•</span>
+                  <span>2 hours ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="creditwise-card" style="margin-bottom: 16px; cursor: pointer;" onclick="showArticle(1)">
+            <div style="display: flex; gap: 16px; align-items: start;">
+              <div style="width: 80px; height: 60px; background: linear-gradient(135deg, var(--teal), #4fd1c5); border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">💹</div>
+              <div style="flex: 1;">
+                <h4 style="font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 6px;">Stock Markets Reach New Highs</h4>
+                <p style="font-size: 0.75rem; color: var(--muted); line-height: 1.5;">Major indices hit record levels as investor confidence grows amid economic recovery...</p>
+                <div style="display: flex; gap: 12px; margin-top: 8px; font-size: 0.68rem; color: var(--dim);">
+                  <span>📊 Markets</span>
+                  <span>•</span>
+                  <span>4 hours ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="creditwise-card" style="margin-bottom: 16px; cursor: pointer;" onclick="showArticle(2)">
+            <div style="display: flex; gap: 16px; align-items: start;">
+              <div style="width: 80px; height: 60px; background: linear-gradient(135deg, var(--purple), #a78bfa); border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">₿</div>
+              <div style="flex: 1;">
+                <h4 style="font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 6px;">Bitcoin Surges Past Key Resistance</h4>
+                <p style="font-size: 0.75rem; color: var(--muted); line-height: 1.5;">Cryptocurrency markets rally as institutional adoption continues to grow...</p>
+                <div style="display: flex; gap: 12px; margin-top: 8px; font-size: 0.68rem; color: var(--dim);">
+                  <span>₿ Crypto</span>
+                  <span>•</span>
+                  <span>6 hours ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="creditwise-card" style="margin-bottom: 16px; cursor: pointer;" onclick="showArticle(3)">
+            <div style="display: flex; gap: 16px; align-items: start;">
+              <div style="width: 80px; height: 60px; background: linear-gradient(135deg, var(--blue), #60a5fa); border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">🏛️</div>
+              <div style="flex: 1;">
+                <h4 style="font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 6px;">New Banking Regulations Announced</h4>
+                <p style="font-size: 0.75rem; color: var(--muted); line-height: 1.5;">Regulatory bodies introduce new compliance requirements for financial institutions...</p>
+                <div style="display: flex; gap: 12px; margin-top: 8px; font-size: 0.68rem; color: var(--dim);">
+                  <span>⚖️ Regulation</span>
+                  <span>•</span>
+                  <span>8 hours ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="creditwise-card" style="margin-bottom: 16px; cursor: pointer;" onclick="showArticle(4)">
+            <div style="display: flex; gap: 16px; align-items: start;">
+              <div style="width: 80px; height: 60px; background: linear-gradient(135deg, var(--orange), #fb923c); border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">🌍</div>
+              <div style="flex: 1;">
+                <h4 style="font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 6px;">Global Economy Shows Signs of Recovery</h4>
+                <p style="font-size: 0.75rem; color: var(--muted); line-height: 1.5;">International economic indicators point to sustained growth across major markets...</p>
+                <div style="display: flex; gap: 12px; margin-top: 8px; font-size: 0.68rem; color: var(--dim);">
+                  <span>🌐 Economy</span>
+                  <span>•</span>
+                  <span>12 hours ago</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Article Detail Panel -->
+      <div class="result-panel fadeUp" id="article_detail">
+        <div class="placeholder" id="article_placeholder">
+          <div class="placeholder-icon">📰</div>
+          <p><strong>Select an article</strong> to read the full story and analysis.</p>
+        </div>
+        <div id="article_content" style="display: none;">
+          <div class="badge" id="article_category" style="margin-bottom: 16px;">Category</div>
+          <h3 id="article_title" style="font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 600; color: #fff; margin-bottom: 12px;"></h3>
+          <div style="display: flex; gap: 16px; font-size: 0.72rem; color: var(--dim); margin-bottom: 16px;">
+            <span id="article_source"></span>
+            <span>•</span>
+            <span id="article_time"></span>
+          </div>
+          <div id="article_body" style="font-size: 0.82rem; color: var(--muted); line-height: 1.7;"></div>
+          <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <div class="section-label" style="margin-bottom: 12px;">Key Takeaways</div>
+            <div id="article_keypoints"></div>
+          </div>
+          <button class="btn-primary btn-creditwise" onclick="closeArticle()" style="margin-top: 16px;">Back to Articles</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF Token Helper
+function getCookie(name) {
+let cookieValue = null;
+if (document.cookie && document.cookie !== '') {
+const cookies = document.cookie.split(';');
+for (let i = 0; i < cookies.length; i++) {
+const cookie = cookies[i].trim();
+if (cookie.substring(0, name.length + 1) === (name + '=')) {
+cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+break;
+}
+}
+}
+return cookieValue;
+}
+
+// Real-time financial news using NewsData.io API
+let realNewsArticles = []; // Will store fetched news from API
+let countriesData = []; // Store country data
+
+// Load countries on page load
+async function loadCountries() {
+// Hardcoded country list as primary source (more reliable than API)
+const defaultCountries = [
+{code: 'IN', name: 'India'},
+{code: 'US', name: 'United States'},
+{code: 'GB', name: 'United Kingdom'},
+{code: 'CA', name: 'Canada'},
+{code: 'AU', name: 'Australia'},
+{code: 'DE', name: 'Germany'},
+{code: 'FR', name: 'France'},
+{code: 'JP', name: 'Japan'},
+{code: 'CN', name: 'China'},
+{code: 'SG', name: 'Singapore'},
+{code: 'AE', name: 'UAE'},
+{code: 'SA', name: 'Saudi Arabia'},
+{code: 'ZA', name: 'South Africa'},
+{code: 'BR', name: 'Brazil'},
+{code: 'MX', name: 'Mexico'}
+];
+
+try {
+// Try to fetch from API first
+const response = await fetch('/api/country-list/');
+if (response.ok) {
+const data = await response.json();
+if (data.countries && data.countries.length > 0) {
+countriesData = data.countries;
+} else {
+countriesData = defaultCountries;
+}
+} else {
+countriesData = defaultCountries;
+}
+} catch (error) {
+console.warn('Country API not available, using default list:', error);
+countriesData = defaultCountries;
+}
+
+const countrySelect = document.getElementById('news_country');
+countrySelect.innerHTML = '';
+
+// Add default option
+const defaultOption = document.createElement('option');
+defaultOption.value = 'us';
+defaultOption.textContent = 'United States';
+defaultOption.selected = true;
+countrySelect.appendChild(defaultOption);
+
+// Add other countries
+countriesData.forEach(country => {
+const option = document.createElement('option');
+option.value = country.code.toLowerCase();
+option.textContent = country.name;
+countrySelect.appendChild(option);
+});
+}
+
+// Search news using NewsData.io API
+async function searchNews() {
+const searchTerm = document.getElementById('news_search').value;
+const category = document.getElementById('news_category').value;
+const dateRange = document.getElementById('news_date').value;
+const country = document.getElementById('news_country').value || 'us';
+const newsList = document.getElementById('news_list');
+
+    // Show loading
+    newsList.innerHTML = `
+        <div class="placeholder">
+            <div class="placeholder-icon">⏳</div>
+            <p><strong>Fetching real financial news...</strong></p>
+            <p style="font-size: 0.85rem; color: var(--dim);">Searching latest market updates from NewsData.io</p>
+        </div>
+    `;
+
+    try {
+        // Map category to API-friendly value
+        const categoryMap = {
+            'all': '',
+            'banking': 'banking',
+            'markets': 'stock market',
+            'crypto': 'cryptocurrency bitcoin',
+            'economy': 'economy inflation',
+            'regulation': 'banking regulation compliance'
+        };
+        
+        const query = searchTerm || categoryMap[category] || 'financial markets';
+        
+        // Map date range to days
+        const daysMap = {
+            '7': 7,
+            '30': 30,
+            '90': 90,
+            'all': 365
+        };
+        const days = daysMap[dateRange] || 7;
+
+        const response = await fetch('/api/financial-news/', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: JSON.stringify({
+        query: query,
+        category: category,
+        days: days,
+        country: country // Use selected country from dropdown
+        })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            newsList.innerHTML = `
+                <div class="placeholder">
+                    <div class="placeholder-icon">❌</div>
+                    <p><strong>Error:</strong> ${data.error}</p>
+                    ${data.message ? `<p style="font-size: 0.85rem; color: var(--dim);">${data.message}</p>` : ''}
+                </div>
+            `;
+            // Fallback to cached articles
+            renderNewsList(newsArticles);
+            return;
+        }
+
+        // Store real news articles
+        realNewsArticles = data.news || [];
+        
+        if (realNewsArticles.length === 0) {
+            newsList.innerHTML = `
+                <div class="placeholder">
+                    <div class="placeholder-icon">🔍</div>
+                    <p><strong>No articles found</strong> for your search criteria.</p>
+                    <p style="font-size: 0.85rem; color: var(--dim);">Try a different search term or category</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Display real news
+        renderRealNewsList(realNewsArticles);
+
+    } catch (error) {
+        console.error('Financial News error:', error);
+        newsList.innerHTML = `
+            <div class="placeholder">
+                <div class="placeholder-icon">❌</div>
+                <p><strong>Network Error:</strong> ${error.message}</p>
+                <p style="font-size: 0.85rem; color: var(--dim);">Showing cached articles</p>
+            </div>
+        `;
+        renderNewsList(newsArticles);
+    }
+}
+
+// Render real news from API
+function renderRealNewsList(articles) {
+    const newsList = document.getElementById('news_list');
+
+    if (articles.length === 0) {
+        newsList.innerHTML = '<div class="card"><div class="placeholder"><div class="placeholder-icon">🔍</div><p><strong>No articles found</strong> matching your search criteria.</p></div></div>';
+        return;
+    }
+
+    const icons = {'Banking': '📈', 'Markets': '💹', 'Crypto': '₿', 'Regulation': '🏛️', 'Economy': '🌍', 'General': '📰'};
+    const gradients = {'Banking': 'var(--gold)', 'Markets': 'var(--teal)', 'Crypto': 'var(--purple)', 'Regulation': 'var(--blue)', 'Economy': 'var(--orange)', 'General': 'var(--gold)'};
+
+    newsList.innerHTML = articles.map((article, index) => {
+        // Parse category and get icon
+        let category = article.category || 'General';
+        const mainCategory = category.split(',')[0].trim() || 'General';
+        const icon = icons[mainCategory] || icons['General'] || '📰';
+        const gradient = gradients[mainCategory] || gradients['General'] || 'var(--gold)';
+        
+        // Format date
+        let timeAgo = 'Recently';
+        if (article.published_at) {
+            const pubDate = new Date(article.published_at);
+            const now = new Date();
+            const diffMs = now - pubDate;
+            const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffHrs / 24);
+            
+            if (diffHrs < 1) {
+                timeAgo = 'Just now';
+            } else if (diffHrs < 24) {
+                timeAgo = `${diffHrs} hour${diffHrs > 1 ? 's' : ''} ago`;
+            } else if (diffDays < 7) {
+                timeAgo = `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+            } else {
+                timeAgo = pubDate.toLocaleDateString();
+            }
+        }
+
+        // Truncate description
+        const description = article.description || '';
+        const truncatedDesc = description.length > 150 ? description.substring(0, 150) + '...' : description;
+
+        return `
+            <div class="card" style="margin-bottom: 16px; cursor: pointer;" onclick='showRealArticle(${JSON.stringify(article).replace(/'/g, "\\'")})'>
+                <div style="display: flex; gap: 16px; align-items: start;">
+                    ${article.image_url ? `
+                        <img src="${article.image_url}" alt="" style="width: 80px; height: 60px; border-radius: 8px; object-fit: cover; flex-shrink: 0;">
+                    ` : `
+                        <div style="width: 80px; height: 60px; background: linear-gradient(135deg, ${gradient}, ${gradient}88); border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">${icon}</div>
+                    `}
+                    <div style="flex: 1;">
+                        <h4 style="font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 6px;">${article.title}</h4>
+                        <p style="font-size: 0.75rem; color: var(--muted); line-height: 1.5;">${truncatedDesc}</p>
+                        <div style="display: flex; gap: 12px; margin-top: 8px; font-size: 0.68rem; color: var(--dim);">
+                            <span>${icon} ${mainCategory}</span>
+                            <span>•</span>
+                            <span>${article.source || 'Unknown'}</span>
+                            <span>•</span>
+                            <span>${timeAgo}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Show real article from API
+function showRealArticle(article) {
+    const placeholder = document.getElementById('article_placeholder');
+    const content = document.getElementById('article_content');
+
+    // Parse category
+    let category = article.category || 'General';
+    const mainCategory = category.split(',')[0].trim() || 'General';
+    const icons = {'Banking': '📈', 'Markets': '💹', 'Crypto': '₿', 'Regulation': '🏛️', 'Economy': '🌍', 'General': '📰'};
+    const icon = icons[mainCategory] || icons['General'] || '📰';
+
+    document.getElementById('article_category').textContent = icon + ' ' + mainCategory;
+    document.getElementById('article_title').textContent = article.title;
+    document.getElementById('article_source').textContent = 'Source: ' + (article.source || 'Unknown');
+    
+    // Format date
+    let timeAgo = 'Recently';
+    if (article.published_at) {
+        const pubDate = new Date(article.published_at);
+        timeAgo = pubDate.toLocaleString();
+    }
+    document.getElementById('article_time').textContent = 'Published: ' + timeAgo;
+
+    // Build article body
+    let body = '';
+    if (article.image_url) {
+        body += `<img src="${article.image_url}" alt="${article.title}" style="max-width: 100%; border-radius: 8px; margin-bottom: 16px;">`;
+    }
+    if (article.description) {
+        body += `<p style="font-size: 0.9rem; color: var(--muted); line-height: 1.6; margin-bottom: 16px;"><strong>${article.description}</strong></p>`;
+    }
+    if (article.content) {
+        body += `<p style="font-size: 0.82rem; color: var(--muted); line-height: 1.7;">${article.content}</p>`;
+    }
+    document.getElementById('article_body').innerHTML = body;
+
+    // Generate key points from content
+    const keypoints = generateKeyPoints(article);
+    const keypointsContainer = document.getElementById('article_keypoints');
+    keypointsContainer.innerHTML = keypoints.map(point =>
+        `<div class="tip">• ${point}</div>`
+    ).join('');
+
+    // Add read full article link
+    if (article.url) {
+        keypointsContainer.innerHTML += `<a href="${article.url}" target="_blank" style="display: block; margin-top: 12px; color: var(--gold); text-decoration: none;">🔗 Read full article →</a>`;
+    }
+
+    placeholder.style.display = 'none';
+    content.style.display = 'block';
+}
+
+// Generate key points from article content
+function generateKeyPoints(article) {
+    const points = [];
+    
+    // Add source and date as first point
+    if (article.source) {
+        points.push(`Source: ${article.source}`);
+    }
+    
+    // Extract key sentences (simple heuristic: first few sentences)
+    if (article.description) {
+        points.push(article.description.substring(0, 100) + '...');
+    }
+    
+    if (article.content) {
+        // Split content into sentences and take first 2-3
+        const sentences = article.content.match(/[^.!?]+[.!?]+/g) || [];
+        sentences.slice(0, 3).forEach(sentence => {
+            if (sentence.trim().length > 20) {
+                points.push(sentence.trim().substring(0, 100) + '...');
+            }
+        });
+    }
+    
+    // Ensure we have at least some points
+    if (points.length === 0) {
+        points.push('Article content available via full article link');
+    }
+    
+    return points.slice(0, 4);  // Max 4 key points
+}
+
+// Keep original showArticle for cached articles
+function showArticle(index) {
+    const article = newsArticles[index];
+    const placeholder = document.getElementById('article_placeholder');
+    const content = document.getElementById('article_content');
+
+    // Populate article details
+    document.getElementById('article_category').textContent = article.category;
+    document.getElementById('article_title').textContent = article.title;
+    document.getElementById('article_source').textContent = article.source;
+    document.getElementById('article_time').textContent = article.time;
+    document.getElementById('article_body').textContent = article.content;
+
+    // Populate key points
+    const keypointsContainer = document.getElementById('article_keypoints');
+    keypointsContainer.innerHTML = article.keypoints.map(point =>
+        `<div class="tip">• ${point}</div>`
+    ).join('');
+
+    // Show content, hide placeholder
+    placeholder.style.display = 'none';
+    content.style.display = 'block';
+}
+
+function closeArticle() {
+document.getElementById('article_placeholder').style.display = 'flex';
+document.getElementById('article_content').style.display = 'none';
+}
+
+// Load countries on page load
+document.addEventListener('DOMContentLoaded', function() {
+loadCountries();
+});
+</script>
+{% endblock %}

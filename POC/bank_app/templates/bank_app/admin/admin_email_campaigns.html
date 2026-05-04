@@ -1,0 +1,561 @@
+{% extends 'bank_app/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Email Campaigns{% endblock %}
+{% block page_title %}Email Campaign Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .campaign-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .campaign-stat-card {
+        background: var(--surface);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        border: 1px solid var(--border);
+    }
+    .campaign-stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--gold);
+    }
+    .campaign-stat-label {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+    .campaign-list {
+        margin-top: 24px;
+    }
+    .campaign-item {
+        background: var(--surface);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        border: 1px solid var(--border);
+        transition: all 0.2s ease;
+    }
+    .campaign-item:hover {
+        border-color: var(--gold);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .campaign-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    .campaign-name {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+    .campaign-status {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    .status-draft { background: #f0f0f0; color: #666; }
+    .status-scheduled { background: #e3f2fd; color: #1976d2; }
+    .status-sending { background: #fff3e0; color: #f57c00; }
+    .status-completed { background: #e8f5e9; color: #388e3c; }
+    .status-failed { background: #ffebee; color: #d32f2f; }
+    .status-paused { background: #f3e5f5; color: #7b1fa2; }
+    .campaign-meta {
+        display: flex;
+        gap: 24px;
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-bottom: 12px;
+    }
+    .campaign-progress {
+        margin: 16px 0;
+    }
+    .progress-bar {
+        height: 8px;
+        background: #f0f0f0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--gold), var(--teal));
+        transition: width 0.3s ease;
+    }
+    .campaign-actions {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+    }
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal.active {
+        display: flex;
+    }
+    .modal-content {
+        background: var(--surface);
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 800px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text);
+    }
+    .form-input, .form-select, .form-textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 1rem;
+        background: var(--background);
+        color: var(--text);
+    }
+    .form-textarea {
+        min-height: 150px;
+        resize: vertical;
+    }
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+    }
+    .preview-container {
+        background: #fff;
+        border-radius: 8px;
+        padding: 24px;
+        min-height: 400px;
+        border: 1px solid var(--border);
+    }
+    .btn-admin-primary {
+        background: linear-gradient(135deg, var(--gold), #d4af37);
+        color: #000;
+    }
+    .btn-admin-secondary {
+        background: var(--surface);
+        color: var(--text);
+        border: 1px solid var(--border);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Overview -->
+<div class="campaign-stats">
+    <div class="campaign-stat-card">
+        <div class="campaign-stat-value" id="total-campaigns">{{ campaigns|length }}</div>
+        <div class="campaign-stat-label">Total Campaigns</div>
+    </div>
+    <div class="campaign-stat-card">
+        <div class="campaign-stat-value" id="active-campaigns">{{ active_count|default:0 }}</div>
+        <div class="campaign-stat-label">Active/Sending</div>
+    </div>
+    <div class="campaign-stat-card">
+        <div class="campaign-stat-value" id="total-sent">{{ total_sent|default:0 }}</div>
+        <div class="campaign-stat-label">Emails Sent</div>
+    </div>
+    <div class="campaign-stat-card">
+        <div class="campaign-stat-value" id="delivery-rate">{{ delivery_rate|default:"0%" }}</div>
+        <div class="campaign-stat-label">Delivery Rate</div>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div style="display: flex; gap: 12px; margin-bottom: 24px;">
+    <button class="btn-admin btn-admin-primary" onclick="openCreateModal()">
+        + Create New Campaign
+    </button>
+    <button class="btn-admin btn-admin-secondary" onclick="refreshCampaigns()">
+        Refresh
+    </button>
+</div>
+
+<!-- Campaign List -->
+<div class="campaign-list">
+    {% for campaign in campaigns %}
+    <div class="campaign-item" data-campaign-id="{{ campaign.id }}">
+        <div class="campaign-header">
+            <div class="campaign-name">{{ campaign.name }}</div>
+            <span class="campaign-status status-{{ campaign.status|lower }}">
+                {{ campaign.get_status_display }}
+            </span>
+        </div>
+        <div class="campaign-meta">
+            <span>Subject: {{ campaign.subject|truncatechars:50 }}</span>
+            <span>Template: {{ campaign.get_template_type_display }}</span>
+            <span>Created: {{ campaign.created_at|date:"M d, Y" }}</span>
+        </div>
+        <div class="campaign-progress">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                <span>Sent: {{ campaign.total_sent }} / {{ campaign.total_recipients }}</span>
+                <span>Delivered: {{ campaign.total_delivered }} | Failed: {{ campaign.total_failed }}</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {% widthratio campaign.total_sent campaign.total_recipients 100 %}%"></div>
+            </div>
+        </div>
+        <div class="campaign-actions">
+            <button class="btn-admin btn-admin-secondary btn-admin-sm" onclick="previewCampaign({{ campaign.id }})">
+                Preview Template
+            </button>
+            {% if campaign.status == 'DRAFT' %}
+            <button class="btn-admin btn-admin-primary btn-admin-sm" onclick="sendCampaign({{ campaign.id }})">
+                Send Campaign
+            </button>
+            {% endif %}
+            {% if campaign.status == 'SENDING' %}
+            <button class="btn-admin btn-admin-secondary btn-admin-sm" onclick="pauseCampaign({{ campaign.id }})">
+                Pause
+            </button>
+            {% endif %}
+            <button class="btn-admin btn-admin-secondary btn-admin-sm" onclick="editCampaign({{ campaign.id }})">
+                Edit
+            </button>
+            <button class="btn-admin btn-admin-secondary btn-admin-sm" onclick="viewLogs({{ campaign.id }})">
+                View Logs
+            </button>
+        </div>
+    </div>
+    {% empty %}
+    <div style="text-align: center; padding: 40px; color: var(--muted);">
+        <p style="font-size: 1.2rem; margin-bottom: 16px;">No campaigns yet</p>
+        <p>Create your first email campaign to start engaging customers</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Create/Edit Campaign Modal -->
+<div class="modal" id="campaignModal">
+    <div class="modal-content">
+        <h2 style="margin-bottom: 24px;" id="modalTitle">Create New Campaign</h2>
+        <form id="campaignForm" onsubmit="saveCampaign(event)">
+            <input type="hidden" id="campaignId" name="campaign_id">
+            
+            <div class="form-group">
+                <label class="form-label">Campaign Name</label>
+                <input type="text" class="form-input" id="campaignName" name="name" required placeholder="e.g., FD Promotion - Q2 2026">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Email Subject</label>
+                <input type="text" class="form-input" id="campaignSubject" name="subject" required placeholder="e.g., Exclusive FD Rates Just for You!">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Template Type</label>
+                <select class="form-select" id="templateType" name="template_type" onchange="generateTemplate()">
+                    <option value="FD_CONFIRMATION">FD Confirmation</option>
+                    <option value="FD_MATURITY_REMINDER">FD Maturity Reminder</option>
+                    <option value="FD_RENEWAL_OFFER">FD Renewal Offer</option>
+                    <option value="CUSTOM">Custom Template</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Target Audience Filters</label>
+                <div class="filter-grid">
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--muted);">Regions</label>
+                        <select class="form-select" id="targetRegions" multiple style="height: 80px;">
+                            <option value="IN">India</option>
+                            <option value="US">United States</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--muted);">Min Deposit Amount (₹)</label>
+                        <input type="number" class="form-input" id="minDeposit" placeholder="100000">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.85rem; color: var(--muted);">Tenure (months)</label>
+                        <input type="number" class="form-input" id="tenureMonths" placeholder="12">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-group" id="templateContentGroup" style="display: none;">
+                <label class="form-label">Custom Template Content (HTML)</label>
+                <textarea class="form-textarea" id="templateContent" name="template_content" placeholder="Enter your HTML email template..."></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button type="submit" class="btn-admin btn-admin-primary">Save Campaign</button>
+                <button type="button" class="btn-admin btn-admin-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal" id="previewModal">
+    <div class="modal-content" style="max-width: 900px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h2>Email Template Preview</h2>
+            <button class="btn-admin btn-admin-secondary" onclick="closePreview()">Close</button>
+        </div>
+        <div class="preview-container" id="previewContent">
+            <p style="color: var(--muted);">Preview will appear here...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Modal for Sending -->
+<div class="modal" id="progressModal">
+    <div class="modal-content" style="max-width: 500px; text-align: center;">
+        <h2 style="margin-bottom: 24px;">Sending Campaign...</h2>
+        <div class="progress-bar" style="height: 20px; margin: 24px 0;">
+            <div class="progress-fill" id="sendProgress" style="width: 0%;"></div>
+        </div>
+        <p id="sendStatus">Preparing to send...</p>
+        <p id="sendCount" style="color: var(--muted); margin-top: 8px;"></p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentCampaignId = null;
+
+function openCreateModal() {
+    document.getElementById('modalTitle').textContent = 'Create New Campaign';
+    document.getElementById('campaignForm').reset();
+    document.getElementById('campaignId').value = '';
+    document.getElementById('campaignModal').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('campaignModal').classList.remove('active');
+}
+
+function previewCampaign(campaignId) {
+    fetch(`/admin/email-campaigns/${campaignId}/preview/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('previewContent').innerHTML = data.content;
+                document.getElementById('previewModal').classList.add('active');
+            }
+        })
+        .catch(error => {
+            alert('Error loading preview: ' + error);
+        });
+}
+
+function closePreview() {
+    document.getElementById('previewModal').classList.remove('active');
+}
+
+function sendCampaign(campaignId) {
+    if (!confirm('Are you sure you want to send this campaign? This action cannot be undone.')) {
+        return;
+    }
+    
+    document.getElementById('progressModal').classList.add('active');
+    
+    fetch(`/admin/email-campaigns/${campaignId}/send/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            pollCampaignStatus(campaignId);
+        } else {
+            alert('Error starting campaign: ' + data.error);
+            document.getElementById('progressModal').classList.remove('active');
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+        document.getElementById('progressModal').classList.remove('active');
+    });
+}
+
+function pollCampaignStatus(campaignId) {
+    const checkStatus = () => {
+        fetch(`/admin/email-campaigns/${campaignId}/stats/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const progress = data.total_recipients > 0 
+                        ? (data.total_sent / data.total_recipients * 100).toFixed(1) 
+                        : 0;
+                    document.getElementById('sendProgress').style.width = progress + '%';
+                    document.getElementById('sendStatus').textContent = data.status;
+                    document.getElementById('sendCount').textContent = 
+                        `Sent: ${data.total_sent} / ${data.total_recipients} | Delivered: ${data.total_delivered} | Failed: ${data.total_failed}`;
+                    
+                    if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+                        setTimeout(() => {
+                            document.getElementById('progressModal').classList.remove('active');
+                            location.reload();
+                        }, 1000);
+                    } else {
+                        setTimeout(checkStatus, 2000);
+                    }
+                }
+            });
+    };
+    checkStatus();
+}
+
+function pauseCampaign(campaignId) {
+    if (!confirm('Are you sure you want to pause this campaign?')) {
+        return;
+    }
+    fetch(`/admin/email-campaigns/${campaignId}/pause/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function editCampaign(campaignId) {
+    fetch(`/admin/email-campaigns/${campaignId}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const campaign = data.campaign;
+                document.getElementById('modalTitle').textContent = 'Edit Campaign';
+                document.getElementById('campaignId').value = campaign.id;
+                document.getElementById('campaignName').value = campaign.name;
+                document.getElementById('campaignSubject').value = campaign.subject;
+                document.getElementById('templateType').value = campaign.template_type;
+                document.getElementById('templateContent').value = campaign.template_content || '';
+                document.getElementById('campaignModal').classList.add('active');
+            }
+        });
+}
+
+function viewLogs(campaignId) {
+    window.open(`/admin/email-campaigns/${campaignId}/logs/`, '_blank');
+}
+
+function saveCampaign(event) {
+    event.preventDefault();
+    
+    const formData = {
+        name: document.getElementById('campaignName').value,
+        subject: document.getElementById('campaignSubject').value,
+        template_type: document.getElementById('templateType').value,
+        target_filters: {
+            regions: Array.from(document.getElementById('targetRegions').selectedOptions).map(opt => opt.value),
+            min_deposit: document.getElementById('minDeposit').value || null,
+            tenure_months: document.getElementById('tenureMonths').value || null
+        },
+        template_content: document.getElementById('templateContent').value
+    };
+    
+    const campaignId = document.getElementById('campaignId').value;
+    const url = campaignId 
+        ? `/admin/email-campaigns/${campaignId}/update/`
+        : '/admin/email-campaigns/create/';
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeModal();
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function generateTemplate() {
+    const templateType = document.getElementById('templateType').value;
+    if (templateType === 'CUSTOM') {
+        document.getElementById('templateContentGroup').style.display = 'block';
+    } else {
+        document.getElementById('templateContentGroup').style.display = 'none';
+        // Auto-generate template using FD Template Crew
+        fetch('/admin/email-campaigns/generate-template/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ template_type: templateType })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('templateContent').value = data.content;
+            }
+        });
+    }
+}
+
+function refreshCampaigns() {
+    location.reload();
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Close modals on outside click
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('active');
+        }
+    });
+});
+</script>
+{% endblock %}

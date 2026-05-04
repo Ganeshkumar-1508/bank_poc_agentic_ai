@@ -1,0 +1,150 @@
+{% extends 'bank_app/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Transaction Details{% endblock %}
+{% block page_title %}Transaction Details{% endblock %}
+
+{% block content %}
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Application: {{ application.application_id }}</h2>
+        <a href="{% url 'admin_panel:admin_transaction_list' %}" class="btn-admin btn-admin-secondary">← Back to Transactions</a>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 20px;">
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Status</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">
+                <span class="status {% if application.status == 'APPROVED' %}approved{% elif application.status == 'REJECTED' %}rejected{% else %}pending{% endif %}">
+                    {{ application.get_status_display }}
+                </span>
+            </div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Region</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ application.get_region_display }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Loan Amount</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ application.loan_amount }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Created</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ application.created_at|date:"M d, Y H:i" }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Applicant Information</h2>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Name</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ application.applicant_name }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Email</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ application.applicant_email|default:"N/A" }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Phone</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ application.applicant_phone|default:"N/A" }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Income</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ application.applicant_income }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Credit Score</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ application.credit_score|default:"N/A" }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">DTI Ratio</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ application.dti_ratio }}%</div>
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Risk Assessment</h2>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Approval Probability</div>
+            <div style="font-size: 1.2rem; color: var(--gold); font-weight: 700; margin-top: 4px;">{{ application.approval_probability|floatformat:2 }}%</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Risk Grade</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ application.risk_grade|default:"N/A" }}</div>
+        </div>
+    </div>
+    
+    {% if application.risk_assessment %}
+    <pre style="background: var(--bg); padding: 16px; border-radius: var(--radius-sm); overflow-x: auto; color: var(--text); font-size: 0.85rem; margin-top: 16px;">{{ application.risk_assessment|pprint }}</pre>
+    {% endif %}
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Audit Trail</h2>
+    </div>
+    
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Action</th>
+                <th>Actor</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in audit_logs %}
+            <tr>
+                <td>{{ log.created_at|date:"M d, Y H:i" }}</td>
+                <td><span class="admin-badge gold">{{ log.get_action_display }}</span></td>
+                <td>{{ log.actor_type }}: {{ log.actor_id|default:"System" }}</td>
+                <td>{{ log.details|default:""|truncatechars:50 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center; color: var(--muted);">No audit logs</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">CrewAI Reasoning</h2>
+    </div>
+    
+    {% for log in crew_logs %}
+    <div style="background: var(--bg); padding: 16px; border-radius: var(--radius-sm); margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span style="font-size: 0.85rem; color: var(--muted);">{{ log.crew_type }}</span>
+            <span class="status {% if log.decision == 'APPROVED' %}approved{% elif log.decision == 'REJECTED' %}rejected{% else %}pending{% endif %}">{{ log.decision }}</span>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--muted); margin-bottom: 8px;">Confidence: {{ log.confidence_score }}%</div>
+        <pre style="background: var(--card); padding: 12px; border-radius: 8px; overflow-x: auto; color: var(--text); font-size: 0.8rem;">{{ log.reasoning|pprint }}</pre>
+    </div>
+    {% empty %}
+    <p style="text-align: center; color: var(--muted);">No CrewAI reasoning logs</p>
+    {% endfor %}
+</div>
+{% endblock %}

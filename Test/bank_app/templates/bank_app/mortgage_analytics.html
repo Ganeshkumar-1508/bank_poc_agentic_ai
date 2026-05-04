@@ -1,0 +1,954 @@
+{% extends 'bank_app/base.html' %}
+{% load static %}
+
+{% block title %}Mortgage Analytics - Bank POC Agentic AI{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ML Prediction Section */
+.ml-prediction-section {
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.1) 0%, rgba(15, 118, 110, 0.1) 100%);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.ml-prediction-section h3 {
+  color: var(--gold);
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.risk-badge {
+  display: inline-block;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+
+.risk-badge.low {
+  background: #DCFCE7;
+  color: #16A34A;
+  border: 1px solid #16A34A;
+}
+
+.risk-badge.medium {
+  background: #FEF9C3;
+  color: #EAB308;
+  border: 1px solid #EAB308;
+}
+
+.risk-badge.high {
+  background: #FEE2E2;
+  color: #DC2626;
+  border: 1px solid #DC2626;
+}
+
+.findings-list, .recommendations-list {
+  color: var(--text);
+  padding-left: 20px;
+  margin: 12px 0;
+}
+
+.findings-list li, .recommendations-list li {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.analysis-card {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.analysis-card h4 {
+  color: var(--gold);
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.feature-summary {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.feature-summary h4 {
+  color: var(--gold);
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.feature-item {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.feature-label {
+  color: var(--dim);
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+}
+
+.feature-value {
+  color: var(--text);
+  font-weight: 500;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page active" id="mortgage_analytics">
+  <div class="container">
+    <div class="hero" style="padding: 40px 24px 30px;">
+      <div class="badge">🏠 Mortgage Analytics</div>
+      <h1 class="gradient-text-gold">Calculate Your <em>Mortgage</em> Payments</h1>
+      <p>Understand your home financing options with detailed mortgage calculations and AI-powered risk analysis.</p>
+    </div>
+
+    <div class="two-col">
+      <div class="creditwise-card">
+        <div class="card-head">
+          <div class="ic ic-gold">📊</div>
+          <div>
+            <h3 class="card-title">Mortgage Calculator</h3>
+            <p class="card-sub">Enter your mortgage details</p>
+          </div>
+        </div>
+
+        <div class="section-divider">Loan Details</div>
+
+        <div class="field slider-field">
+          <div class="slider-header">
+            <label for="mortgage_amount">Loan Amount (Original UPB)</label>
+            <span class="slider-val" id="mortgage_amount_val">$3,00,000</span>
+          </div>
+          <div class="pfx">
+            <span>$</span>
+            <input type="range" id="mortgage_amount_slider" class="slider" min="10000" max="2000000" step="5000" value="300000" oninput="syncMortgageSliderToInput('mortgage_amount', this.value); updateMortgageLoanAmountDisplay(this.value)" onchange="syncMortgageSliderToInput('mortgage_amount', this.value)">
+          </div>
+          <input type="number" id="mortgage_amount" value="300000" min="10000" max="2000000" step="5000" oninput="syncMortgageInputToSlider('mortgage_amount_slider', this.value); updateMortgageLoanAmountDisplay(this.value)" style="margin-top: 8px;">
+        </div>
+
+        <div class="row2" style="margin-top: 16px;">
+          <div class="field">
+            <label for="mortgage_rate">Interest Rate (%)</label>
+            <input type="number" id="mortgage_rate" value="6.5" min="0.1" max="20" step="0.1">
+            <span class="field-hint">Annual percentage rate</span>
+          </div>
+          <div class="field">
+            <label for="mortgage_term">Loan Term</label>
+            <select id="mortgage_term">
+              <option value="15">15 years (180 months)</option>
+              <option value="20">20 years (240 months)</option>
+              <option value="30" selected>30 years (360 months)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field slider-field" style="margin-top: 16px;">
+          <div class="slider-header">
+            <label for="down_payment">Down Payment</label>
+            <span class="slider-val" id="down_payment_val">$60,000</span>
+          </div>
+          <div class="pfx">
+            <span>$</span>
+            <input type="range" id="down_payment_slider" class="slider" min="0" max="500000" step="5000" value="60000" oninput="syncMortgageSliderToInput('down_payment', this.value); updateDownPaymentDisplay(this.value)" onchange="syncMortgageSliderToInput('down_payment', this.value)">
+          </div>
+          <input type="number" id="down_payment" value="60000" min="0" max="500000" step="5000" oninput="syncMortgageInputToSlider('down_payment_slider', this.value); updateDownPaymentDisplay(this.value)" style="margin-top: 8px;">
+          <span class="field-hint">20% of home price</span>
+        </div>
+
+        <!-- Borrower Information Section -->
+        <div class="section-divider" style="margin-top: 24px;">Borrower Information</div>
+
+        <div class="row2" style="margin-top: 16px;">
+          <div class="field">
+            <label for="credit_score">Credit Score (FICO)</label>
+            <input type="number" id="credit_score" min="300" max="850" value="740">
+            <span class="field-hint">300-850</span>
+          </div>
+          <div class="field">
+            <label for="dti_ratio">Debt-to-Income Ratio (%)</label>
+            <input type="number" id="dti_ratio" min="0" max="100" step="0.1" value="35">
+            <span class="field-hint">Percentage</span>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top: 16px;">
+          <label for="num_borrowers">Number of Borrowers</label>
+          <select id="num_borrowers">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+
+        <div class="field" style="margin-top: 16px;">
+          <label for="first_time_buyer">First Time Home Buyer</label>
+          <select id="first_time_buyer">
+            <option value="N" selected>No</option>
+            <option value="Y">Yes</option>
+          </select>
+        </div>
+
+        <!-- Loan Characteristics Section -->
+        <div class="section-divider" style="margin-top: 24px;">Loan Characteristics</div>
+
+        <div class="row2" style="margin-top: 16px;">
+          <div class="field">
+            <label for="loan_purpose">Loan Purpose</label>
+            <select id="loan_purpose">
+              <option value="Purchase" selected>Purchase</option>
+              <option value="Refinance">Refinance</option>
+              <option value="Cash-Out Refinance">Cash-Out Refinance</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="property_type">Property Type</label>
+            <select id="property_type">
+              <option value="Single Family" selected>Single Family</option>
+              <option value="Condo">Condo</option>
+              <option value="Townhouse">Townhouse</option>
+              <option value="PUD">PUD</option>
+              <option value="Manufactured Housing">Manufactured Housing</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row2" style="margin-top: 16px;">
+          <div class="field">
+            <label for="occupancy_status">Occupancy Status</label>
+            <select id="occupancy_status">
+              <option value="Owner Occupied" selected>Owner Occupied</option>
+              <option value="Investor">Investor</option>
+              <option value="Second Home">Second Home</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="amortization_type">Amortization Type</label>
+            <select id="amortization_type">
+              <option value="Fixed" selected>Fixed</option>
+              <option value="ARM">ARM (Adjustable Rate)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row2" style="margin-top: 16px;">
+          <div class="field">
+            <label for="channel">Channel</label>
+            <select id="channel">
+              <option value="Branch" selected>Branch</option>
+              <option value="Correspondent">Correspondent</option>
+              <option value="Direct">Direct</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="property_state">Property State</label>
+            <select id="property_state">
+              <option value="CA" selected>CA</option>
+              <option value="TX">TX</option>
+              <option value="FL">FL</option>
+              <option value="NY">NY</option>
+              <option value="IL">IL</option>
+              <option value="PA">PA</option>
+              <option value="OH">OH</option>
+              <option value="GA">GA</option>
+              <option value="NC">NC</option>
+              <option value="MI">MI</option>
+              <option value="NJ">NJ</option>
+              <option value="VA">VA</option>
+              <option value="WA">WA</option>
+              <option value="AZ">AZ</option>
+              <option value="MA">MA</option>
+              <option value="MD">MD</option>
+              <option value="CO">CO</option>
+              <option value="MN">MN</option>
+              <option value="OR">OR</option>
+              <option value="IN">IN</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top: 16px;">
+          <label for="modification_flag">Modification Flag</label>
+          <select id="modification_flag">
+            <option value="N" selected>No</option>
+            <option value="Y">Yes</option>
+          </select>
+        </div>
+
+        <button class="btn-primary btn-creditwise" onclick="calculateMortgage()" style="margin-top: 24px;">Calculate Mortgage & Analyze Risk</button>
+      </div>
+
+      <div class="result-panel fadeUp" id="mortgage_results">
+      <div class="placeholder">
+      <div class="placeholder-icon">🏠</div>
+      <p><strong>Enter your mortgage details</strong> to see payment breakdown and AI-powered risk analysis.</p>
+      </div>
+      </div>
+      
+      <!-- Markdown Report Panel (hidden by default, shown when analysis is complete) -->
+      <div class="creditwise-card" id="markdown_report_panel" style="display: none; margin-top: 24px;">
+      <div class="card-head">
+      <div class="ic ic-gold">📊</div>
+      <div>
+      <h3 class="card-title">AI Analysis Report</h3>
+      <p class="card-sub">Comprehensive mortgage analysis with recommendations</p>
+      </div>
+      </div>
+      
+      <div class="section-divider">Report Actions</div>
+      <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+      <button class="btn-primary btn-creditwise" id="btn_export_pdf" onclick="exportPDF()" style="margin: 0;">
+      📄 Export as PDF
+      </button>
+      </div>
+      
+      <div class="analysis-text" id="markdown_report_content" style="padding: 16px; max-height: 500px; overflow-y: auto;">
+      <!-- Markdown content will be rendered here -->
+      </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Include markdown renderer script -->
+<script src="{% static 'js/markdown_renderer.js' %}"></script>
+<script>
+// Mortgage Analytics slider synchronization functions
+function syncMortgageSliderToInput(inputId, value) {
+  const input = document.getElementById(inputId);
+  if (input) {
+    input.value = value;
+  }
+}
+
+function syncMortgageInputToSlider(sliderId, value) {
+  const slider = document.getElementById(sliderId);
+  if (slider) {
+    slider.value = value;
+    updateMortgageSliderGradient(slider);
+  }
+}
+
+function updateMortgageSliderGradient(slider) {
+  const min = parseFloat(slider.min) || 0;
+  const max = parseFloat(slider.max) || 100;
+  const val = parseFloat(slider.value) || 0;
+  const pct = ((val - min) / (max - min)) * 100;
+  slider.style.setProperty('--pct', pct + '%');
+}
+
+function updateMortgageLoanAmountDisplay(value) {
+  const display = document.getElementById('mortgage_amount_val');
+  if (display) {
+    display.textContent = '$' + parseInt(value).toLocaleString('en-US');
+  }
+}
+
+function updateDownPaymentDisplay(value) {
+  const display = document.getElementById('down_payment_val');
+  if (display) {
+    display.textContent = '$' + parseInt(value).toLocaleString('en-US');
+  }
+}
+
+// Initialize Mortgage sliders on page load
+document.addEventListener('DOMContentLoaded', function() {
+  const sliders = document.querySelectorAll('#mortgage_analytics input[type="range"]');
+  sliders.forEach(slider => {
+    updateMortgageSliderGradient(slider);
+    slider.addEventListener('input', function() {
+      updateMortgageSliderGradient(this);
+    });
+  });
+
+  const mortgageAmount = document.getElementById('mortgage_amount');
+  if (mortgageAmount) {
+    updateMortgageLoanAmountDisplay(mortgageAmount.value);
+  }
+  const downPayment = document.getElementById('down_payment');
+  if (downPayment) {
+    updateDownPaymentDisplay(downPayment.value);
+  }
+});
+
+// CSRF Token Helper
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// Calculate Mortgage using CrewAI API
+async function calculateMortgage() {
+  // Collect basic loan details
+  const loanAmount = parseFloat(document.getElementById('mortgage_amount').value) || 0;
+  const interestRate = parseFloat(document.getElementById('mortgage_rate').value) || 0;
+  const termYears = parseInt(document.getElementById('mortgage_term').value) || 30;
+  const downPayment = parseFloat(document.getElementById('down_payment').value) || 0;
+
+  // Collect borrower information
+  const creditScore = parseInt(document.getElementById('credit_score')?.value) || 740;
+  const dti = parseFloat(document.getElementById('dti_ratio')?.value) || 35;
+  const numBorrowers = parseInt(document.getElementById('num_borrowers')?.value) || 2;
+  const firstTimeBuyer = document.getElementById('first_time_buyer')?.value || 'N';
+
+  // Collect loan characteristics
+  const loanPurpose = document.getElementById('loan_purpose')?.value || 'Purchase';
+  const propertyType = document.getElementById('property_type')?.value || 'Single Family';
+  const occupancyStatus = document.getElementById('occupancy_status')?.value || 'Owner Occupied';
+  const amortizationType = document.getElementById('amortization_type')?.value || 'Fixed';
+  const channel = document.getElementById('channel')?.value || 'Branch';
+  const propertyState = document.getElementById('property_state')?.value || 'CA';
+  const modificationFlag = document.getElementById('modification_flag')?.value || 'N';
+
+  // Calculate LTV
+  const homePrice = loanAmount + downPayment;
+  const ltv = (loanAmount / homePrice) * 100;
+
+  // Validation
+  if (loanAmount <= 0 || interestRate <= 0 || termYears <= 0 || creditScore < 300 || creditScore > 850) {
+    alert('Please enter valid mortgage details.');
+    return;
+  }
+
+  const resultsDiv = document.getElementById('mortgage_results');
+
+  // Show loading state (matching credit_risk pattern)
+  resultsDiv.innerHTML = `
+    <div class="placeholder">
+      <div class="placeholder-icon">⏳</div>
+      <p><strong>CrewAI is analyzing mortgage options...</strong></p>
+      <p style="font-size: 0.85rem; color: var(--dim);">Running comprehensive mortgage analysis with Fannie Mae models</p>
+    </div>
+  `;
+
+  try {
+    // Get CSRF token
+    const csrfToken = getCookie('csrftoken');
+
+    // Prepare payload matching credit_risk pattern
+    const payload = {
+      query: {
+        original_upb: loanAmount,
+        original_ltv: ltv,
+        original_interest_rate: interestRate,
+        original_loan_term: termYears * 12, // Convert to months
+        borrower_credit_score: creditScore,
+        debt_to_income: dti,
+        number_of_borrowers: numBorrowers,
+        loan_purpose: loanPurpose,
+        property_type: propertyType,
+        occupancy_status: occupancyStatus,
+        amortization_type: amortizationType,
+        channel: channel,
+        property_state: propertyState,
+        first_time_home_buyer_indicator: firstTimeBuyer,
+        modification_flag: modificationFlag,
+        down_payment: downPayment,
+        region: 'United States'
+      },
+      region: 'United States'
+    };
+
+    const response = await fetch('/api/mortgage-analytics-crew/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken || ''
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      resultsDiv.innerHTML = `
+        <div class="placeholder">
+          <div class="placeholder-icon">❌</div>
+          <p><strong>Error:</strong> ${data.error}</p>
+          ${data.detail ? `<p style="font-size: 0.8rem; color: var(--dim);">Details: ${data.detail}</p>` : ''}
+        </div>
+      `;
+      return;
+    }
+
+    // Display results using new structured format
+    displayMortgageResultsStructured(data, {
+      loanAmount, interestRate, termYears, downPayment,
+      creditScore, dti, ltv, homePrice
+    });
+
+  } catch (error) {
+    console.error('Mortgage Analytics error:', error);
+
+    // Fallback to local calculation
+    const monthlyRate = interestRate / 100 / 12;
+    const numPayments = termYears * 12;
+    const monthlyPayment = loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments) / (Math.pow(1 + monthlyRate, numPayments) - 1);
+    const totalPayment = monthlyPayment * numPayments;
+    const totalInterest = totalPayment - loanAmount;
+
+    displayMortgageResults(monthlyPayment, totalPayment, totalInterest, homePrice, loanAmount, interestRate, termYears, null);
+  }
+}
+
+// Display mortgage results (legacy fallback)
+function displayMortgageResults(monthlyPayment, totalPayment, totalInterest, homePrice, loanAmount, interestRate, termYears, crewData) {
+  const resultsDiv = document.getElementById('mortgage_results');
+
+  resultsDiv.innerHTML = `
+    <div class="rp-title">Mortgage Analysis ${crewData ? '(CrewAI Enhanced)' : ''}</div>
+
+    <div class="emi-table">
+      <div class="emi-row">
+        <span class="emi-label">Home Price</span>
+        <span class="emi-value big">$${homePrice.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Down Payment</span>
+        <span class="emi-value">$${downPayment.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Loan Amount</span>
+        <span class="emi-value">$${loanAmount.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Interest Rate</span>
+        <span class="emi-value">${interestRate}%</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Loan Term</span>
+        <span class="emi-value">${termYears} years</span>
+      </div>
+    </div>
+
+    <div class="section-divider" style="margin-top: 20px;">Monthly Payment</div>
+    <div style="text-align: center; padding: 20px 0;">
+      <div style="font-family: 'DM Mono', monospace; font-size: 2.5rem; font-weight: 600; color: var(--gold);">$${monthlyPayment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+      <div style="color: var(--muted); font-size: 0.85rem; margin-top: 8px;">per month</div>
+    </div>
+
+    <div class="section-divider" style="margin-top: 20px;">Total Cost</div>
+    <div class="emi-table">
+      <div class="emi-row">
+        <span class="emi-label">Total Interest</span>
+        <span class="emi-value red">$${totalInterest.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Total Payment</span>
+        <span class="emi-value big">$${totalPayment.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+    </div>
+  `;
+}
+
+// Display structured mortgage results (new format matching credit_risk pattern)
+function displayMortgageResultsStructured(data, basicValues) {
+  const resultsDiv = document.getElementById('mortgage_results');
+
+  const rawOutput = data.result || '';
+  const summaryHtml = data.summary_html || '';
+  const isJson = data.is_json === true || data.is_json === 'true';
+
+  // Check if we have structured JSON data
+  if (isJson && data.processed_features) {
+    renderStructuredMortgageResults(data, basicValues);
+    return;
+  }
+
+  // Use backend-rendered HTML if available
+  let analysisHtml = '';
+  if (summaryHtml && summaryHtml.trim() !== '') {
+    analysisHtml = summaryHtml;
+  } else if (typeof renderMarkdownSafe === 'function') {
+    analysisHtml = renderMarkdownSafe(rawOutput);
+  } else {
+    // Fallback to async rendering
+    if (typeof renderMarkdown === 'function') {
+      renderMarkdown(rawOutput).then(html => {
+        analysisHtml = html;
+        updateMortgageAnalysisDisplay(html);
+      });
+    }
+  }
+
+  // Calculate basic values for display
+  const monthlyRate = basicValues.interestRate / 100 / 12;
+  const numPayments = basicValues.termYears * 12;
+  const monthlyPayment = basicValues.loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments) / (Math.pow(1 + monthlyRate, numPayments) - 1);
+  const totalPayment = monthlyPayment * numPayments;
+  const totalInterest = totalPayment - basicValues.loanAmount;
+
+  resultsDiv.innerHTML = `
+    <div class="rp-title">Mortgage Analysis (CrewAI Enhanced)</div>
+
+    <!-- Basic Payment Summary -->
+    <div class="emi-table">
+      <div class="emi-row">
+        <span class="emi-label">Home Price</span>
+        <span class="emi-value big">$${basicValues.homePrice.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Down Payment</span>
+        <span class="emi-value">$${basicValues.downPayment.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Loan Amount</span>
+        <span class="emi-value">$${basicValues.loanAmount.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Interest Rate</span>
+        <span class="emi-value">${basicValues.interestRate}%</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Loan Term</span>
+        <span class="emi-value">${basicValues.termYears} years</span>
+      </div>
+    </div>
+
+    <div class="section-divider" style="margin-top: 20px;">Monthly Payment</div>
+    <div style="text-align: center; padding: 20px 0;">
+      <div style="font-family: 'DM Mono', monospace; font-size: 2.5rem; font-weight: 600; color: var(--gold);">$${monthlyPayment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+      <div style="color: var(--muted); font-size: 0.85rem; margin-top: 8px;">per month</div>
+    </div>
+
+    <div class="section-divider" style="margin-top: 20px;">Total Cost</div>
+    <div class="emi-table">
+      <div class="emi-row">
+        <span class="emi-label">Total Interest</span>
+        <span class="emi-value red">$${totalInterest.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Total Payment</span>
+        <span class="emi-value big">$${totalPayment.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+    </div>
+
+    <!-- CrewAI Analysis Section -->
+    <div class="section-divider" style="margin-top: 20px;">AI Agent Analysis</div>
+    <div class="creditwise-card summary-card" style="max-height: 400px; overflow-y: auto; font-size: 0.85rem;">
+      <div class="analysis-content" style="padding: 16px;">
+        ${analysisHtml || '<p>Analysis unavailable</p>'}
+      </div>
+    </div>
+
+    <div style="margin-top: 12px; font-size: 0.75rem; color: var(--dim);">
+      🤖 Powered by CrewAI + Fannie Mae Models | Timestamp: ${data.timestamp || new Date().toISOString()}
+    </div>
+  `;
+}
+
+// Render structured JSON results (new display format matching credit_risk pattern)
+function renderStructuredMortgageResults(data, basicValues) {
+  const resultsDiv = document.getElementById('mortgage_results');
+
+  const features = data.processed_features || {};
+  const summary = data.summary || {};
+  const analyses = data.analyses || {};
+
+  // Calculate basic values
+  const monthlyRate = basicValues.interestRate / 100 / 12;
+  const numPayments = basicValues.termYears * 12;
+  const monthlyPayment = basicValues.loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments) / (Math.pow(1 + monthlyRate, numPayments) - 1);
+  const totalPayment = monthlyPayment * numPayments;
+  const totalInterest = totalPayment - basicValues.loanAmount;
+
+  // Determine risk level
+  const overallRisk = summary.overall_risk || 'MEDIUM';
+  const riskColor = overallRisk === 'LOW' ? '#16A34A' : overallRisk === 'MEDIUM' ? '#EAB308' : '#DC2626';
+  const riskBg = overallRisk === 'LOW' ? '#DCFCE7' : overallRisk === 'MEDIUM' ? '#FEF9C3' : '#FEE2E2';
+  const riskIcon = overallRisk === 'LOW' ? '✓' : overallRisk === 'MEDIUM' ? '⚠' : '✗';
+
+  let html = `
+    <div class="rp-title">Mortgage Analytics Results</div>
+
+    <!-- Risk Assessment Summary -->
+    <div style="background:${riskBg}; border:1px solid ${riskColor}; border-radius:8px; padding:16px; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:40px; height:40px; background:${riskColor}; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+          <span style="color:white; font-weight:bold; font-size:18px;">${riskIcon}</span>
+        </div>
+        <div>
+          <div style="font-size:14px; color:#64748B;">Overall Risk Assessment</div>
+          <div style="font-size:24px; font-weight:700; color:${riskColor};">${overallRisk}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key Findings -->
+    ${summary.key_findings && summary.key_findings.length > 0 ? `
+      <div class="section-divider">Key Findings</div>
+      <ul class="findings-list">
+        ${summary.key_findings.map(finding => `<li>${finding}</li>`).join('')}
+      </ul>
+    ` : ''}
+
+    <!-- Recommendations -->
+    ${summary.recommendations && summary.recommendations.length > 0 ? `
+      <div class="section-divider">Recommendations</div>
+      <ul class="recommendations-list">
+        ${summary.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+      </ul>
+    ` : ''}
+
+    <!-- Basic Payment Summary -->
+    <div class="section-divider" style="margin-top: 20px;">Payment Summary</div>
+    <div class="emi-table">
+      <div class="emi-row">
+        <span class="emi-label">Home Price</span>
+        <span class="emi-value big">$${basicValues.homePrice.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Loan Amount</span>
+        <span class="emi-value">$${basicValues.loanAmount.toLocaleString('en-US', {maximumFractionDigits: 0})}</span>
+      </div>
+      <div class="emi-row">
+        <span class="emi-label">Monthly Payment</span>
+        <span class="emi-value">$${monthlyPayment.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+      </div>
+    </div>
+
+    <!-- ML Model Analyses -->
+    ${Object.keys(analyses).length > 0 ? `
+      <div class="section-divider" style="margin-top: 20px;">ML Model Analyses</div>
+    ` : ''}
+
+    ${analyses.credit_risk ? `
+      <div class="analysis-card">
+        <h4>🔒 Credit Risk Assessment</h4>
+        ${typeof analyses.credit_risk === 'string' ? analyses.credit_risk : JSON.stringify(analyses.credit_risk, null, 2)}
+      </div>
+    ` : ''}
+
+    ${analyses.customer_segmentation ? `
+      <div class="analysis-card">
+        <h4>👥 Customer Segmentation</h4>
+        ${typeof analyses.customer_segmentation === 'string' ? analyses.customer_segmentation : JSON.stringify(analyses.customer_segmentation, null, 2)}
+      </div>
+    ` : ''}
+
+    ${analyses.portfolio_risk ? `
+      <div class="analysis-card">
+        <h4>📊 Portfolio Risk Analysis</h4>
+        ${typeof analyses.portfolio_risk === 'string' ? analyses.portfolio_risk : JSON.stringify(analyses.portfolio_risk, null, 2)}
+      </div>
+    ` : ''}
+
+    <!-- Input Features Summary -->
+    <div class="feature-summary">
+      <h4>📋 Input Features Summary</h4>
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-label">Original UPB</div>
+          <div class="feature-value">$${(features.original_upb || 0).toLocaleString()}</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">LTV Ratio</div>
+          <div class="feature-value">${(features.original_ltv || 0).toFixed(2)}%</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">Interest Rate</div>
+          <div class="feature-value">${(features.original_interest_rate || 0).toFixed(2)}%</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">Loan Term</div>
+          <div class="feature-value">${(features.original_loan_term || 0)} months</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">Credit Score</div>
+          <div class="feature-value">${features.borrower_credit_score || 'N/A'}</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">DTI Ratio</div>
+          <div class="feature-value">${(features.debt_to_income || 0).toFixed(2)}%</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">Loan Purpose</div>
+          <div class="feature-value">${features.loan_purpose || 'N/A'}</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">Property Type</div>
+          <div class="feature-value">${features.property_type || 'N/A'}</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">Occupancy</div>
+          <div class="feature-value">${features.occupancy_status || 'N/A'}</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">Amortization</div>
+          <div class="feature-value">${features.amortization_type || 'N/A'}</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">Channel</div>
+          <div class="feature-value">${features.channel || 'N/A'}</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">State</div>
+          <div class="feature-value">${features.property_state || 'N/A'}</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">First Time Buyer</div>
+          <div class="feature-value">${features.first_time_home_buyer_indicator || 'N'}</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-label">Modification</div>
+          <div class="feature-value">${features.modification_flag || 'N'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top: 16px; font-size: 0.75rem; color: var(--dim);">
+      🤖 Powered by CrewAI + Fannie Mae Models | Timestamp: ${data.timestamp || new Date().toISOString()}
+    </div>
+  `;
+
+  resultsDiv.innerHTML = html;
+  
+  // Store analysis data for PDF export
+  window.mortgageAnalysisData = {
+  borrower_data: {
+  loan_amount: loanAmount,
+  interest_rate: interestRate,
+  term_years: termYears,
+  down_payment: downPayment,
+  home_price: homePrice,
+  monthly_payment: monthlyPayment,
+  total_interest: totalInterest,
+  total_payment: totalPayment,
+  credit_score: creditScore,
+  dti_ratio: dti,
+  loan_purpose: loanPurpose,
+  property_type: propertyType
+  },
+  analysis_data: {
+  summary_markdown: data.summary_markdown || '',
+  summary_html: data.summary_html || '',
+  structured_data: data.structured_data || {}
+  }
+  };
+  
+  // Show markdown report panel and render content
+  const reportPanel = document.getElementById('markdown_report_panel');
+  const reportContent = document.getElementById('markdown_report_content');
+  if (reportPanel && reportContent && data.summary_markdown) {
+  reportPanel.style.display = 'block';
+  // Use renderMarkdownSafe from markdown_renderer.js
+  const htmlContent = typeof renderMarkdownSafe === 'function'
+  ? renderMarkdownSafe(data.summary_markdown)
+  : data.summary_html || data.summary_markdown;
+  reportContent.innerHTML = htmlContent;
+  }
+  }
+  
+  // Helper function to update analysis display after async rendering
+  function updateMortgageAnalysisDisplay(html) {
+  const analysisContent = document.querySelector('#mortgage_results .analysis-content');
+  if (analysisContent) {
+  analysisContent.innerHTML = html;
+  }
+  }
+  
+  // Export PDF function
+  async function exportPDF() {
+  if (!window.mortgageAnalysisData) {
+  alert('No analysis data available for export. Please run the mortgage analysis first.');
+  return;
+  }
+  
+  const exportBtn = document.getElementById('btn_export_pdf');
+  if (exportBtn) {
+  exportBtn.disabled = true;
+  exportBtn.innerHTML = '<span class="loading-spinner"></span>Generating PDF...';
+  }
+  
+  try {
+  const csrfToken = getCookie('csrftoken');
+  
+  const response = await fetch('/mortgage-analytics/pdf/', {
+  method: 'POST',
+  headers: {
+  'Content-Type': 'application/json',
+  'X-CSRFToken': csrfToken || ''
+  },
+  body: JSON.stringify(window.mortgageAnalysisData)
+  });
+  
+  if (!response.ok) {
+  const errorData = await response.json();
+  throw new Error(errorData.error || 'Failed to generate PDF');
+  }
+  
+  // Download the PDF file
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = `Mortgage_Report_${new Date().toISOString().slice(0,10)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  
+  } catch (error) {
+  console.error('PDF export error:', error);
+  alert('Failed to generate PDF: ' + error.message);
+  } finally {
+  if (exportBtn) {
+  exportBtn.disabled = false;
+  exportBtn.innerHTML = '📄 Export as PDF';
+  }
+  }
+  }
+  
+  // CSRF Token Helper (already defined above, but ensure it's available)
+  function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+  const cookies = document.cookie.split(';');
+  for (let i = 0; i < cookies.length; i++) {
+  const cookie = cookies[i].trim();
+  if (cookie.substring(0, name.length + 1) === (name + '=')) {
+  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+  break;
+  }
+  }
+  }
+  return cookieValue;
+  }
+  </script>
+  {% endblock %}

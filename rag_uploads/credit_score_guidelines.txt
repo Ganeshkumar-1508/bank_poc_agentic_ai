@@ -1,0 +1,192 @@
+CREDIT SCORE GUIDELINES AND THRESHOLDS
+========================================
+Document Reference: CSG-2024-001
+Effective Date: January 2024
+Version: 2.1
+Department: Credit Risk Management
+
+1. FICO SCORE THRESHOLDS FOR LOAN APPROVAL
+===========================================
+
+1.1 General FICO Score Classification
+--------------------------------------
+The following FICO score ranges are used for initial loan eligibility screening across all loan products:
+
+- Excellent Credit: FICO 750 - 850
+- Good Credit: FICO 700 - 749
+- Fair Credit: FICO 650 - 699
+- Poor Credit: FICO 600 - 649
+- Very Poor Credit: Below 600
+
+1.2 Loan-Specific FICO Requirements
+-------------------------------------
+Personal Loans:
+  - Unsecured Personal Loan: Minimum FICO 640, Preferred 680+
+  - Debt Consolidation Loan: Minimum FICO 620, Preferred 660+
+  - Home Improvement Loan: Minimum FICO 660, Preferred 700+
+
+Mortgage Products:
+  - Conventional Mortgage: Minimum FICO 620, Preferred 700+
+  - FHA Loan: Minimum FICO 580 (with 3.5% down payment) or 500 (with 10% down payment)
+  - VA Loan: No minimum FICO set by VA, but lender minimum is typically 620
+  - Jumbo Mortgage: Minimum FICO 700, Preferred 740+
+
+Auto Loans:
+  - New Car Loan: Minimum FICO 660, Preferred 700+
+  - Used Car Loan: Minimum FICO 625, Preferred 660+
+  - Luxury Vehicle Loan: Minimum FICO 700, Preferred 720+
+
+Business Loans:
+  - Small Business Loan: Minimum FICO 680, Preferred 720+
+  - Commercial Real Estate: Minimum FICO 700, Preferred 740+
+  - Line of Credit: Minimum FICO 650, Preferred 700+
+
+2. CREDIT SCORE IMPACT ON INTEREST RATES
+=========================================
+
+2.1 Rate Tier Structure
+------------------------
+Interest rates are tiered based on the borrower's FICO score. Each 20-point improvement in FICO score can reduce the interest rate by approximately 0.25% to 0.50%.
+
+Tier 1 (FICO 760+): Prime Rate + 0.50%
+Tier 2 (FICO 720-759): Prime Rate + 1.00%
+Tier 3 (FICO 680-719): Prime Rate + 1.75%
+Tier 4 (FICO 640-679): Prime Rate + 2.50%
+Tier 5 (FICO 600-639): Prime Rate + 3.50%
+Tier 6 (Below 600): Prime Rate + 5.00% or Decline
+
+2.2 FICO Score and Annual Percentage Rate (APR) Examples
+----------------------------------------------------------
+For a 36-month personal loan of $15,000:
+
+FICO 760+: APR 6.50% - 8.00%, Monthly Payment $459 - $469
+FICO 720-759: APR 8.50% - 10.50%, Monthly Payment $472 - $488
+FICO 680-719: APR 11.00% - 13.50%, Monthly Payment $493 - $510
+FICO 640-679: APR 14.00% - 17.00%, Monthly Payment $514 - $534
+FICO 600-639: APR 18.00% - 22.00%, Monthly Payment $543 - $560
+
+3. CREDIT HISTORY REQUIREMENTS
+===============================
+
+3.1 Minimum Credit History Length
+----------------------------------
+All loan products require a minimum credit history length:
+- Personal Loans: Minimum 2 years of credit history
+- Mortgage Products: Minimum 3 years of credit history
+- Auto Loans: Minimum 1 year of credit history
+- Business Loans: Minimum 3 years of personal credit history
+
+3.2 Number of Trade Lines
+--------------------------
+Minimum number of trade lines (open or closed) on the credit report:
+- Personal Loans: Minimum 3 trade lines
+- Mortgage Products: Minimum 4 trade lines
+- Auto Loans: Minimum 2 trade lines
+
+3.3 Adverse Credit Events
+--------------------------
+The following adverse events may result in automatic decline or require manual review:
+
+Bankruptcy:
+  - Chapter 7: Automatic decline if discharged within 4 years
+  - Chapter 13: Automatic decline if filed within 3 years
+  - Exceptions: Must provide court discharge documents and evidence of re-established credit
+
+Foreclosure: Automatic decline if foreclosure occurred within 7 years
+Short Sale: Requires 4-year waiting period from completion date
+Deed in Lieu: Requires 4-year waiting period from execution date
+Loan Default: Automatic decline if any loan default in the past 5 years
+
+Late Payments:
+  - 30-day late payments: None in the past 12 months
+  - 60-day late payments: None in the past 24 months
+  - 90-day late payments: None in the past 36 months
+  - Collections: No open collections exceeding $5,000
+
+4. DEBT-TO-INCOME (DTI) THRESHOLDS BY CREDIT SCORE
+====================================================
+
+4.1 DTI Limits Based on FICO Score Tier
+-----------------------------------------
+The maximum allowed DTI ratio depends on the borrower's FICO score:
+
+FICO 760+: Maximum DTI 50%
+FICO 720-759: Maximum DTI 45%
+FICO 680-719: Maximum DTI 43%
+FICO 640-679: Maximum DTI 40%
+FICO 600-639: Maximum DTI 36%
+Below 600: Maximum DTI 30% (only for secured loans)
+
+4.2 Housing Expense Ratio
+--------------------------
+The housing expense ratio (mortgage payment + taxes + insurance / gross monthly income) should not exceed:
+- FICO 760+: 35%
+- FICO 700-759: 32%
+- FICO 640-699: 28%
+- Below 640: 25%
+
+5. CREDIT SCORE EXCEPTION HANDLING
+===================================
+
+5.1 Manual Override Conditions
+-------------------------------
+Loan officers may request a manual override for credit score exceptions under the following conditions:
+- Borrower has FICO within 20 points of the minimum threshold
+- Compensating factors include: high income (200% above required), substantial down payment (20%+), strong employment history (5+ years), significant liquid assets
+- All manual overrides require supervisor approval and documented justification
+
+5.2 Non-Traditional Credit Assessment
+---------------------------------------
+For borrowers with limited credit history, the following non-traditional credit indicators may be considered:
+- Rental payment history (minimum 12 months)
+- Utility payment history (minimum 12 months)
+- Insurance premium payment history
+- Tuition payment history
+- A maximum of 3 non-traditional references may be used
+
+5.3 Credit Score Dispute Resolution
+-------------------------------------
+If a borrower disputes their credit score:
+- Loan application processing continues with the current credit report
+- Borrower must contact the credit bureau directly to resolve disputes
+- Upon updated credit report submission, the loan application will be re-evaluated
+- No guarantee of approval upon score correction
+
+6. SPECIAL PROGRAMS
+====================
+
+6.1 First-Time Homebuyer Credit Score Guidelines
+-------------------------------------------------
+- Minimum FICO 620 for conventional loans
+- Minimum FICO 580 for FHA loans
+- Credit counseling may be required for FICO below 660
+- Reduced documentation requirements for FICO 740+
+
+6.2 Credit Score Rebuilding Loan Program
+-----------------------------------------
+- Target borrowers: FICO 500 - 639
+- Loan amount: Maximum $5,000
+- Term: 12 - 24 months
+- Interest Rate: Fixed at Prime + 4.00%
+- Requirement: Must complete financial literacy course
+- Goal: Help borrower establish positive payment history to improve FICO by 40-80 points
+
+6.3 Thin File Program
+----------------------
+For borrowers with fewer than 3 trade lines:
+- Consider secured credit card history
+- Accept non-traditional credit references (see Section 5.2)
+- Require minimum 12 months of verifiable payment history from any source
+- Maximum loan amount: $10,000
+- Requires co-signer if FICO below 650
+
+7. COMPLIANCE AND FAIR LENDING
+===============================
+
+All credit score-based decisions must comply with:
+- Equal Credit Opportunity Act (ECOA)
+- Fair Credit Reporting Act (FCRA)
+- Home Mortgage Disclosure Act (HMDA)
+- Community Reinvestment Act (CRA)
+
+Disparate impact analysis must be performed quarterly on credit score thresholds to ensure no discriminatory patterns exist across protected classes. Any identified disparities must be reported to the Compliance Officer within 30 days.

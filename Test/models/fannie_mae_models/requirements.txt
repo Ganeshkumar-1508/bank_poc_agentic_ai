@@ -1,0 +1,16 @@
+mljar-supervised>=1.1.0
+clearml>=1.14.0
+datasets>=2.18.0
+huggingface_hub
+scikit-learn>=1.4.0
+pandas>=2.0.0
+numpy>=1.26.0
+pyarrow>=14.0.0
+skl2onnx>=1.16.0
+onnx>=1.15.0
+onnxruntime>=1.17.0
+xgboost>=2.0.0
+lightgbm>=4.3.0
+catboost>=1.2.0
+shap>=0.44.0
+optuna>=3.5.0
