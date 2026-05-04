@@ -1,0 +1,84 @@
+{% extends 'bank_app/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}User Details{% endblock %}
+{% block page_title %}User Session Details{% endblock %}
+
+{% block content %}
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Session Information</h2>
+        <a href="{% url 'admin_panel:admin_user_list' %}" class="btn-admin btn-admin-secondary">← Back to Users</a>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Session ID</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ user_session.session_id }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">IP Address</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ user_session.ip_address|default:"N/A" }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Status</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">
+                <span class="status {% if user_session.is_active %}approved{% else %}rejected{% endif %}">
+                    {% if user_session.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+            </div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Created</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ user_session.created_at|date:"M d, Y H:i" }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Geolocation</h2>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Country</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ user_session.country_name|default:"N/A" }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">City</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ user_session.city|default:"N/A" }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Region</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ user_session.region|default:"N/A" }}</div>
+        </div>
+        
+        <div>
+            <div style="font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px;">Country Code</div>
+            <div style="font-size: 1rem; color: var(--text); font-weight: 600; margin-top: 4px;">{{ user_session.country_code|default:"N/A" }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Session Data</h2>
+    </div>
+    
+    <pre style="background: var(--bg); padding: 16px; border-radius: var(--radius-sm); overflow-x: auto; color: var(--text); font-size: 0.85rem;">{{ user_session.session_data|pprint }}</pre>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">User Agent</h2>
+    </div>
+    
+    <p style="color: var(--text); font-size: 0.9rem; word-break: break-all;">{{ user_session.user_agent|default:"N/A" }}</p>
+</div>
+{% endblock %}

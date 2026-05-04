@@ -25,12 +25,14 @@ from typing import Optional
 
 import requests
 
-NVIDIA_INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions" # https://integrate.api.nvidia.com/v1 , https://integrate.api.nvidia.com/v1/chat/completions
-JUDGE_MODEL_FAST   = "mistralai/mistral-small-4-119b-2603"    
-JUDGE_MODEL_STRONG = "mistralai/mistral-small-4-119b-2603"  
+NVIDIA_INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions"  # https://integrate.api.nvidia.com/v1 , https://integrate.api.nvidia.com/v1/chat/completions
+JUDGE_MODEL_FAST = "mistralai/mistral-small-4-119b-2603"
+JUDGE_MODEL_STRONG = "mistralai/mistral-small-4-119b-2603"
 
 
-def call_judge(system_prompt: str, user_prompt: str, model: str, timeout: int = 90) -> str:
+def call_judge(
+    system_prompt: str, user_prompt: str, model: str, timeout: int = 90
+) -> str:
     """
     Call the NVIDIA judge model and return the full assistant text response.
     Retries once on timeout before giving up.
@@ -44,7 +46,7 @@ def call_judge(system_prompt: str, user_prompt: str, model: str, timeout: int = 
         "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user",   "content": user_prompt},
+            {"role": "user", "content": user_prompt},
         ],
         "max_tokens": 256,
         "temperature": 0.1,
@@ -64,7 +66,9 @@ def call_judge(system_prompt: str, user_prompt: str, model: str, timeout: int = 
             return data["choices"][0]["message"]["content"].strip()
         except requests.exceptions.Timeout:
             if attempt == 0:
-                print(f"[Evaluator] Timeout on attempt 1 for model {model} — retrying...")
+                print(
+                    f"[Evaluator] Timeout on attempt 1 for model {model} — retrying..."
+                )
                 time.sleep(2)
                 continue
             raise
@@ -72,6 +76,7 @@ def call_judge(system_prompt: str, user_prompt: str, model: str, timeout: int = 
 
 
 CUSTOM_CRITERIA: dict[str, str] = {
+    # Financial domain-specific criteria
     "financial_accuracy": (
         "Does the response contain accurate, specific financial data such as interest "
         "rates, maturity amounts, or tenure details that are internally consistent?"
@@ -97,12 +102,35 @@ CUSTOM_CRITERIA: dict[str, str] = {
         "Does the compliance report clearly state a PASS or FAIL decision with "
         "supporting evidence and comply with standard AML reporting norms?"
     ),
-    "relevance":    "Is the response relevant and directly addressing what the user asked for?",
-    "helpfulness":  "Is the response genuinely helpful and useful to the user?",
-    "correctness":  "Is the information factually correct and free of errors?",
-    "conciseness":  "Is the response appropriately concise without unnecessary repetition?",
-    "depth":        "Does the response provide sufficient depth and detail to fully answer the query?",
+    "credit_risk_validity": (
+        "Does the credit risk assessment correctly interpret ML model outputs (FICO, DTI, "
+        "default probability, risk grade) and provide sound lending recommendations?"
+    ),
+    "mortgage_analysis_completeness": (
+        "Does the mortgage analysis cover all three model outputs: credit risk prediction, "
+        "customer segmentation, and portfolio risk assessment with actionable recommendations?"
+    ),
+    "loan_decision_rationale": (
+        "Does the loan decision provide clear, policy-backed rationale with specific "
+        "references to credit scores, DTI thresholds, and risk factors?"
+    ),
+    "research_depth": (
+        "Does the research response include comprehensive provider comparisons with "
+        "current rates, credit ratings, news sentiment, and risk assessments?"
+    ),
+    "query_understanding": (
+        "Does the response correctly identify the user's intent and extract all relevant "
+        "parameters from the query?"
+    ),
+    # General quality criteria
+    "relevance": "Is the response relevant and directly addressing what the user asked for?",
+    "helpfulness": "Is the response genuinely helpful and useful to the user?",
+    "correctness": "Is the information factually correct and free of errors?",
+    "conciseness": "Is the response appropriately concise without unnecessary repetition?",
+    "depth": "Does the response provide sufficient depth and detail to fully answer the query?",
     "harmlessness": "Is the response free of harmful, misleading, or dangerous content?",
+    "clarity": "Is the response well-structured and easy to understand?",
+    "completeness": "Does the response address all aspects of the user's query?",
 }
 
 # ---------------------------------------------------------------------------
@@ -110,26 +138,88 @@ CUSTOM_CRITERIA: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 CREW_EVAL_PLAN: dict[str, list[str]] = {
+    # Fixed Deposit / Investment Analysis Crews
     "fd-analysis-crew": [
-        "relevance", "helpfulness", "financial_accuracy",
-        "data_specificity", "actionability", "overall_quality",
+        "relevance",
+        "helpfulness",
+        "financial_accuracy",
+        "data_specificity",
+        "actionability",
+        "query_understanding",
+        "overall_quality",
     ],
     "fd-research-crew": [
-        "relevance", "depth", "data_specificity",
-        "financial_accuracy", "overall_quality",
+        "relevance",
+        "depth",
+        "data_specificity",
+        "financial_accuracy",
+        "research_depth",
+        "overall_quality",
     ],
     "fd-visualization-crew": [
-        "relevance", "chart_validity", "conciseness", "overall_quality",
-    ],
-    "aml-execution-crew": [
-        "correctness", "risk_completeness", "regulatory_compliance",
-        "harmlessness", "overall_quality",
+        "relevance",
+        "chart_validity",
+        "conciseness",
+        "clarity",
+        "overall_quality",
     ],
     "fd-database-crew": [
-        "correctness", "relevance", "conciseness", "overall_quality",
+        "correctness",
+        "relevance",
+        "conciseness",
+        "clarity",
+        "overall_quality",
     ],
+    # AML / Compliance Crews
+    "aml-execution-crew": [
+        "correctness",
+        "risk_completeness",
+        "regulatory_compliance",
+        "harmlessness",
+        "data_specificity",
+        "overall_quality",
+    ],
+    # US Credit Risk Crews
+    "credit-risk-crew": [
+        "correctness",
+        "credit_risk_validity",
+        "actionability",
+        "data_specificity",
+        "clarity",
+        "overall_quality",
+    ],
+    # Loan Underwriting Crews
+    "loan-creation-crew": [
+        "correctness",
+        "loan_decision_rationale",
+        "regulatory_compliance",
+        "actionability",
+        "depth",
+        "overall_quality",
+    ],
+    # Mortgage Analytics Crews
+    "mortgage-analytics-crew": [
+        "correctness",
+        "mortgage_analysis_completeness",
+        "credit_risk_validity",
+        "actionability",
+        "data_specificity",
+        "overall_quality",
+    ],
+    # Routing / Manager Crew
+    "router-crew": [
+        "query_understanding",
+        "correctness",
+        "clarity",
+        "relevance",
+        "overall_quality",
+    ],
+    # Default fallback for unrecognized crews
     "default": [
-        "relevance", "helpfulness", "overall_quality",
+        "relevance",
+        "helpfulness",
+        "correctness",
+        "overall_quality",
     ],
 }
 
@@ -177,20 +267,70 @@ AI response:
 # JSON extraction
 # ---------------------------------------------------------------------------
 
+
 def extract_json(text: str) -> dict:
-    """Extract the last JSON object in the text."""
-    text = re.sub(r"```(?:json)?", "", text).strip(" `\n")
-    matches = list(re.finditer(r"\{[^{}]*\}", text, re.DOTALL))
+    """
+    Extract the last valid JSON object from the text.
+    
+    Handles:
+    - JSON in code blocks (```json ... ```)
+    - Bare JSON objects
+    - Malformed JSON with validation
+    - Mixed content (text + JSON)
+    
+    Raises:
+        ValueError: If no valid JSON object is found or if JSON is malformed
+    """
+    if not text or not isinstance(text, str):
+        raise ValueError(f"Invalid input type: {type(text).__name__}")
+    
+    # Strip markdown code blocks
+    text = re.sub(r"```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+    text = text.strip(" `\n")
+    
+    if not text.strip():
+        raise ValueError("Empty text after stripping markdown")
+    
+    # Try to find JSON in code blocks first (more reliable for nested structures)
+    code_block_pattern = r"\{(?:[^{}]|\{[^{}]*\})*\}"
+    matches = list(re.finditer(code_block_pattern, text, re.DOTALL))
+    
     if not matches:
         raise ValueError(f"No JSON object found in: {text[:200]!r}")
-    return json.loads(matches[-1].group())
+    
+    # Try each match from last to first (prefer last JSON object)
+    for match in reversed(matches):
+        json_str = match.group(0)
+        try:
+            parsed = json.loads(json_str)
+            # Validate that it's a dict (not a list or other type)
+            if isinstance(parsed, dict):
+                return parsed
+            elif isinstance(parsed, list):
+                # If it's a list, check if it contains valid objects
+                if parsed and all(isinstance(item, dict) for item in parsed):
+                    # Return the last dict in the list if it's a list of dicts
+                    return parsed[-1]
+                elif parsed:
+                    # Return first valid dict in list
+                    for item in parsed:
+                        if isinstance(item, dict):
+                            return item
+        except json.JSONDecodeError:
+            continue  # Try next match
+    
+    # If we get here, no valid JSON object was found
+    raise ValueError(f"No valid JSON object found in: {text[:200]!r}")
 
 
 # ---------------------------------------------------------------------------
 # Individual evaluators
 # ---------------------------------------------------------------------------
 
-def eval_criterion(criterion: str, user_input: str, prediction: str) -> tuple[float, str]:
+
+def eval_criterion(
+    criterion: str, user_input: str, prediction: str
+) -> tuple[float, str]:
     """Binary 0/1 score for a named criterion. Uses fast model."""
     system = CRITERIA_SYSTEM.format(
         criterion=criterion,
@@ -219,6 +359,7 @@ def eval_holistic(user_input: str, prediction: str) -> tuple[float, str]:
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def evaluate_crew_output(
     langfuse_client,
     trace_id: str,
@@ -235,15 +376,17 @@ def evaluate_crew_output(
     if not output_text or len(output_text.strip()) < 30:
         return
 
-    plan       = CREW_EVAL_PLAN.get(crew_name, CREW_EVAL_PLAN["default"])
-    prediction = output_text[:3000]   # stay within context limits
+    plan = CREW_EVAL_PLAN.get(crew_name, CREW_EVAL_PLAN["default"])
+    prediction = output_text[:3000]  # stay within context limits
 
     for criterion in plan:
         try:
             if criterion == "overall_quality":
                 score_value, reasoning = eval_holistic(user_input, prediction)
             else:
-                score_value, reasoning = eval_criterion(criterion, user_input, prediction)
+                score_value, reasoning = eval_criterion(
+                    criterion, user_input, prediction
+                )
 
             # Langfuse v3: create_score() posts to the Scores panel of the trace
             langfuse_client.create_score(

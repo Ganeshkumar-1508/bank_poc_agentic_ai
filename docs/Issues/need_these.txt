@@ -1,0 +1,9 @@
+1. need to check if the outputs from the crews are shown in their respecitve UI
+2. need to check if those Crews/agents can get their desired inputs through their UIs (fields, buttons, tools etc)
+3. need to fix when the user triggers the crew and switches the tab and returns there's no output or processing shown in the UI
+4. need to reduce some hardcoded things across the project and replce it with dynamic values 
+5. need to check the models in the @credit_risk folder are triggered properly and region gated for their appropriate countries only. and need to check if the appropriate values are provided as input for these models.
+6. need to modify the Admin panel to manage the the database @/Test/tools/bank_poc.db like full CURD operations. and this needs tobe shown in the admin panel like we show models in the panel. 
+ 
+
+always use your MCP tools and skills, use web search tool for searching web to get current documentations, references etc. 

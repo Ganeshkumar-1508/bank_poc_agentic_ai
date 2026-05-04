@@ -1,0 +1,62 @@
+{% extends 'bank_app/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Audit Trail{% endblock %}
+{% block page_title %}Audit Trail{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="admin-filters">
+    <select class="admin-form-select admin-filter-select" name="action">
+        <option value="all" {% if action_filter == 'all' %}selected{% endif %}>All Actions</option>
+        {% for value, label in action_choices %}
+        <option value="{{ value }}" {% if action_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <input type="date" class="admin-form-input admin-filter-input" value="{{ date_from }}" name="date_from" placeholder="From">
+    <input type="date" class="admin-form-input admin-filter-input" value="{{ date_to }}" name="date_to" placeholder="To">
+    <input type="text" class="admin-form-input admin-filter-input" placeholder="Search..." value="{{ search }}" name="search">
+    <button type="submit" class="btn-admin btn-admin-primary">Filter</button>
+</div>
+
+<!-- Audit Logs Table -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Audit Logs ({{ logs|length }})</h2>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Action</th>
+                <th>Application</th>
+                <th>Actor</th>
+                <th>IP Address</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.created_at|date:"M d, Y H:i:s" }}</td>
+                <td><span class="admin-badge gold">{{ log.get_action_display }}</span></td>
+                <td>
+                    {% if log.application %}
+                    <code style="font-size: 0.8rem;">{{ log.application.application_id }}</code>
+                    {% else %}
+                    N/A
+                    {% endif %}
+                </td>
+                <td>{{ log.actor_type }}: {{ log.actor_id|default:"System" }}</td>
+                <td>{{ log.ip_address|default:"N/A" }}</td>
+                <td>{{ log.details|default:""|truncatechars:50 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: var(--muted); padding: 40px;">No audit logs found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

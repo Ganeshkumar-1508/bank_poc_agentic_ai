@@ -1,0 +1,88 @@
+Three major fixes have been implemented:
+1. **JSON Normalization Fix** in [`Test/tools/search_tool.py`](Test/tools/search_tool.py) - handles malformed JSON input
+2. **URL Validation Tool** in [`Test/tools/url_validation_tool.py`](Test/tools/url_validation_tool.py) - prevents hallucinated URLs
+3. **Module Verification** in [`Test/utils/module_verifier.py`](Test/utils/module_verifier.py) - verifies modules before installation
+
+**Task**:
+1. **Test JSON Normalization**:
+   - Run [`Test/test_json_input_normalization.py`](Test/test_json_input_normalization.py) and confirm all tests pass
+   - Test with the original malformed input pattern: `[{"query": "..."}, ["result"]]`
+   - Verify the tool correctly extracts `query` and `max_results`
+
+2. **Test URL Validation**:
+   - Create a test case with mixed valid/invalid URLs
+   - Verify that invalid URLs are replaced with `**[Headline]** (no URL available)`
+   - Test the `validate_urls` tool integration in `summary_agent` and `research_compilation_agent`
+
+3. **Test Module Verification**:
+   - Run `python -m utils.dependency_checker --check` from the Test directory
+   - Verify that installed modules are correctly identified
+   - Test `install_module_if_needed` with a non-critical module (e.g., a test package)
+
+4. **End-to-End Agent Communication Test**:
+   - Run a sample FD advisor query (e.g., "Analyze Fixed Deposit rates for India with 85 months tenure")
+   - Verify that:
+     - JSON is correctly parsed at each stage
+     - No hallucinated URLs appear in the output
+     - All required modules are verified before use
+   - Check the crew execution logs for any errors
+
+5. **Regression Testing**:
+   - Ensure existing functionality still works
+   - Verify that the fixes don't break any existing tests
+
+**Deliverable**: Provide a comprehensive test report including:
+- Test results for each fix (pass/fail with details)
+- Any remaining issues or edge cases
+- Recommendations for additional testing or improvements
+- Confirmation that agent communication is now stable
+
+
+
+CORE: 4/4 installed
+  [OK] django
+  [OK] streamlit
+  [OK] pandas
+  [OK] numpy
+
+CREWAI: 2/4 installed
+  [MISSING] crewai
+  [MISSING] crewai-tools
+  [OK] langchain
+  [OK] langchain-community
+
+DATABASE: 2/3 installed
+  [OK] sqlalchemy
+  [MISSING] psycopg2-binary
+  [OK] sqlite3
+
+ML: 2/4 installed
+  [MISSING] scikit-learn
+  [OK] xgboost
+  [MISSING] tensorflow
+  [OK] torch
+
+VISUALIZATION: 3/4 installed
+  [OK] matplotlib
+  [OK] seaborn
+  [OK] plotly
+  [MISSING] echarts
+
+EMAIL: 0/4 installed
+  [MISSING] google-auth
+  [MISSING] google-auth-oauthlib
+  [MISSING] google-auth-httplib2
+  [MISSING] google-api-python-client
+
+NEWS: 1/2 installed
+  [MISSING] newsapi-python
+  [OK] requests
+
+NEO4J: 1/1 installed
+  [OK] neo4j
+
+PDF: 1/2 installed
+  [OK] reportlab
+  [MISSING] fpdf2
+
+[WARNING] 12 dependencies missing. Run with --install to fix.

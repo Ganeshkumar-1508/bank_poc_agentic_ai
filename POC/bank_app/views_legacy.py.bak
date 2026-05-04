@@ -1,0 +1,2245 @@
+# =============================================================================
+# ARCHIVED FILE - DO NOT EDIT
+# =============================================================================
+# This file has been archived as part of the modularization cleanup.
+# All views have been moved to Test/bank_app/views/ directory with a modular structure.
+# The views package (__init__.py) provides backward-compatible re-exports.
+# For new development, use the modular view files in Test/bank_app/views/.
+# Archived on: 2026-05-02
+# =============================================================================
+
+from django.http import JsonResponse
+from django.shortcuts import render, redirect
+from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.csrf import csrf_exempt
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
+import os
+import sys
+import json
+import joblib
+import numpy as np
+from datetime import datetime
+from typing import Dict, Any, Optional
+import logging
+import re
+
+# Countries-States-Cities package imports
+try:
+    from countrystatecity_countries import (
+        get_countries,
+        get_states_of_country,
+        get_cities_of_state,
+    )
+    COUNTRYSATECITY_AVAILABLE = True
+except ImportError:
+    COUNTRYSATECITY_AVAILABLE = False
+    logger.warning("countrystatecity-countries not installed. Run: pip install countrystatecity-countries")
+
+# Geolocation imports
+from utils.geolocation import (
+    detect_user_region,
+    get_country_data,
+    get_all_countries,
+    set_search_region,
+    format_region_for_display,
+)
+from tools.config import fetch_country_data
+from .models import UserSession
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Add parent directory to path for imports
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
+
+# =============================================================================
+# CREWAI IMPORTS - With graceful fallback
+# =============================================================================
+
+CREWAI_AVAILABLE = False
+try:
+    from crewai import Crew, Process
+    CREWAI_AVAILABLE = True
+    logger.info("CrewAI imported successfully")
+except ImportError:
+    logger.warning("CrewAI not available. Install with: pip install crewai crewai-tools")
+
+# Import crew functions from crews.py
+create_td_fd_agents = None
+create_td_fd_tasks = None
+create_credit_risk_agents = None
+create_credit_risk_tasks = None
+create_research_agents = None
+create_research_tasks = None
+run_aml_crew = None
+run_router_crew = None
+run_loan_creation_crew = None
+run_mortgage_analytics_crew = None
+generate_fd_template = None
+run_visualization_crew = None
+run_analysis_crew = None
+run_database_crew = None
+
+if CREWAI_AVAILABLE:
+    try:
+        from crews import (
+            create_td_fd_agents,
+            create_td_fd_tasks,
+            create_credit_risk_agents,
+            create_credit_risk_tasks,
+            create_research_agents,
+            create_research_tasks,
+            run_aml_crew,
+            run_router_crew,
+            run_loan_creation_crew,
+            run_mortgage_analytics_crew,
+            generate_fd_template,
+            run_visualization_crew,
+            run_analysis_crew,
+            run_database_crew,
+        )
+        logger.info("CrewAI crew functions imported successfully")
+    except ImportError as e:
+        logger.warning(f"Could not import crew functions: {e}")
+
+# Import other tools
+try:
+    from tools.credit_risk_tool import score_indian_credit_risk, score_credit_risk, USCreditRiskScorerTool
+except ImportError as e:
+    logger.warning(f"Could not import credit_risk_tool: {e}")
+
+try:
+    from streamlit_ref.calculators import calculate_emi as ui_calculate_emi
+    calculate_emi = ui_calculate_emi
+except ImportError as e:
+    logger.warning(f"Could not import streamlit_ref.calculators: {e}")
+
+try:
+    from tools.kyc_tool import extract_kyc_from_image as kyc_extract
+except ImportError as e:
+    logger.warning(f"Could not import kyc_tool: {e}")
+
+try:
+    from tools.compliance_tool import YenteEntitySearchTool as YenteTool
+except ImportError as e:
+    logger.warning(f"Could not import compliance_tool: {e}")
+
+try:
+    from rag_engine import query_rag as rag_query, ingest_document
+except ImportError as e:
+    logger.warning(f"Could not import rag_engine: {e}")
+
+# Model paths
+INDIAN_MODEL_PATH = os.path.join(BASE_DIR, 'models', 'credit_risk', 'indian', 'loan_model.pkl')
+INDIAN_SCALER_PATH = os.path.join(BASE_DIR, 'models', 'credit_risk', 'indian', 'scaler.pkl')
+US_MODEL_PATH = os.path.join(BASE_DIR, 'models', 'credit_risk', 'xgb_model.pkl')
+
+
+# =============================================================================
+# GEOLOCATION HELPER FUNCTIONS
+# =============================================================================
+
+def get_user_region_from_session(request):
+    """
+    Get user region from session or detect if not set.
+    
+    Args:
+        request: Django request object
+        
+    Returns:
+        dict: Region data
+    """
+    if hasattr(request, 'user_region'):
+        return request.user_region
+    
+    # Fallback: check session
+    if 'user_region' in request.session:
+        return request.session['user_region']
+    
+    # Detect and store
+    region_data = detect_user_region(request)
+    request.session['user_region'] = region_data
+    return region_data
+
+
+def update_user_session_with_region(request, region_data):
+    """
+    Update or create UserSession with region data.
+    
+    Args:
+        request: Django request object
+        region_data: dict with region information
+    """
+    session_id = request.session.session_key or 'anonymous'
+    
+    session, created = UserSession.objects.get_or_create(
+        session_id=session_id,
+        defaults={
+            'user_ip': region_data.get('ip_address', ''),
+            'country_code': region_data.get('country_code', ''),
+            'country_name': region_data.get('country_name', ''),
+            'city': region_data.get('city', ''),
+            'region': region_data.get('region', ''),
+            'ip_address': region_data.get('ip_address', ''),
+            'session_data': {}
+        }
+    )
+    
+    if not created:
+        session.user_ip = region_data.get('ip_address', session.user_ip)
+        session.country_code = region_data.get('country_code', session.country_code)
+        session.country_name = region_data.get('country_name', session.country_name)
+        session.city = region_data.get('city', session.city)
+        session.region = region_data.get('region', session.region)
+        session.ip_address = region_data.get('ip_address', session.ip_address)
+        session.save()
+
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+def parse_crew_output(output, max_length=5000):
+    """Parse CrewAI output to extract readable text."""
+    if hasattr(output, 'raw'):
+        return output.raw[:max_length] if len(output.raw) > max_length else output.raw
+    return str(output)[:max_length]
+
+
+def format_crew_response(result_dict, success=True):
+    """Format CrewAI response for JSON serialization."""
+    return {
+        'success': success,
+        'timestamp': datetime.now().isoformat(),
+        **result_dict
+    }
+
+
+# =============================================================================
+# PAGE RENDERERS
+# =============================================================================
+
+def home(request):
+    """Render the home page."""
+    return render(request, 'bank_app/home.html')
+
+
+def credit_risk(request):
+    """Render the credit risk assessment page."""
+    return render(request, 'bank_app/credit_risk.html')
+
+
+def fd_advisor(request):
+    """Render the FD Advisor page."""
+    return render(request, 'bank_app/fd_advisor.html')
+
+
+def mortgage_analytics(request):
+    """Render the Mortgage Analytics page."""
+    return render(request, 'bank_app/mortgage_analytics.html')
+
+
+def emi_calculator(request):
+    """Render the EMI Calculator page."""
+    return render(request, 'bank_app/emi_calculator.html')
+
+
+def emi(request):
+    """Render the EMI page with tabs for Calculator and Amortization Schedule."""
+    return render(request, 'bank_app/emi.html')
+
+
+def financial_news(request):
+    """Render the Financial News page."""
+    return render(request, 'bank_app/financial_news.html')
+
+
+def new_account(request):
+    """Render the New Account page."""
+    return render(request, 'bank_app/new_account.html')
+
+
+# =============================================================================
+# COUNTRIES-STATES-CITIES API ENDPOINTS
+# =============================================================================
+
+def get_countries_api(request):
+    """
+    API endpoint to get all countries.
+    Returns JSON with country code, name, emoji, and currency.
+    """
+    if not COUNTRYSATECITY_AVAILABLE:
+        return JsonResponse({'error': 'countrystatecity-countries package not installed'}, status=503)
+    
+    try:
+        countries = get_countries()
+        countries_data = [
+            {
+                'code': c.iso2,
+                'name': c.name,
+                'emoji': c.emoji or '🌐',
+                'currency': c.currency_symbol or '$',
+            }
+            for c in countries
+        ]
+        return JsonResponse({'countries': countries_data})
+    except Exception as e:
+        logger.error(f"Error getting countries: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def get_states_api(request):
+    """
+    API endpoint to get states for a specific country.
+    Query params: country_code (ISO2 code, e.g., 'US', 'IN')
+    Returns JSON with state id, name, and state_code.
+    """
+    if not COUNTRYSATECITY_AVAILABLE:
+        return JsonResponse({'error': 'countrystatecity-countries package not installed'}, status=503)
+    
+    country_code = request.GET.get('country_code', '').upper()
+    if not country_code:
+        return JsonResponse({'error': 'country_code parameter is required'}, status=400)
+    
+    try:
+        states = get_states_of_country(country_code)
+        states_data = [
+            {
+                'id': s.id,
+                'name': s.name,
+                'state_code': s.state_code,
+            }
+            for s in states
+        ]
+        return JsonResponse({'states': states_data})
+    except Exception as e:
+        logger.error(f"Error getting states for country {country_code}: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def get_cities_api(request):
+    """
+    API endpoint to get cities for a specific state.
+    Query params: country_code (ISO2), state_code (state code)
+    Returns JSON with city id and name.
+    """
+    if not COUNTRYSATECITY_AVAILABLE:
+        return JsonResponse({'error': 'countrystatecity-countries package not installed'}, status=503)
+    
+    country_code = request.GET.get('country_code', '').upper()
+    state_code = request.GET.get('state_code', '').upper()
+    
+    if not country_code or not state_code:
+        return JsonResponse({'error': 'country_code and state_code parameters are required'}, status=400)
+    
+    try:
+        cities = get_cities_of_state(country_code, state_code)
+        cities_data = [
+            {'id': c.id, 'name': c.name}
+            for c in cities
+        ]
+        return JsonResponse({'cities': cities_data})
+    except Exception as e:
+        logger.error(f"Error getting cities for {country_code}-{state_code}: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# CREWAI ENDPOINT 1: FD Advisor Crew API
+# =============================================================================
+
+@csrf_exempt
+def fd_advisor_crew_api(request):
+    """
+    FD Advisor Crew API - Dynamic bank rates via CrewAI
+    
+    Uses create_td_fd_agents() + create_td_fd_tasks() to analyze
+    FD rates across banks and provide recommendations.
+    
+    POST /api/fd-advisor-crew/
+    Body: {
+        "region": "India" (default),
+        "tenure_months": 12 (default),
+        "amount": 100000 (optional)
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+    
+    try:
+        data = json.loads(request.body)
+        region = data.get('region', 'India')
+        tenure_months = int(data.get('tenure_months', 12))
+        amount = float(data.get('amount', 100000))
+        
+        logger.info(f"FD Advisor Crew: region={region}, tenure={tenure_months}, amount={amount}")
+        
+        # Create and run crew
+        agents = create_td_fd_agents()
+        tasks = create_td_fd_tasks(agents, region=region, tenure=tenure_months)
+        crew = Crew(
+            agents=list(agents.values()),
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=False
+        )
+        output = crew.kickoff(inputs={'region': region, 'tenure_months': tenure_months})
+        
+        # Parse output
+        raw_output = parse_crew_output(output)
+        
+        return JsonResponse(format_crew_response({
+            'region': region,
+            'tenure_months': tenure_months,
+            'amount': amount,
+            'result': raw_output,
+            'crew_type': 'fd_advisor'
+        }))
+        
+    except ImportError as e:
+        logger.error(f"FD Advisor Crew import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"FD Advisor Crew error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# CREWAI ENDPOINT 2: Credit Risk Crew API
+# =============================================================================
+
+@csrf_exempt
+def credit_risk_crew_api(request):
+    """
+    Credit Risk Crew API - ML + CrewAI enhanced analysis
+    
+    Uses create_credit_risk_agents() + create_credit_risk_tasks()
+    with optional ML model integration.
+    
+    POST /api/credit-risk-crew/
+    Body: {
+        "applicant_income": 600000,
+        "coapplicant_income": 0,
+        "credit_score": 720,
+        "dti_ratio": 35,
+        "loan_amount": 500000,
+        "loan_term": 36,
+        "collateral_value": 0,
+        "savings": 50000
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+    
+    try:
+        data = json.loads(request.body)
+        
+        # Prepare borrower JSON for crew
+        borrower_json = json.dumps({
+            'applicant_income': data.get('applicant_income', 0),
+            'coapplicant_income': data.get('coapplicant_income', 0),
+            'credit_score': data.get('credit_score', 0),
+            'dti_ratio': data.get('dti_ratio', 0),
+            'loan_amount': data.get('loan_amount', 0),
+            'loan_term': data.get('loan_term', 0),
+            'collateral_value': data.get('collateral_value', 0),
+            'savings': data.get('savings', 0)
+        })
+        
+        logger.info(f"Credit Risk Crew: borrower_data={borrower_json[:100]}...")
+        
+        # Create and run crew
+        agents = create_credit_risk_agents()
+        tasks = create_credit_risk_tasks(agents, borrower_json=borrower_json)
+        crew = Crew(
+            agents=list(agents.values()),
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=False
+        )
+        output = crew.kickoff(inputs={'borrower_json': borrower_json})
+        
+        # Parse output
+        raw_output = parse_crew_output(output)
+        
+        return JsonResponse(format_crew_response({
+            'result': raw_output,
+            'crew_type': 'credit_risk'
+        }))
+        
+    except ImportError as e:
+        logger.error(f"Credit Risk Crew import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"Credit Risk Crew error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# CREWAI ENDPOINT 3: AML Crew API
+# =============================================================================
+
+# CREWAI ENDPOINT 3: AML Crew API
+# =============================================================================
+
+@csrf_exempt
+def aml_crew_api(request):
+    """
+    AML Crew API - Full CrewAI compliance pipeline
+
+    Uses run_aml_crew() for end-to-end AML/KYC verification.
+
+    POST /api/aml-crew/
+    Body: {
+        "client_name": "John Doe",
+        "client_id": "12345",
+        "transaction_amount": 50000,
+        "transaction_type": "deposit",
+        "country_of_origin": "India"
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+
+    try:
+        data = json.loads(request.body)
+    
+        # Enhanced debug logging for AML crew email flow
+        logger.info("=" * 60)
+        logger.info("AML_CREW_DEBUG: Incoming request data")
+        logger.info(f"  Raw data: {data}")
+        logger.info(f"  'email' key present: {'email' in data}")
+        logger.info(f"  'email' value: '{data.get('email', 'MISSING')}'")
+        logger.info(f"  'client_name' value: '{data.get('client_name', 'MISSING')}'")
+        logger.info(f"  'name' value: '{data.get('name', 'MISSING')}'")
+        logger.info(f"  'client_id' value: '{data.get('client_id', 'MISSING')}'")
+        logger.info("=" * 60)
+    
+        # FIX 1: Email validation - check if email is provided and valid
+        extracted_email = data.get('email', '').strip()
+        email_validation_error = None
+        
+        if not extracted_email:
+            email_validation_error = "EMAIL_ERROR: No email address provided in request. Email is required for report delivery."
+            logger.error(email_validation_error)
+        elif '@' not in extracted_email or '.' not in extracted_email.split('@')[-1]:
+            email_validation_error = f"EMAIL_ERROR: Invalid email format: '{extracted_email}'. Email must contain '@' and a valid domain."
+            logger.error(email_validation_error)
+        elif extracted_email.lower() == 'ashwinpremnath123@gmail.com':
+            email_validation_error = f"EMAIL_ERROR: Recipient email cannot be the sender's email ('ashwinpremnath123@gmail.com'). Please provide the customer's email address."
+            logger.error(email_validation_error)
+        
+        # FIX 2: Database lookup fallback - if email is missing/invalid, try to look it up from database
+        if email_validation_error:
+            # Try to look up customer email from database using name or client_id
+            customer_name = data.get('client_name', data.get('name', ''))
+            client_id = data.get('client_id', '')
+            
+            lookup_email = None
+            if customer_name:
+                # Try to find customer by name in the fixed_deposit table
+                try:
+                    # Split name into first and last for better matching
+                    name_parts = customer_name.split()
+                    first_name = name_parts[0] if name_parts else ''
+                    last_name = name_parts[-1] if len(name_parts) > 1 else ''
+                    
+                    # Query to find matching customer email
+                    lookup_query = f"""
+                        SELECT email FROM fixed_deposit
+                        WHERE first_name LIKE '%{first_name}%'
+                        AND last_name LIKE '%{last_name}%'
+                        LIMIT 1
+                    """
+                    from tools.database_tool import BankDatabaseTool
+                    db_tool = BankDatabaseTool()
+                    lookup_result = db_tool._run(lookup_query)
+                    
+                    if lookup_result and 'no rows' not in lookup_result.lower():
+                        # Extract email from result (format: [(email,)] or [[email]])
+                        import re
+                        email_match = re.search(r"['\"]?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['\"]?", lookup_result)
+                        if email_match:
+                            lookup_email = email_match.group(1)
+                            logger.info(f"AML_CREW_DEBUG: Found email in database for '{customer_name}': {lookup_email}")
+                except Exception as e:
+                    logger.warning(f"AML_CREW_DEBUG: Database lookup failed: {e}")
+            
+            if client_id and not lookup_email:
+                # Try to find customer by client_id
+                try:
+                    lookup_query = f"SELECT email FROM fixed_deposit WHERE client_id = '{client_id}' LIMIT 1"
+                    from tools.database_tool import BankDatabaseTool
+                    db_tool = BankDatabaseTool()
+                    lookup_result = db_tool._run(lookup_query)
+                    
+                    if lookup_result and 'no rows' not in lookup_result.lower():
+                        import re
+                        email_match = re.search(r"['\"]?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})['\"]?", lookup_result)
+                        if email_match:
+                            lookup_email = email_match.group(1)
+                            logger.info(f"AML_CREW_DEBUG: Found email in database for client_id '{client_id}': {lookup_email}")
+                except Exception as e:
+                    logger.warning(f"AML_CREW_DEBUG: Database lookup by client_id failed: {e}")
+            
+            # Use looked up email if found, otherwise return error
+            if lookup_email:
+                extracted_email = lookup_email
+                logger.info(f"AML_CREW_DEBUG: Using database lookup email: {extracted_email}")
+            else:
+                # Return error if no email found
+                return JsonResponse({'error': email_validation_error}, status=400)
+    
+        # Prepare client data JSON - STANDARDIZED FIELD NAMES
+        # Field names match what tasks.py expects: name, email, dob, address, etc.
+        client_data_json = json.dumps({
+            'name': data.get('client_name', data.get('name', '')),
+            'client_id': data.get('client_id', ''),
+            'transaction_amount': data.get('transaction_amount', 0),
+            'transaction_type': data.get('transaction_type', ''),
+            'country_of_origin': data.get('country_of_origin', ''),
+            'dob': data.get('date_of_birth', data.get('dob', '')),
+            'address': data.get('address', ''),
+            'occupation': data.get('occupation', ''),
+            'email': extracted_email,  # CRITICAL: Email field for report delivery
+            'pin_number': data.get('pin_number', ''),
+            'mobile_number': data.get('mobile_number', ''),
+            'kyc_details_1': data.get('kyc_details_1', ''),
+            'kyc_details_2': data.get('kyc_details_2', ''),
+            'product_type': data.get('product_type', 'FD'),
+            'initial_amount': data.get('initial_amount', 0),
+            'tenure_months': data.get('tenure_months', 12),
+            'interest_rate': data.get('interest_rate', 0),
+            'bank_name': data.get('bank_name', ''),
+            'compounding_freq': data.get('compounding_freq', 'quarterly')
+        })
+    
+        # Diagnostic logging - validate email field is present in client_data
+        client_data = json.loads(client_data_json)
+        logger.info("=" * 60)
+        logger.info("AML_CREW_DEBUG: Client data prepared for AML crew")
+        logger.info(f"  client_data['email']: '{client_data.get('email', 'MISSING')}'")
+        logger.info(f"  client_data['name']: '{client_data.get('name', 'MISSING')}'")
+        logger.info(f"  All fields: {list(client_data.keys())}")
+        logger.info(f"  Email is empty: {not extracted_email}")
+        logger.info(f"  Email contains '@': {'@' in extracted_email if extracted_email else False}")
+        logger.info("=" * 60)
+    
+        # Run AML crew
+        result = run_aml_crew(client_data_json)
+
+        # Extract results
+        raw_output = result.get('raw', '')
+        pdf_path = result.get('pdf_path')
+        decision = result.get('decision')
+
+        return JsonResponse(format_crew_response({
+            'result': raw_output,
+            'pdf_path': pdf_path,
+            'decision': decision,
+            'crew_type': 'aml'
+        }))
+
+    except ImportError as e:
+        logger.error(f"AML Crew import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"AML Crew error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# CREWAI ENDPOINT 4: Financial News Crew API
+# =============================================================================
+
+@csrf_exempt
+def financial_news_crew_api(request):
+    """
+    Financial News Crew API - CrewAI-enhanced news analysis
+    
+    Uses create_research_agents() + create_research_tasks()
+    to gather and analyze financial news.
+    
+    POST /api/financial-news-crew/
+    Body: {
+        "topic": "Federal Reserve",
+        "region": "India" (default),
+        "category": "banking" (optional)
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+    
+    try:
+        data = json.loads(request.body)
+        topic = data.get('topic', 'financial markets')
+        region = data.get('region', 'India')
+        category = data.get('category', 'all')
+        
+        logger.info(f"Financial News Crew: topic={topic}, region={region}")
+        
+        # Create and run crew
+        agents = create_research_agents(region=region)
+        user_query = f"Latest financial news about {topic} in {category} category"
+        tasks = create_research_tasks(agents, user_query=user_query, region=region)
+        crew = Crew(
+            agents=list(agents.values()),
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=False
+        )
+        output = crew.kickoff(inputs={'user_query': user_query, 'region': region})
+        
+        # Parse output
+        raw_output = parse_crew_output(output)
+        
+        return JsonResponse(format_crew_response({
+            'topic': topic,
+            'region': region,
+            'category': category,
+            'result': raw_output,
+            'crew_type': 'financial_news'
+        }))
+        
+    except ImportError as e:
+        logger.error(f"Financial News Crew import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"Financial News Crew error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# CREWAI ENDPOINT 5: Router Crew API
+# =============================================================================
+
+@csrf_exempt
+def router_crew_api(request):
+    """
+    Router Crew API - Intelligent query routing and intent classification
+    
+    Uses run_router_crew() to classify user intent and route to appropriate service.
+    
+    POST /api/router/
+    Body: {
+        "user_query": "I want to apply for a loan",
+        "region": "India" (default)
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+    
+    try:
+        data = json.loads(request.body)
+        user_query = data.get('user_query', '')
+        region = data.get('region', 'India')
+        
+        logger.info(f"Router Crew: user_query={user_query[:50]}...")
+        
+        # Run router crew
+        output = run_router_crew(user_query, region=region)
+        
+        # Parse output
+        raw_output = parse_crew_output(output)
+        
+        # Extract intent from output
+        intent = "UNKNOWN"
+        for possible_intent in ["CREDIT_RISK", "LOAN_CREATION", "MORTGAGE_ANALYTICS",
+                               "ANALYSIS", "RESEARCH", "DATABASE", "VISUALIZATION", "ONBOARDING"]:
+            if possible_intent in raw_output.upper():
+                intent = possible_intent
+                break
+        
+        return JsonResponse(format_crew_response({
+            'user_query': user_query,
+            'region': region,
+            'intent': intent,
+            'result': raw_output,
+            'crew_type': 'router'
+        }))
+        
+    except ImportError as e:
+        logger.error(f"Router Crew import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"Router Crew error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# CREWAI ENDPOINT 6: Loan Creation Crew API
+# =============================================================================
+
+@csrf_exempt
+def loan_creation_crew_api(request):
+    """
+    Loan Creation Crew API - End-to-end loan application processing
+    
+    Uses create_loan_creation_agents() + create_loan_creation_tasks()
+    for complete loan underwriting.
+    
+    POST /api/loan-creation/
+    Body: {
+        "applicant_name": "John Doe",
+        "applicant_income": 600000,
+        "loan_amount": 500000,
+        "loan_purpose": "home",
+        "credit_score": 720
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+    
+    try:
+        data = json.loads(request.body)
+    
+        # Extract email information
+        email = data.get('email', '').strip()
+        send_email_summary = bool(email) and '@' in email
+        email_error = None
+    
+        # Prepare borrower context
+        borrower_context = json.dumps({
+            'applicant_name': data.get('applicant_name', ''),
+            'applicant_income': data.get('applicant_income', 0),
+            'coapplicant_income': data.get('coapplicant_income', 0),
+            'loan_amount': data.get('loan_amount', 0),
+            'loan_purpose': data.get('loan_purpose', ''),
+            'credit_score': data.get('credit_score', 0),
+            'dti_ratio': data.get('dti_ratio', 0),
+            'loan_term': data.get('loan_term', 0),
+            'collateral_value': data.get('collateral_value', 0),
+            'savings': data.get('savings', 0),
+            'email': email if send_email_summary else ''
+        })
+    
+        logger.info(f"Loan Creation Crew: borrower_context={borrower_context[:100]}...")
+        if send_email_summary:
+            logger.info(f"Email summary will be sent to: {email}")
+    
+        # Create and run crew
+        agents = create_loan_creation_agents()
+        tasks = create_loan_creation_tasks(agents, borrower_context)
+        crew = Crew(
+            agents=[agents['loan_creation_agent'], agents['loan_summary_agent']],
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=False
+        )
+        output = crew.kickoff(inputs={'borrower_context': borrower_context})
+    
+        # Parse output
+        raw_output = parse_crew_output(output)
+    
+        # Send email summary if requested
+        email_sent = False
+        email_error = None
+        if send_email_summary:
+            try:
+                # Extract loan decision from output for email
+                decision_text = raw_output[:500] if raw_output else 'Loan application processed.'
+                
+                subject = f"Loan Application Decision - {data.get('loan_purpose', 'Loan')}"
+                message = f"""
+    Dear Applicant,
+    
+    Thank you for your loan application. Here is the decision from our AI-powered loan creation crew:
+    
+    {raw_output}
+    
+    Best regards,
+    Bank POC Agentic AI Team
+                """
+                
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=[email],
+                    fail_silently=False
+                )
+                email_sent = True
+                logger.info(f"Email summary sent successfully to: {email}")
+            except Exception as email_error:
+                logger.error(f"Failed to send email summary: {email_error}")
+                email_error = str(email_error)
+    
+        return JsonResponse(format_crew_response({
+            'result': raw_output,
+            'crew_type': 'loan_creation',
+            'email_sent': email_sent,
+            'email_error': email_error
+        }))
+        
+    except ImportError as e:
+        logger.error(f"Loan Creation Crew import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"Loan Creation Crew error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# CREWAI ENDPOINT 7: Mortgage Analytics Crew API
+# =============================================================================
+
+@csrf_exempt
+def mortgage_analytics_crew_api(request):
+    """
+    Mortgage Analytics Crew API - Advanced mortgage calculations and market analysis
+    
+    Uses create_mortgage_agents() + create_mortgage_analytics_tasks()
+    
+    POST /api/mortgage-analytics-crew/
+    Body: {
+        "loan_amount": 300000,
+        "interest_rate": 6.5,
+        "loan_term": 30,
+        "down_payment": 60000,
+        "location": "California"
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+    
+    try:
+        data = json.loads(request.body)
+        
+        # Prepare borrower JSON
+        borrower_json = json.dumps({
+            'loan_amount': data.get('loan_amount', 0),
+            'interest_rate': data.get('interest_rate', 0),
+            'loan_term': data.get('loan_term', 30),
+            'down_payment': data.get('down_payment', 0),
+            'location': data.get('location', ''),
+            'property_value': data.get('property_value', 0),
+            'credit_score': data.get('credit_score', 0),
+            'annual_income': data.get('annual_income', 0)
+        })
+        
+        logger.info(f"Mortgage Analytics Crew: borrower_json={borrower_json[:100]}...")
+        
+        # Create and run crew
+        agents = create_mortgage_agents()
+        tasks = create_mortgage_analytics_tasks(agents, borrower_json)
+        crew = Crew(
+            agents=[agents['mortgage_data_collector_agent'], agents['mortgage_analyst_agent']],
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=False
+        )
+        output = crew.kickoff(inputs={'borrower_json': borrower_json})
+        
+        # Parse output
+        raw_output = parse_crew_output(output)
+        
+        return JsonResponse(format_crew_response({
+            'result': raw_output,
+            'crew_type': 'mortgage_analytics'
+        }))
+        
+    except ImportError as e:
+        logger.error(f"Mortgage Analytics Crew import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"Mortgage Analytics Crew error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# CREWAI ENDPOINT 8: FD Template Crew API
+# =============================================================================
+
+@csrf_exempt
+def fd_template_crew_api(request):
+    """
+    FD Template Crew API - Generate customized FD templates and recommendations
+    
+    Uses create_fd_template_agents() + create_fd_template_tasks()
+    
+    POST /api/fd-template/
+    Body: {
+        "customer_name": "John Doe",
+        "fd_number": "FD123456",
+        "bank_name": "HDFC Bank",
+        "amount": 500000,
+        "rate": 7.5,
+        "tenure": 12,
+        "maturity_date": "2025-01-15",
+        "maturity_amount": 537500,
+        "template_type": "confirmation" (or "maturity_reminder", "renewal_offer")
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+    
+    try:
+        data = json.loads(request.body)
+        
+        # Prepare FD data
+        fd_data = {
+            'customer_name': data.get('customer_name', ''),
+            'fd_number': data.get('fd_number', ''),
+            'bank_name': data.get('bank_name', ''),
+            'amount': data.get('amount', 0),
+            'rate': data.get('rate', 0),
+            'tenure': data.get('tenure', 0),
+            'maturity_date': data.get('maturity_date', ''),
+            'maturity_amount': data.get('maturity_amount', 0),
+            'customer_email': data.get('customer_email', ''),
+            'opening_date': data.get('opening_date', '')
+        }
+        template_type = data.get('template_type', 'confirmation')
+        
+        logger.info(f"FD Template Crew: fd_number={fd_data.get('fd_number')}, template_type={template_type}")
+        
+        # Create and run crew
+        agents = create_fd_template_agents()
+        tasks = create_fd_template_tasks(agents, fd_data, template_type)
+        crew = Crew(
+            agents=[agents['fd_template_generator_agent']],
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=False
+        )
+        output = crew.kickoff(inputs={'fd_data': fd_data, 'template_type': template_type})
+        
+        # Parse output
+        raw_output = parse_crew_output(output)
+        
+        return JsonResponse(format_crew_response({
+            'fd_number': fd_data.get('fd_number'),
+            'template_type': template_type,
+            'result': raw_output,
+            'crew_type': 'fd_template'
+        }))
+        
+    except ImportError as e:
+        logger.error(f"FD Template Crew import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"FD Template Crew error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# CREWAI ENDPOINT 9: Visualization Crew API
+# =============================================================================
+
+@csrf_exempt
+def visualization_crew_api(request):
+    """
+    Visualization Crew API - Automated chart and report generation
+    
+    Uses create_visualization_agents() + create_visualization_task()
+    
+    POST /api/visualization/
+    Body: {
+        "user_query": "Show FD rates comparison chart",
+        "data_context": "JSON data or description of data to visualize"
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+    
+    try:
+        data = json.loads(request.body)
+        user_query = data.get('user_query', '')
+        data_context = data.get('data_context', '')
+        
+        logger.info(f"Visualization Crew: user_query={user_query[:50]}...")
+        
+        # Create and run crew
+        agents = create_visualization_agents()
+        task = create_visualization_task(agents, user_query, data_context)
+        crew = Crew(
+            agents=[agents['data_visualizer_agent']],
+            tasks=[task],
+            process=Process.sequential,
+            verbose=False
+        )
+        output = crew.kickoff(inputs={'user_query': user_query, 'data_context': data_context})
+        
+        # Parse output
+        raw_output = parse_crew_output(output)
+        
+        return JsonResponse(format_crew_response({
+            'user_query': user_query,
+            'result': raw_output,
+            'crew_type': 'visualization'
+        }))
+        
+    except ImportError as e:
+        logger.error(f"Visualization Crew import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"Visualization Crew error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# CREWAI ENDPOINT 10: Analysis Crew API
+# =============================================================================
+
+@csrf_exempt
+def analysis_crew_api(request):
+    """
+    Analysis Crew API - General data analysis and insights
+    
+    Uses create_analysis_agents() + create_analysis_tasks()
+    
+    POST /api/analysis/
+    Body: {
+        "user_query": "Analyze FD trends across banks",
+        "region": "India" (default)
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+    
+    try:
+        data = json.loads(request.body)
+        user_query = data.get('user_query', '')
+        region = data.get('region', 'India')
+        
+        logger.info(f"Analysis Crew: user_query={user_query[:50]}..., region={region}")
+        
+        # Create and run crew
+        agents = create_analysis_agents(region=region)
+        tasks = create_analysis_tasks(agents, user_query, region=region)
+        crew = Crew(
+            agents=[
+                agents['query_search_agent'],
+                agents['projection_agent'],
+                agents['research_safety_agent'],
+                agents['summary_agent']
+            ],
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=False
+        )
+        output = crew.kickoff(inputs={'user_query': user_query, 'region': region})
+        
+        # Parse output
+        raw_output = parse_crew_output(output)
+        
+        return JsonResponse(format_crew_response({
+            'user_query': user_query,
+            'region': region,
+            'result': raw_output,
+            'crew_type': 'analysis'
+        }))
+        
+    except ImportError as e:
+        logger.error(f"Analysis Crew import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"Analysis Crew error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# CREWAI ENDPOINT 11: Database Crew API
+# =============================================================================
+
+@csrf_exempt
+def database_crew_api(request):
+    """
+    Database Crew API - SQL query generation and database operations
+    
+    Uses create_database_agents() + create_database_tasks()
+    
+    POST /api/database-query/
+    Body: {
+        "user_query": "Get all FD accounts with maturity in next 30 days"
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+    
+    try:
+        data = json.loads(request.body)
+        user_query = data.get('user_query', '')
+        
+        logger.info(f"Database Crew: user_query={user_query[:50]}...")
+        
+        # Create and run crew
+        agents = create_database_agents()
+        tasks = create_database_tasks(agents, user_query)
+        crew = Crew(
+            agents=[agents['db_agent']],
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=False
+        )
+        output = crew.kickoff(inputs={'user_query': user_query})
+        
+        # Parse output
+        raw_output = parse_crew_output(output)
+        
+        return JsonResponse(format_crew_response({
+            'user_query': user_query,
+            'result': raw_output,
+            'crew_type': 'database'
+        }))
+        
+    except ImportError as e:
+        logger.error(f"Database Crew import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"Database Crew error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# EXISTING API ENDPOINTS (Preserved for backward compatibility)
+# =============================================================================
+
+@csrf_exempt
+def credit_risk_indian_api(request):
+    """API endpoint for Indian credit risk assessment."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        
+        if not os.path.exists(INDIAN_MODEL_PATH):
+            return JsonResponse({'error': 'Indian model not found'}, status=500)
+        
+        model = joblib.load(INDIAN_MODEL_PATH)
+        scaler = joblib.load(INDIAN_SCALER_PATH) if os.path.exists(INDIAN_SCALER_PATH) else None
+        
+        # Prepare features
+        loan_amount = float(data.get('loan_amount', 0))
+        annual_income = float(data.get('applicant_income', data.get('annual_income', 0)))
+        dti_ratio = float(data.get('dti_ratio', 0))
+        credit_score = float(data.get('credit_score', 0))
+        collateral_value = float(data.get('collateral_value', 0))
+        loan_term = float(data.get('loan_term', 0))
+        savings = float(data.get('savings', 0))
+        
+        feature_vector = np.array([[loan_amount, annual_income, dti_ratio, credit_score,
+                                   collateral_value, loan_term, savings]])
+        
+        if scaler:
+            feature_vector = scaler.transform(feature_vector)
+        
+        prediction = model.predict(feature_vector)[0]
+        prediction_proba = model.predict_proba(feature_vector)[0]
+        
+        approval_prob = float(prediction_proba[1] if len(prediction_proba) > 1 else 0.5)
+        verdict = "APPROVED" if prediction == 1 else "REJECTED"
+        
+        return JsonResponse({
+            'approval_probability': round(approval_prob * 100, 2),
+            'verdict': verdict,
+            'key_factors': ['Credit Score', 'DTI Ratio', 'Loan Amount'],
+            'improvement_tips': [
+                'Increase credit score by paying bills on time',
+                'Reduce debt-to-income ratio',
+                'Provide additional collateral'
+            ]
+        })
+        
+    except Exception as e:
+        logger.error(f"Indian credit risk error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def credit_risk_api(request):
+    """General credit risk API endpoint."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        # Default to Indian model
+        return credit_risk_indian_api(request)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def kyc_verify_api(request):
+    """KYC verification API endpoint."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        # Placeholder for KYC verification
+        return JsonResponse({
+            'verified': True,
+            'message': 'KYC verification completed',
+            'customer_id': data.get('customer_id', 'CUST001')
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def compliance_check_api(request):
+    """Compliance (AML/PEP) check API endpoint."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        # Placeholder for compliance check
+        return JsonResponse({
+            'compliant': True,
+            'message': 'No compliance issues found',
+            'checks_performed': ['AML', 'PEP', 'Sanctions']
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def rag_query_api(request):
+    """RAG engine query API endpoint."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        query = data.get('query', '')
+        # Placeholder for RAG query
+        return JsonResponse({
+            'query': query,
+            'results': [],
+            'message': 'RAG query completed'
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def fd_rates_api(request):
+    """FD rates API endpoint."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        region = data.get('region', 'India')
+        # Placeholder FD rates
+        fd_rates = [
+            {'bank': 'HDFC Bank', 'rate': 7.2, 'tenure': '12-15 months'},
+            {'bank': 'ICICI Bank', 'rate': 7.1, 'tenure': '12-18 months'},
+            {'bank': 'SBI', 'rate': 7.0, 'tenure': '12-23 months'},
+        ]
+        return JsonResponse({'fd_rates': fd_rates, 'region': region})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def countries_api(request):
+    """
+    Countries API endpoint - Returns list of available countries for financial news.
+    
+    GET /api/countries/
+    Returns: {
+        "countries": [
+            {"code": "US", "name": "United States", "ddg_region": "us-en"},
+            {"code": "IN", "name": "India", "ddg_region": "in-en"},
+            ...
+        ]
+    }
+    """
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        # Fetch country data from config
+        country_data = fetch_country_data()
+
+        # Format for frontend consumption with all fields
+        countries = []
+        for code, data in country_data.items():
+            countries.append({
+                'code': code,
+                'name': data.get('name', code),
+                'official_name': data.get('official_name', data.get('name', code)),
+                'alpha_3': data.get('alpha_3', ''),
+                'currency_code': data.get('currency_code', ''),
+                'currency_symbol': data.get('currency_symbol', ''),
+                'ddg_region': data.get('ddg_region', '')
+            })
+
+        # Sort by name
+        countries.sort(key=lambda x: x['name'])
+
+        return JsonResponse({'countries': countries})
+    
+    except Exception as e:
+        logger.error(f"Countries API error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def financial_news_api(request):
+    """
+    Financial news API endpoint - Uses NewsData.io for real financial news.
+    
+    POST /api/financial-news/
+    Body: {
+        "query": "federal reserve" (optional search query),
+        "country": "in" (optional, default: "us"),
+        "category": "banking" (optional: banking, markets, crypto, economy, regulation),
+        "days": 7 (optional: 7, 30, 90 for date range)
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        
+        # Get API key from environment
+        newsdata_api_key = os.getenv('NEWSDATA_API_KEY', '')
+        if not newsdata_api_key:
+            return JsonResponse({
+                'error': 'NEWSDATA_API_KEY not configured. Please add it to your .env file.'
+            }, status=500)
+        
+        # Get parameters
+        query = data.get('query', '')
+        country = data.get('country', 'us')  # Default to US
+        category = data.get('category', 'all')
+        days = int(data.get('days', 7))
+        
+        # Build the API URL and parameters
+        # Using /market endpoint for financial/business news
+        url = "https://newsdata.io/api/1/market"
+        params = {
+            'apikey': newsdata_api_key,
+            'language': 'en',
+            'removeduplicate': 1,
+        }
+        
+        # Add country if specified
+        if country and country != 'all':
+            params['country'] = country.lower()
+        
+        # Add query if provided
+        if query:
+            params['q'] = query
+        
+        # Add category filtering via domain/topic
+        category_domains = {
+            'banking': 'reuters.com,bloomberg.com,wsj.com,ft.com',
+            'markets': 'marketwatch.com,investing.com,seekingalpha.com',
+            'crypto': 'coindesk.com,cointelegraph.com',
+            'economy': 'economictimes.indiatimes.com,blomberg.com/economy',
+            'regulation': 'reuters.com/legal,ft.com/regulation'
+        }
+        if category and category != 'all' and category in category_domains:
+            params['domain'] = category_domains[category]
+        
+        # Make the API request
+        import requests as news_requests
+        response = news_requests.get(url, params=params, timeout=15)
+        response.raise_for_status()
+        news_data = response.json()
+        
+        if news_data.get('status') != 'success':
+            return JsonResponse({
+                'error': 'Failed to fetch news from NewsData.io',
+                'message': news_data.get('description', 'Unknown error')
+            }, status=500)
+        
+        # Process and format the articles
+        articles = news_data.get('results', [])
+        formatted_news = []
+        
+        for article in articles:
+            formatted_news.append({
+                'title': article.get('title', 'Untitled'),
+                'description': article.get('description', ''),
+                'source': article.get('source_name') or article.get('source_id', 'Unknown'),
+                'published_at': article.get('pubDate', ''),
+                'url': article.get('link', ''),
+                'image_url': article.get('image_url', ''),
+                'category': ', '.join(article.get('category', [])) or 'General',
+                'content': article.get('content', '')[:500] if article.get('content') else ''
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'news': formatted_news,
+            'total_results': news_data.get('totalResults', len(formatted_news)),
+            'country': country,
+            'category': category
+        })
+        
+    except ImportError:
+        return JsonResponse({'error': 'requests library not installed'}, status=500)
+    except Exception as e:
+        logger.error(f"Financial news API error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def mortgage_calculator_api(request):
+    """Mortgage calculator API endpoint."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        loan_amount = float(data.get('loan_amount', 0))
+        interest_rate = float(data.get('interest_rate', 0))
+        term_years = int(data.get('term_years', 30))
+        
+        monthly_rate = interest_rate / 100 / 12
+        num_payments = term_years * 12
+        monthly_payment = loan_amount * monthly_rate * (1 + monthly_rate) ** num_payments / ((1 + monthly_rate) ** num_payments - 1)
+        
+        return JsonResponse({
+            'monthly_payment': round(monthly_payment, 2),
+            'total_payment': round(monthly_payment * num_payments, 2),
+            'total_interest': round(monthly_payment * num_payments - loan_amount, 2)
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def loan_application_api(request):
+    """Loan application API endpoint."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        return JsonResponse({
+            'application_id': f'APP-{Date.now()}',
+            'status': 'submitted',
+            'message': 'Loan application submitted successfully'
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def credit_risk_us_api(request):
+    """
+    US Credit Risk API endpoint - Uses XGBoost model for US credit assessment.
+    
+    POST /api/credit-risk/us/
+    Body: JSON with applicant financial data
+    Returns: approval_probability, verdict, key_factors
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        
+        if not os.path.exists(US_MODEL_PATH):
+            return JsonResponse({'error': 'US model not found'}, status=500)
+        
+        model = joblib.load(US_MODEL_PATH)
+        
+        # Prepare features for US model
+        annual_income = float(data.get('annual_income', data.get('applicant_income', 0)))
+        loan_amount = float(data.get('loan_amount', 0))
+        credit_score = float(data.get('credit_score', 0))
+        dti_ratio = float(data.get('dti_ratio', 0))
+        employment_years = float(data.get('employment_years', 0))
+        num_credit_lines = float(data.get('num_credit_lines', 3))
+        num_delinquencies = float(data.get('num_delinquencies', 0))
+        
+        feature_vector = np.array([[
+            annual_income,
+            loan_amount,
+            credit_score,
+            dti_ratio,
+            employment_years,
+            num_credit_lines,
+            num_delinquencies
+        ]])
+        
+        prediction = model.predict(feature_vector)[0]
+        prediction_proba = model.predict_proba(feature_vector)[0]
+        
+        approval_prob = float(prediction_proba[1] if len(prediction_proba) > 1 else 0.5)
+        verdict = "APPROVED" if prediction == 1 else "REJECTED"
+        
+        return JsonResponse({
+            'approval_probability': round(approval_prob * 100, 2),
+            'verdict': verdict,
+            'key_factors': ['Credit Score', 'DTI Ratio', 'Employment History'],
+            'improvement_tips': [
+                'Maintain credit utilization below 30%',
+                'Pay all bills on time',
+                'Avoid opening multiple new accounts'
+            ]
+        })
+        
+    except Exception as e:
+        logger.error(f"US credit risk error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@csrf_exempt
+def emi_calculator_api(request):
+    """EMI calculator API endpoint."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        loan_amount = float(data.get('loan_amount', 0))
+        interest_rate = float(data.get('interest_rate', 0))
+        tenure_months = int(data.get('tenure_months', 0))
+        method = data.get('method', 'reducing_balance')
+        processing_fee = float(data.get('processing_fee', 0))
+        
+        if calculate_emi:
+            result = calculate_emi(loan_amount, interest_rate, tenure_months, method, processing_fee)
+        else:
+            # Fallback calculation
+            monthly_rate = interest_rate / 12 / 100
+            emi = loan_amount * monthly_rate * (1 + monthly_rate) ** tenure_months / ((1 + monthly_rate) ** tenure_months - 1)
+            result = {
+                'monthly_emi': round(emi, 2),
+                'total_interest': round(emi * tenure_months - loan_amount, 2)
+            }
+        
+        return JsonResponse(result)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# =============================================================================
+# CREWAI AUTOMATED DECISION ENDPOINT
+# =============================================================================
+
+
+@csrf_exempt
+@require_POST
+def loan_crewai_decision_api(request):
+    """
+    Submit loan for automated CrewAI decision.
+
+    Body:
+    {
+        'loan_id': int
+    }
+
+    Returns:
+    {
+        'success': bool,
+        'decision': str (APPROVED, REJECTED, REQUIRES_REVIEW),
+        'confidence': float,
+        'auto_executed': bool,
+        'new_status': str
+    }
+    """
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+
+    try:
+        from .models import LoanApplication, AuditLog, CrewAIReasoningLog
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+
+        data = json.loads(request.body)
+        loan_id = data.get('loan_id')
+
+        if not loan_id:
+            return JsonResponse({'error': 'loan_id is required'}, status=400)
+
+        loan = LoanApplication.objects.get(pk=loan_id)
+
+        # Prepare borrower data for CrewAI
+        borrower_json = json.dumps({
+            'applicant_income': float(loan.applicant_income),
+            'coapplicant_income': float(loan.coapplicant_income),
+            'credit_score': float(loan.credit_score or 0),
+            'dti_ratio': float(loan.dti_ratio),
+            'loan_amount': float(loan.loan_amount),
+            'loan_term': int(loan.loan_term_months),
+            'collateral_value': float(loan.collateral_value),
+            'savings': 0  # Add if available
+        })
+
+        logger.info(f"Running Credit Risk Crew for loan {loan.application_id}")
+
+        # Create and run credit risk crew
+        agents = create_credit_risk_agents()
+        tasks = create_credit_risk_tasks(agents, borrower_json=borrower_json)
+        crew = Crew(
+            agents=list(agents.values()),
+            tasks=tasks,
+            process=Process.sequential,
+            verbose=False
+        )
+        result = crew.kickoff(inputs={'borrower_json': borrower_json})
+
+        # Parse CrewAI output to extract decision and confidence
+        raw_output = result.raw if hasattr(result, 'raw') else str(result)
+
+        # Simple parsing - in production, use more robust NLP
+        decision = 'REQUIRES_REVIEW'
+        confidence = 50.0
+
+        if 'APPROVED' in raw_output.upper() or 'APPROVAL' in raw_output.upper():
+            decision = 'APPROVED'
+            confidence = 85.0
+        elif 'REJECTED' in raw_output.upper() or 'DENIED' in raw_output.upper():
+            decision = 'REJECTED'
+            confidence = 85.0
+        elif 'HIGH RISK' in raw_output.upper():
+            decision = 'REJECTED'
+            confidence = 90.0
+        elif 'LOW RISK' in raw_output.upper():
+            decision = 'APPROVED'
+            confidence = 80.0
+
+        # Extract key factors from output
+        factors = []
+        if 'credit score' in raw_output.lower():
+            factors.append('Credit Score Analysis')
+        if 'dti' in raw_output.lower() or 'debt-to-income' in raw_output.lower():
+            factors.append('DTI Ratio Assessment')
+        if 'income' in raw_output.lower():
+            factors.append('Income Verification')
+        if 'collateral' in raw_output.lower():
+            factors.append('Collateral Evaluation')
+
+        # Log reasoning
+        reasoning_log = CrewAIReasoningLog.objects.create(
+            application=loan,
+            crew_type='credit_risk',
+            decision=decision,
+            confidence_score=confidence,
+            reasoning={'raw_output': raw_output[:5000]},  # Truncate for storage
+            factors=factors,
+            recommendations=[f'Auto-{decision.lower()} based on CrewAI analysis'],
+            auto_executed=(confidence > 75)
+        )
+
+        # Auto-execute if confidence > 75%
+        auto_executed = False
+        if confidence > 75:
+            if decision == 'APPROVED':
+                loan.status = 'APPROVED'
+                action = 'CREWAI_AUTO_APPROVED'
+            else:
+                loan.status = 'REJECTED'
+                action = 'CREWAI_AUTO_REJECTED'
+
+            loan.save()  # Triggers audit log
+            auto_executed = True
+
+            # Broadcast via WebSocket
+            try:
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    'dashboard_updates',
+                    {
+                        'type': 'crewai_decision',
+                        'loan_id': loan.id,
+                        'decision': decision,
+                        'confidence': confidence,
+                        'reasoning': {'factors': factors}
+                    }
+                )
+            except Exception as ws_error:
+                logger.warning(f"WebSocket broadcast failed: {ws_error}")
+        else:
+            loan.status = 'UNDER_REVIEW'
+            loan.save()
+            action = 'CREWAI_REQUIRES_REVIEW'
+
+        # Create audit entry
+        AuditLog.objects.create(
+            application=loan,
+            action=action,
+            actor_type='CREWAI',
+            actor_id='credit_risk_crew',
+            details={
+                'confidence_score': confidence,
+                'decision': decision,
+                'factors': factors,
+                'timestamp': timezone.now().isoformat()
+            }
+        )
+
+        return JsonResponse({
+            'success': True,
+            'decision': decision,
+            'confidence': confidence,
+            'auto_executed': auto_executed,
+            'new_status': loan.status,
+            'factors': factors,
+            'reasoning_log_id': reasoning_log.id
+        })
+
+    except LoanApplication.DoesNotExist:
+        return JsonResponse({'error': 'Loan not found'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"CrewAI decision error: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+    
+    
+# =============================================================================
+# SMART ASSISTANT - Chat Interface
+# =============================================================================
+
+def smart_assistant(request):
+    """
+    Smart Assistant Chat Interface
+    
+    A unified chat interface that routes user queries to appropriate crews
+    based on intent classification using Router Crew.
+    """
+    # Get user region for context
+    region_data = get_user_region_from_session(request)
+    # get_all_countries() returns a dict keyed by country code, convert to list of tuples
+    countries_dict = get_all_countries()
+    country_list = [(code, info.get('name', code)) for code, info in countries_dict.items()]
+    
+    return render(request, 'bank_app/smart_assistant.html', {
+        'user_region': region_data,
+        'country_list': country_list,
+    })
+
+
+@csrf_exempt
+def smart_assistant_query(request):
+    """
+    Smart Assistant Query API
+    
+    API endpoint for the smart assistant chat interface.
+    Routes the query through Router Crew for intent classification
+    and returns the appropriate response.
+    
+    POST /api/smart-assistant-query/
+    Body: {
+        "query": "What are the best FD rates?",
+        "session_id": "optional-session-id" (optional)
+    }
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    if not CREWAI_AVAILABLE:
+        return JsonResponse({'error': 'CrewAI not available'}, status=503)
+    
+    try:
+        data = json.loads(request.body)
+        user_query = data.get('query', '')
+        session_id = data.get('session_id', request.session.session_key or 'anonymous')
+        
+        if not user_query:
+            return JsonResponse({'error': 'Query is required'}, status=400)
+        
+        # Get user region
+        region_data = get_user_region_from_session(request)
+        region = region_data.get('country_name', 'India')
+        
+        logger.info(f"Smart Assistant query: {user_query[:50]}... (session: {session_id})")
+        
+        # Run router crew to classify intent and get response
+        output = run_router_crew(user_query, region=region)
+        
+        # Parse output
+        raw_output = parse_crew_output(output)
+        
+        # Extract intent from output
+        intent = "UNKNOWN"
+        intent_mapping = {
+            "CREDIT_RISK": ["credit", "loan approval", "credit score", "loan odds"],
+            "LOAN_CREATION": ["apply for loan", "loan application", "get a loan"],
+            "MORTGAGE_ANALYTICS": ["mortgage", "home loan"],
+            "FD_TEMPLATE": ["fd rates", "fixed deposit", "fd comparison"],
+            "ANALYSIS": ["analyze", "analysis", "data"],
+            "RESEARCH": ["research", "news", "market"],
+            "DATABASE": ["database", "sql", "query data"],
+            "VISUALIZATION": ["chart", "graph", "visualize"],
+            "ONBOARDING": ["onboard", "kyc", "new account"],
+        }
+        
+        query_lower = user_query.lower()
+        for intent_name, keywords in intent_mapping.items():
+            if any(keyword in query_lower for keyword in keywords):
+                intent = intent_name
+                break
+        
+        # Log the interaction
+        try:
+            from .models import CrewAIReasoningLog
+            CrewAIReasoningLog.objects.create(
+                session_id=session_id,
+                crew_type='smart_assistant',
+                task_description=f'Smart Assistant query: {user_query[:100]}',
+                agent_name='router_agent',
+                reasoning=f'Intent: {intent}',
+                output=raw_output[:5000] if len(raw_output) > 5000 else raw_output,
+                execution_time=0  # Would need to track timing
+            )
+        except Exception as log_error:
+            logger.warning(f"Failed to log smart assistant interaction: {log_error}")
+        
+        return JsonResponse(format_crew_response({
+            'query': user_query,
+            'session_id': session_id,
+            'region': region,
+            'intent': intent,
+            'result': raw_output,
+            'crew_type': 'smart_assistant'
+        }))
+        
+    except ImportError as e:
+        logger.error(f"Smart Assistant import error: {e}")
+        return JsonResponse({'error': f'CrewAI functions not available: {str(e)}'}, status=503)
+    except Exception as e:
+        logger.error(f"Smart Assistant error: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+    
+
+# =============================================================================
+# TD/FD CREATION API ENDPOINT
+# =============================================================================
+
+@csrf_exempt
+@require_POST
+def td_fd_creation_api(request):
+    """
+    API endpoint for creating a Fixed/Term Deposit.
+    
+    This endpoint:
+    1. Validates FD creation request data
+    2. Creates FD record in database
+    3. Generates FD certificate (PDF)
+    4. Sends email notification with certificate attachment
+    5. Returns FD details and certificate download URL
+    
+    POST /api/td-fd-creation/
+    Body: {
+        "bank_name": "HDFC Bank",
+        "rate": 7.5,
+        "amount": 500000,
+        "tenure_months": 12,
+        "start_date": "2025-05-01",
+        "customer_name": "John Doe",
+        "customer_email": "john@example.com",
+        "customer_phone": "+91-9876543210",
+        "senior_citizen": false,
+        "auto_renewal": true,
+        "send_email": true,
+        "region": "IN"
+    }
+    """
+    try:
+        from .models import FixedDeposit
+        from .fd_certificate_utils import generate_fd_certificate
+        
+        data = json.loads(request.body)
+        
+        # Validate required fields
+        required_fields = ['bank_name', 'rate', 'amount', 'tenure_months', 'start_date']
+        for field in required_fields:
+            if field not in data:
+                return JsonResponse({'error': f'{field} is required'}, status=400)
+        
+        # Parse and validate data
+        bank_name = data['bank_name']
+        rate = Decimal(str(data['rate']))
+        amount = Decimal(str(data['amount']))
+        tenure_months = int(data['tenure_months'])
+        start_date_str = data['start_date']
+        
+        # Optional fields with defaults
+        customer_name = data.get('customer_name', '')
+        customer_email = data.get('customer_email', '')
+        customer_phone = data.get('customer_phone', '')
+        senior_citizen = data.get('senior_citizen', False)
+        loan_against_fd = data.get('loan_against_fd', False)
+        auto_renewal = data.get('auto_renewal', False)
+        send_email = data.get('send_email', True)
+        region = data.get('region', 'IN')
+        user_session_id = request.session.session_key or 'anonymous'
+        
+        # Parse start date
+        from datetime import datetime
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({'error': 'Invalid start_date format. Use YYYY-MM-DD'}, status=400)
+        
+        # Calculate maturity date
+        from datetime import timedelta
+        import calendar
+        year_add = tenure_months // 12
+        month_add = tenure_months % 12
+        
+        new_year = start_date.year + year_add
+        new_month = start_date.month + month_add
+        
+        if new_month > 12:
+            new_year += 1
+            new_month -= 12
+        
+        try:
+            maturity_date = start_date.replace(year=new_year, month=new_month)
+        except ValueError:
+            last_day = calendar.monthrange(new_year, new_month)[1]
+            maturity_date = start_date.replace(year=new_year, month=new_month, day=last_day)
+        
+        # Calculate maturity amount and interest
+        rate_decimal = float(rate) / 100
+        principal = float(amount)
+        maturity_amount = principal * pow(1 + rate_decimal / 12, tenure_months)
+        interest_earned = maturity_amount - principal
+        
+        # Create FD record
+        fd = FixedDeposit(
+            bank_name=bank_name,
+            rate=rate,
+            amount=amount,
+            tenure_months=tenure_months,
+            start_date=start_date,
+            maturity_date=maturity_date,
+            maturity_amount=round(maturity_amount, 2),
+            interest_earned=round(interest_earned, 2),
+            customer_name=customer_name,
+            customer_email=customer_email,
+            customer_phone=customer_phone,
+            senior_citizen=senior_citizen,
+            loan_against_fd=loan_against_fd,
+            auto_renewal=auto_renewal,
+            region=region,
+            user_session_id=user_session_id,
+            status='ACTIVE'
+        )
+        fd.save()
+        
+        logger.info(f"FD created: {fd.fd_id} for {customer_name}")
+        
+        # Generate certificate
+        certificate_path = generate_fd_certificate(fd)
+        if certificate_path:
+            fd.certificate_path = certificate_path
+            fd.certificate_generated = True
+            fd.save()
+        
+        # Send email notification
+        certificate_url = None
+        email_sent = False
+        if send_email and customer_email and certificate_path:
+            email_sent = send_fd_confirmation_email(
+                customer_email=customer_email,
+                customer_name=customer_name,
+                fd_instance=fd,
+                certificate_path=certificate_path
+            )
+            fd.email_sent = email_sent
+            if email_sent:
+                fd.email_sent_at = timezone.now()
+            fd.save()
+            
+            # Build certificate download URL
+            certificate_url = f"/media/{certificate_path}"
+        
+        return JsonResponse({
+            'success': True,
+            'fd_id': fd.fd_id,
+            'account_number': fd.account_number,
+            'bank_name': fd.bank_name,
+            'rate': float(fd.rate),
+            'amount': float(fd.amount),
+            'tenure_months': fd.tenure_months,
+            'start_date': fd.start_date.strftime('%Y-%m-%d'),
+            'maturity_date': fd.maturity_date.strftime('%Y-%m-%d'),
+            'maturity_amount': float(fd.maturity_amount),
+            'interest_earned': float(fd.interest_earned),
+            'certificate_generated': fd.certificate_generated,
+            'certificate_url': certificate_url,
+            'email_sent': email_sent,
+            'status': fd.status
+        })
+        
+    except FixedDeposit.DoesNotExist:
+        return JsonResponse({'error': 'FD not found'}, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"FD creation error: {e}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def send_fd_confirmation_email(customer_email, customer_name, fd_instance, certificate_path):
+    """
+    Send FD confirmation email with certificate attachment.
+    
+    Args:
+        customer_email: Customer's email address
+        customer_name: Customer's name
+        fd_instance: FixedDeposit model instance
+        certificate_path: Path to the certificate PDF file
+    
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    try:
+        from django.core.mail import EmailMultiAlternatives
+        from django.template.loader import render_to_string
+        from django.conf import settings
+        import os
+        
+        # Build full certificate path
+        full_certificate_path = os.path.join(settings.MEDIA_ROOT, certificate_path)
+        
+        if not os.path.exists(full_certificate_path):
+            logger.warning(f"Certificate file not found: {full_certificate_path}")
+            return False
+        
+        # Email subject
+        subject = f"Your Fixed Deposit Certificate - {fd_instance.fd_id}"
+        
+        # Email body (HTML)
+        html_content = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }}
+                .content {{ background: #f9f9f9; padding: 20px; }}
+                .fd-details {{ background: white; padding: 15px; border-radius: 8px; margin: 15px 0; }}
+                .fd-details h3 {{ color: #c9a84c; margin-top: 0; }}
+                .fd-details table {{ width: 100%; border-collapse: collapse; }}
+                .fd-details td {{ padding: 8px; border-bottom: 1px solid #eee; }}
+                .fd-details td:first-child {{ font-weight: bold; color: #555; }}
+                .footer {{ background: #1a1a2e; color: white; padding: 15px; text-align: center; border-radius: 0 0 8px 8px; font-size: 12px; }}
+                .button {{ display: inline-block; padding: 12px 24px; background: #c9a84c; color: white; text-decoration: none; border-radius: 4px; margin: 10px 0; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Fixed Deposit Confirmation</h1>
+                    <p>Thank you for choosing Bank POC</p>
+                </div>
+                <div class="content">
+                    <p>Dear {customer_name},</p>
+                    <p>Your Fixed Deposit has been successfully created! Please find your certificate attached to this email.</p>
+                    
+                    <div class="fd-details">
+                        <h3>FD Details</h3>
+                        <table>
+                            <tr><td>FD Number:</td><td>{fd_instance.fd_id}</td></tr>
+                            <tr><td>Bank:</td><td>{fd_instance.bank_name}</td></tr>
+                            <tr><td>Deposit Amount:</td><td>₹{float(fd_instance.amount):,}</td></tr>
+                            <tr><td>Interest Rate:</td><td>{float(fd_instance.rate)}%</td></tr>
+                            <tr><td>Tenure:</td><td>{fd_instance.tenure_months} months</td></tr>
+                            <tr><td>Start Date:</td><td>{fd_instance.start_date.strftime('%B %d, %Y')}</td></tr>
+                            <tr><td>Maturity Date:</td><td>{fd_instance.maturity_date.strftime('%B %d, %Y')}</td></tr>
+                            <tr><td>Maturity Amount:</td><td>₹{float(fd_instance.maturity_amount):,}</td></tr>
+                            <tr><td>Interest Earned:</td><td>₹{float(fd_instance.interest_earned):,}</td></tr>
+                        </table>
+                    </div>
+                    
+                    <p>Your FD certificate is attached to this email. You can also download it from your account dashboard.</p>
+                    
+                    <p style="text-align: center;">
+                        <a href="{settings.SITE_URL or 'http://localhost:8000'}" class="button">View in Dashboard</a>
+                    </p>
+                    
+                    <p>Should you have any questions, please don't hesitate to contact us.</p>
+                    
+                    <p>Best regards,<br>Bank POC Team</p>
+                </div>
+                <div class="footer">
+                    <p>This is an automated message. Please do not reply directly to this email.</p>
+                    <p>&copy; {datetime.now().year} Bank POC. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Create email message
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=f"Dear {customer_name}, Your Fixed Deposit {fd_instance.fd_id} has been created successfully. See attached certificate.",
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[customer_email]
+        )
+        
+        # Attach HTML alternative
+        email.attach_alternative(html_content, "text/html")
+        
+        # Attach certificate PDF
+        with open(full_certificate_path, 'rb') as f:
+            email.attach(
+                f"FD_Certificate_{fd_instance.fd_id}.pdf",
+                f.read(),
+                'application/pdf'
+            )
+        
+        # Send email
+        email.send()
+        
+        logger.info(f"FD confirmation email sent to {customer_email}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error sending FD confirmation email: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    

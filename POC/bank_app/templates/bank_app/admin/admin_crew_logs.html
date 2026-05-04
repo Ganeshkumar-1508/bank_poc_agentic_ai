@@ -1,0 +1,85 @@
+{% extends 'bank_app/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}CrewAI Logs{% endblock %}
+{% block page_title %}CrewAI Reasoning Logs{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="admin-filters">
+    <select class="admin-form-select admin-filter-select" name="crew_type">
+        <option value="all" {% if crew_type == 'all' %}selected{% endif %}>All Crew Types</option>
+        {% for type in crew_types %}
+        <option value="{{ type }}" {% if crew_type == type %}selected{% endif %}>{{ type|title }}</option>
+        {% endfor %}
+    </select>
+    <select class="admin-form-select admin-filter-select" name="decision">
+        <option value="all" {% if decision == 'all' %}selected{% endif %}>All Decisions</option>
+        {% for dec in decisions %}
+        <option value="{{ dec }}" {% if decision == dec %}selected{% endif %}>{{ dec }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn-admin btn-admin-primary">Filter</button>
+</div>
+
+<!-- CrewAI Logs -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">CrewAI Reasoning ({{ logs|length }})</h2>
+    </div>
+    
+    {% for log in logs %}
+    <div style="background: var(--bg); padding: 16px; border-radius: var(--radius-sm); margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+                <span style="font-size: 0.85rem; color: var(--muted);">{{ log.crew_type|title }}</span>
+                <span style="margin: 0 8px; color: var(--dim);">|</span>
+                <code style="font-size: 0.8rem;">{{ log.application.application_id }}</code>
+            </div>
+            <span class="status {% if log.decision == 'APPROVED' %}approved{% elif log.decision == 'REJECTED' %}rejected{% else %}pending{% endif %}">{{ log.decision }}</span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px;">
+            <div>
+                <div style="font-size: 0.75rem; color: var(--muted);">Confidence</div>
+                <div style="font-size: 1rem; color: var(--gold); font-weight: 600;">{{ log.confidence_score }}%</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; color: var(--muted);">Executed</div>
+                <div style="font-size: 0.9rem; color: var(--text);">{{ log.executed_at|date:"M d, H:i" }}</div>
+            </div>
+            <div>
+                <div style="font-size: 0.75rem; color: var(--muted);">Auto-Executed</div>
+                <div style="font-size: 0.9rem; color: var(--text);">{% if log.auto_executed %}Yes{% else %}No{% endif %}</div>
+            </div>
+        </div>
+        
+        {% if log.factors %}
+        <div style="margin-bottom: 8px;">
+            <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 4px;">Key Factors:</div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                {% for factor in log.factors %}
+                <span class="admin-badge teal">{{ factor }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <pre style="background: var(--card); padding: 12px; border-radius: 8px; overflow-x: auto; color: var(--text); font-size: 0.8rem; margin-top: 8px;">{{ log.reasoning|pprint }}</pre>
+        
+        {% if log.recommendations %}
+        <div style="margin-top: 8px;">
+            <div style="font-size: 0.75rem; color: var(--muted); margin-bottom: 4px;">Recommendations:</div>
+            <ul style="font-size: 0.85rem; color: var(--text); padding-left: 20px; margin: 0;">
+                {% for rec in log.recommendations %}
+                <li>{{ rec }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% empty %}
+    <p style="text-align: center; color: var(--muted); padding: 40px;">No CrewAI reasoning logs found</p>
+    {% endfor %}
+</div>
+{% endblock %}

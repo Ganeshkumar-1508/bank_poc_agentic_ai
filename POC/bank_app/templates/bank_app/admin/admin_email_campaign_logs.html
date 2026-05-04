@@ -1,0 +1,144 @@
+{% extends 'bank_app/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Campaign Logs - {{ campaign.name }}{% endblock %}
+{% block page_title %}Email Delivery Logs: {{ campaign.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .campaign-summary {
+        background: var(--surface);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 24px;
+        border: 1px solid var(--border);
+    }
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+    }
+    .summary-item {
+        text-align: center;
+        padding: 12px;
+        background: var(--background);
+        border-radius: 8px;
+    }
+    .summary-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--gold);
+    }
+    .summary-label {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+    .log-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .log-table th, .log-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+    .log-table th {
+        background: var(--background);
+        font-weight: 600;
+        color: var(--text);
+    }
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    .status-pending { background: #f0f0f0; color: #666; }
+    .status-sent { background: #e3f2fd; color: #1976d2; }
+    .status-delivered { background: #e8f5e9; color: #388e3c; }
+    .status-opened { background: #fff3e0; color: #f57c00; }
+    .status-clicked { background: #e1f5fe; color: #0288d1; }
+    .status-bounced { background: #ffebee; color: #d32f2f; }
+    .status-failed { background: #ffebee; color: #c62828; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Campaign Summary -->
+<div class="campaign-summary">
+    <h3 style="margin-bottom: 12px;">Campaign: {{ campaign.name }}</h3>
+    <p style="color: var(--muted);">Subject: {{ campaign.subject }}</p>
+    <div class="summary-grid">
+        <div class="summary-item">
+            <div class="summary-value">{{ campaign.total_recipients }}</div>
+            <div class="summary-label">Total Recipients</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-value">{{ campaign.total_sent }}</div>
+            <div class="summary-label">Sent</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-value">{{ campaign.total_delivered }}</div>
+            <div class="summary-label">Delivered</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-value">{{ campaign.total_opened }}</div>
+            <div class="summary-label">Opened</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-value">{{ campaign.total_failed }}</div>
+            <div class="summary-label">Failed</div>
+        </div>
+    </div>
+</div>
+
+<!-- Delivery Logs -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Delivery Logs</h2>
+    </div>
+    <table class="log-table">
+        <thead>
+            <tr>
+                <th>Recipient</th>
+                <th>Status</th>
+                <th>Queued</th>
+                <th>Sent</th>
+                <th>Delivered</th>
+                <th>Opened</th>
+                <th>Failure Reason</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>
+                    {{ log.recipient_name|default:"" }}<br>
+                    <small style="color: var(--muted);">{{ log.recipient_email }}</small>
+                </td>
+                <td><span class="status-badge status-{{ log.delivery_status|lower }}">{{ log.get_delivery_status_display }}</span></td>
+                <td>{{ log.queued_at|date:"M d, Y H:i" }}</td>
+                <td>{{ log.sent_at|default:"-"|date:"M d, Y H:i" }}</td>
+                <td>{{ log.delivered_at|default:"-"|date:"M d, Y H:i" }}</td>
+                <td>{{ log.opened_at|default:"-"|date:"M d, Y H:i" }}</td>
+                <td style="color: var(--muted); font-size: 0.85rem;">{{ log.failure_reason|default:"-"|truncatechars:50 }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: var(--muted);">
+                    No delivery logs yet
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div style="margin-top: 24px;">
+    <a href="{% url 'admin_panel:admin_email_campaigns' %}" class="btn-admin btn-admin-secondary">
+        ← Back to Campaigns
+    </a>
+</div>
+{% endblock %}

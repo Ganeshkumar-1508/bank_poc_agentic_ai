@@ -1,0 +1,3439 @@
+{% extends 'bank_app/base.html' %}
+{% load static %}
+
+{% block title %}FD Advisor - Bank POC Agentic AI{% endblock %}
+
+{% block content %}
+<div class="page active" id="fd_advisor">
+<div class="container">
+<div class="hero" style="padding: 40px 24px 30px;">
+<div class="badge">💰 Financial Product Advisor</div>
+<h1 class="gradient-text-gold">Compare <em>Investment Rates</em> Across Products</h1>
+<p>Find the best investment rates across multiple financial products with intelligent comparison tools.</p>
+</div>
+
+<div class="two-col">
+<div class="creditwise-card">
+<div class="card-head">
+<div class="ic ic-gold">🏦</div>
+<div>
+<h3 class="card-title">Investment Comparison</h3>
+<p class="card-sub">Select product and enter investment details</p>
+</div>
+</div>
+
+<div class="section-divider">Investment Details</div>
+
+<!-- Financial Product Dropdown -->
+<div class="field" style="margin-top: 16px;">
+<label for="financial_product">Financial Product</label>
+<div style="position: relative;">
+<select id="financial_product" class="product-select" style="padding-right: 30px;">
+<option value="FD" data-icon="💰" data-description="Fixed Deposit - Safe, guaranteed returns with fixed tenure">Fixed Deposit (FD)</option>
+<option value="RD" data-icon="💵" data-description="Recurring Deposit - Monthly savings with guaranteed returns">Recurring Deposit (RD)</option>
+<option value="PPF" data-icon="🏛️" data-description="Public Provident Fund - Long-term tax-free government savings">Public Provident Fund (PPF)</option>
+<option value="MF" data-icon="📈" data-description="Mutual Funds - Market-linked returns with professional management">Mutual Funds (MF)</option>
+<option value="NPS" data-icon="👴" data-description="National Pension System - Retirement-focused investment">National Pension System (NPS)</option>
+<option value="SGB" data-icon="🏆" data-description="Sovereign Gold Bond - Gold exposure with interest income">Sovereign Gold Bond (SGB)</option>
+<option value="BOND" data-icon="📜" data-description="Corporate Bonds - Fixed income from corporate issuers">Corporate Bonds</option>
+<option value="TBILL" data-icon="📋" data-description="Treasury Bills - Short-term government securities">Treasury Bills (T-Bills)</option>
+<option value="CD" data-icon="📄" data-description="Certificate of Deposit - Bank-issued fixed-term deposit">Certificate of Deposit (CD)</option>
+</select>
+<div id="product_tooltip" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; color: var(--teal);">
+ℹ️
+</div>
+</div>
+<div id="product_description" style="font-size: 0.75rem; color: var(--teal); margin-top: 4px; font-style: italic;">
+Fixed Deposit - Safe, guaranteed returns with fixed tenure
+</div>
+</div>
+
+<div class="field slider-field">
+<div class="slider-header">
+<label for="fd_amount">Investment Amount</label>
+<span class="slider-val" id="fd_amount_val"><span id="currency_symbol_initial">₹</span>1,00,000</span>
+</div>
+<div class="pfx">
+<span id="currency_slider_prefix">₹</span>
+<input type="range" id="fd_amount_slider" class="slider" min="10000" max="5000000" step="1000" value="100000">
+</div>
+<input type="number" id="fd_amount" value="100000" min="10000" max="5000000" step="1000" style="margin-top: 8px;">
+<span class="field-hint">Range: <span id="currency_range_min">₹</span>10,000 to <span id="currency_range_max">₹</span>50,00,000</span>
+</div>
+
+<div class="row2" style="margin-top: 16px;">
+<div class="field slider-field">
+<div class="slider-header">
+<label for="fd_tenure">Tenure</label>
+<span class="slider-val" id="fd_tenure_val">12 months</span>
+</div>
+<input type="range" id="fd_tenure_slider" class="slider" min="1" max="360" step="1" value="12">
+<div class="slider-ticks">
+<span>1</span>
+<span>60</span>
+<span>120</span>
+<span>240</span>
+<span>360</span>
+</div>
+<input type="number" id="fd_tenure" value="12" min="1" max="360" step="1" style="margin-top: 8px;">
+<span class="field-hint">Range: 1 to 360 months</span>
+</div>
+<div class="field">
+<label for="fd_region">Region</label>
+<div style="position: relative;">
+<select id="fd_region" style="padding-right: 80px;">
+<option value="">Loading countries...</option>
+</select>
+<div id="region_indicator" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.7rem; color: var(--teal); display: none;">
+<span class="loading-spinner" style="width: 10px; height: 10px; border-width: 1px;"></span>
+</div>
+</div>
+<div id="region_auto_detected" style="font-size: 0.75rem; color: var(--teal); margin-top: 4px; display: none;">
+✓ Region auto-detected
+</div>
+</div>
+</div>
+
+<!-- Product-Specific Input Fields (shown/hidden based on product selection) -->
+<div id="product_specific_fields">
+    <!-- Senior Citizen (FD only) -->
+    <div class="field product-field" id="field_senior_citizen" data-products="FD">
+        <label for="senior_citizen">
+            <input type="checkbox" id="senior_citizen" name="senior_citizen">
+            Senior Citizen (additional 0.50% interest)
+        </label>
+    </div>
+
+    <!-- Auto-renewal (FD only) -->
+    <div class="field product-field" id="field_auto_renewal" data-products="FD">
+        <label for="auto_renewal">
+            <input type="checkbox" id="auto_renewal" name="auto_renewal" checked>
+            Auto-renewal on maturity
+        </label>
+    </div>
+    
+    <!-- Compounding Frequency (FD) -->
+    <div class="field product-field" id="field_compounding_freq" data-products="FD">
+    <label for="compounding_freq">Compounding Frequency</label>
+    <select id="compounding_freq" name="compounding_freq">
+    <option value="monthly" selected>Monthly</option>
+    <option value="quarterly">Quarterly</option>
+    <option value="half-yearly">Half-Yearly</option>
+    <option value="annual">Annual</option>
+    </select>
+    </div>
+    
+    <!-- Monthly Amount Label (RD) -->
+    <div class="field product-field" id="field_rd_label" data-products="RD" style="display: none;">
+        <label>Monthly Contribution Note</label>
+        <p style="font-size: 0.85rem; color: var(--teal);">For RD, the investment amount above represents your <strong>monthly installment</strong>. Total deposits will be: Monthly Amount × Tenure (months).</p>
+    </div>
+
+    <!-- Start Date (RD optional) -->
+    <div class="field product-field" id="field_rd_start_date" data-products="RD" style="display: none;">
+        <label for="rd_start_date">Start Date (optional)</label>
+        <input type="date" id="rd_start_date" name="rd_start_date">
+    </div>
+
+    <!-- Annual Contribution Note (PPF, NPS) -->
+    <div class="field product-field" id="field_annual_note" data-products="PPF,NPS" style="display: none;">
+        <label>Annual Contribution Note</label>
+        <p style="font-size: 0.85rem; color: var(--teal);">For this product, the investment amount represents your <strong>annual contribution</strong>.</p>
+    </div>
+
+    <!-- SIP Toggle (MF) -->
+    <div class="field product-field" id="field_mf_sip" data-products="MF" style="display: none;">
+        <label for="mf_sip">
+            <input type="checkbox" id="mf_sip" name="mf_sip" checked>
+            SIP (Systematic Investment Plan)
+        </label>
+    </div>
+
+    <!-- Risk Level (MF, NPS) -->
+    <div class="field product-field" id="field_risk_level" data-products="MF,NPS" style="display: none;">
+        <label for="risk_level">Risk Level</label>
+        <select id="risk_level" name="risk_level">
+            <option value="low">Conservative (Low Risk)</option>
+            <option value="moderate" selected>Moderate (Medium Risk)</option>
+            <option value="high">Aggressive (High Risk)</option>
+        </select>
+    </div>
+
+    <!-- Age (NPS) -->
+    <div class="field product-field" id="field_age" data-products="NPS" style="display: none;">
+        <label for="nps_age">Age</label>
+        <input type="number" id="nps_age" name="nps_age" min="18" max="70" placeholder="Enter your age">
+    </div>
+
+    <!-- Risk Profile (NPS) -->
+    <div class="field product-field" id="field_nps_risk" data-products="NPS" style="display: none;">
+        <label for="nps_risk_profile">Risk Profile</label>
+        <select id="nps_risk_profile" name="nps_risk_profile">
+            <option value="conservative">Conservative (70% debt, 15% equity, 15% gold)</option>
+            <option value="moderate" selected>Moderate (50% debt, 35% equity, 15% gold)</option>
+            <option value="aggressive">Aggressive (25% debt, 60% equity, 15% gold)</option>
+        </select>
+    </div>
+
+    <!-- Coupon Frequency (Bonds) -->
+    <div class="field product-field" id="field_coupon_freq" data-products="BOND" style="display: none;">
+        <label for="coupon_frequency">Coupon Payment Frequency</label>
+        <select id="coupon_frequency" name="coupon_frequency">
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="semi-annual" selected>Semi-Annual</option>
+            <option value="annual">Annual</option>
+        </select>
+    </div>
+
+    <!-- T-Bill Tenure Options -->
+    <div class="field product-field" id="field_tbill_tenure" data-products="TBILL" style="display: none;">
+        <label for="tbill_tenure">Tenure</label>
+        <select id="tbill_tenure" name="tbill_tenure">
+            <option value="91">91 days</option>
+            <option value="182">182 days</option>
+            <option value="364" selected>364 days</option>
+        </select>
+    </div>
+</div>
+
+<button class="btn-primary btn-creditwise" onclick="compareFDs()">Analyze with CrewAI</button>
+</div>
+
+<!-- Unified Results Panel -->
+<div class="result-panel fadeUp" id="fd_results">
+<div class="placeholder">
+<div class="placeholder-icon">📊</div>
+<p><strong>Enter your investment details</strong> to see FD rate comparisons with AI analysis.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Apache ECharts Library -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+<!-- DOMPurify for HTML sanitization -->
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+
+<!-- Markdown Renderer for CrewAI Output (preload marked.js) -->
+<script src="{% static 'js/markdown_renderer.js' %}" defer></script>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// FD Advisor slider synchronization functions
+
+// Global state for country data and auto-detection
+// Matches Streamlit pattern: country data keyed by ISO2 code
+// Note: countryListData is already declared in base.html, so we just reassign
+countryListData = {};
+let regionAutoDetected = false;
+let currentProduct = 'FD'; // Default product
+let currentCurrencySymbol = '₹'; // Default to INR symbol
+let currentCurrencyCode = 'INR'; // Default currency code
+
+/**
+ * Get currency symbol for a country code
+ * @param {string} countryCode - ISO2 country code
+ * @returns {string} Currency symbol
+ */
+function getCurrencySymbol(countryCode) {
+    if (!countryCode) return '₹'; // Default to INR
+    const country = countryListData[countryCode.toUpperCase()];
+    if (country && country.currency_symbol) {
+        return country.currency_symbol;
+    }
+    // Fallback currency symbol mapping
+    const currencyMap = {
+        'IN': '₹', 'US': '$', 'GB': '£', 'CA': '$', 'AU': '$',
+        'DE': '€', 'FR': '€', 'JP': '¥', 'CN': '¥', 'BR': 'R$',
+        'MX': '$', 'KR': '₩', 'RU': '₽', 'WW': ''
+    };
+    return currencyMap[countryCode.toUpperCase()] || '$';
+}
+
+/**
+ * Get currency code for a country code
+ * @param {string} countryCode - ISO2 country code
+ * @returns {string} Currency code
+ */
+function getCurrencyCode(countryCode) {
+    if (!countryCode) return 'INR'; // Default to INR
+    const country = countryListData[countryCode.toUpperCase()];
+    if (country && country.currency_code) {
+        return country.currency_code;
+    }
+    // Fallback currency code mapping
+    const currencyCodeMap = {
+        'IN': 'INR', 'US': 'USD', 'GB': 'GBP', 'CA': 'CAD', 'AU': 'AUD',
+        'DE': 'EUR', 'FR': 'EUR', 'JP': 'JPY', 'CN': 'CNY', 'BR': 'BRL',
+        'MX': 'MXN', 'KR': 'KRW', 'RU': 'RUB', 'WW': ''
+    };
+    return currencyCodeMap[countryCode.toUpperCase()] || 'USD';
+}
+
+/**
+ * Update all currency symbols on the page based on selected country
+ * @param {string} countryCode - ISO2 country code
+ */
+function updateCurrencyDisplay(countryCode) {
+currentCurrencySymbol = getCurrencySymbol(countryCode);
+currentCurrencyCode = getCurrencyCode(countryCode);
+
+// Update investment amount display - preserve the number part
+const fdAmountVal = document.getElementById('fd_amount_val');
+if (fdAmountVal) {
+const amount = parseInt(fdAmountSlider?.value || fdAmountInput?.value || '100000');
+const currencySymbolSpan = document.getElementById('currency_symbol_initial');
+if (currencySymbolSpan) {
+currencySymbolSpan.textContent = currentCurrencySymbol;
+}
+fdAmountVal.textContent = currentCurrencySymbol + formatCurrency(amount);
+}
+
+// Update slider prefix with new ID
+const sliderPrefix = document.getElementById('currency_slider_prefix');
+if (sliderPrefix) {
+sliderPrefix.textContent = currentCurrencySymbol;
+}
+
+// Update range hint with new IDs
+const currencyRangeMin = document.getElementById('currency_range_min');
+const currencyRangeMax = document.getElementById('currency_range_max');
+if (currencyRangeMin) {
+currencyRangeMin.textContent = currentCurrencySymbol;
+}
+if (currencyRangeMax) {
+currencyRangeMax.textContent = currentCurrencySymbol;
+}
+    
+    // Update summary section currency symbols (line 1378 equivalent)
+    const summaryInvestment = document.querySelector('.summary-label:contains("Investment") + .summary-value');
+    if (summaryInvestment) {
+        const amountText = summaryInvestment.textContent.replace(/[₹$£€]/g, '');
+        summaryInvestment.textContent = currentCurrencySymbol + amountText;
+    }
+    
+    // Re-render results if they exist
+    const resultsPanel = document.getElementById('fd_results');
+    if (resultsPanel && resultsPanel.innerHTML.trim() !== '') {
+        // Trigger a re-render of the results with new currency
+        const fdAmountSlider = document.getElementById('fd_amount_slider');
+        const fdTenureSlider = document.getElementById('fd_tenure_slider');
+        if (fdAmountSlider && fdTenureSlider) {
+            compareFDs(); // Re-run the comparison with new currency
+        }
+    }
+}
+
+/**
+ * Format number with appropriate separators based on locale
+ * @param {number} num - Number to format
+ * @returns {string} Formatted number
+ */
+function formatCurrency(num) {
+    // Use Indian numbering format for INR, otherwise standard format
+    if (currentCurrencyCode === 'INR') {
+        return num.toLocaleString('en-IN');
+    }
+    return num.toLocaleString('en-US');
+}
+
+/**
+ * Initialize FD Advisor page on load
+ * - Fetch country list
+ * - Auto-detect user region
+ * - Pre-populate dropdown
+ * - Initialize product-specific fields
+ */
+document.addEventListener('DOMContentLoaded', function() {
+  // Load country list and auto-detect region
+  Promise.all([
+    loadCountryList(),
+    autoDetectUserRegion()
+  ]).then(() => {
+    console.log('FD Advisor initialized');
+    // Initialize product-specific fields
+    initProductFields();
+    // Add product change listener
+    initProductChangeListener();
+    // Initialize sliders
+    initSliders();
+  }).catch(error => {
+    console.error('Failed to initialize FD Advisor:', error);
+  });
+});
+
+/**
+ * Initialize all sliders with event listeners and initial states
+ */
+function initSliders() {
+  // FD Amount Slider
+  const fdAmountSlider = document.getElementById('fd_amount_slider');
+  const fdAmountInput = document.getElementById('fd_amount');
+  if (fdAmountSlider && fdAmountInput) {
+    // Initialize gradient
+    updateSliderGradient(fdAmountSlider);
+    // Add event listener for slider input - updates display only, no auto-analysis
+    fdAmountSlider.addEventListener('input', function() {
+      syncSlider('fd_amount', this.value);
+    });
+    // Initialize display from input value
+    syncSlider('fd_amount', fdAmountInput.value);
+  }
+
+  // FD Tenure Slider
+  const fdTenureSlider = document.getElementById('fd_tenure_slider');
+  const fdTenureInput = document.getElementById('fd_tenure');
+  if (fdTenureSlider && fdTenureInput) {
+    // Initialize gradient
+    updateSliderGradient(fdTenureSlider);
+    // Add event listener for slider input - updates display only, no auto-analysis
+    fdTenureSlider.addEventListener('input', function() {
+      syncSlider('fd_tenure', this.value);
+    });
+    // Initialize tick marks
+    updateTickMarks('fd_tenure', fdTenureSlider.value);
+    // Initialize display from input value
+    syncSlider('fd_tenure', fdTenureInput.value);
+  }
+
+  // Add event listeners for number inputs - updates display only, no auto-analysis
+  if (fdAmountInput) {
+    fdAmountInput.addEventListener('input', function() {
+      syncInputToSlider('fd_amount_slider', this.value);
+    });
+    fdAmountInput.addEventListener('change', function() {
+      syncInputToSlider('fd_amount_slider', this.value);
+    });
+    fdAmountInput.addEventListener('blur', function() {
+      syncInputToSlider('fd_amount_slider', this.value);
+    });
+  }
+  if (fdTenureInput) {
+    fdTenureInput.addEventListener('input', function() {
+      syncInputToSlider('fd_tenure_slider', this.value);
+    });
+    fdTenureInput.addEventListener('change', function() {
+      syncInputToSlider('fd_tenure_slider', this.value);
+    });
+    fdTenureInput.addEventListener('blur', function() {
+      syncInputToSlider('fd_tenure_slider', this.value);
+    });
+  }
+}
+
+/**
+ * Initialize product-specific fields based on default product
+ */
+function initProductFields() {
+const productSelect = document.getElementById('financial_product');
+if (productSelect) {
+currentProduct = productSelect.value;
+showProductSpecificFields(currentProduct);
+}
+}
+
+/**
+ * Initialize product change listener
+ */
+function initProductChangeListener() {
+const productSelect = document.getElementById('financial_product');
+if (productSelect) {
+productSelect.addEventListener('change', function() {
+currentProduct = this.value;
+showProductSpecificFields(currentProduct);
+// Update tooltip description
+const selectedOption = this.options[this.selectedIndex];
+const description = selectedOption.getAttribute('data-description');
+const descElement = document.getElementById('product_description');
+if (descElement) {
+descElement.textContent = description;
+}
+});
+}
+}
+
+/**
+ * Show/hide product-specific input fields based on selected product
+ * @param {string} product - Product code (FD, RD, PPF, MF, NPS, SGB, BOND, TBILL, CD)
+ */
+function showProductSpecificFields(product) {
+const allFields = document.querySelectorAll('.product-field');
+allFields.forEach(field => {
+const allowedProducts = field.getAttribute('data-products');
+if (allowedProducts) {
+const productList = allowedProducts.split(',');
+if (productList.includes(product)) {
+field.style.display = 'block';
+} else {
+field.style.display = 'none';
+}
+}
+});
+
+// Update slider and tenure labels based on product
+updateInputLabels(product);
+}
+
+/**
+ * Update input field labels based on selected product
+ * @param {string} product - Product code
+ */
+function updateInputLabels(product) {
+const amountLabel = document.querySelector('label[for="fd_amount"]');
+const amountHint = document.getElementById('fd_amount_val');
+const tenureLabel = document.querySelector('label[for="fd_tenure"]');
+const tenureHint = document.getElementById('fd_tenure_val');
+
+switch(product) {
+case 'RD':
+if (amountLabel) amountLabel.textContent = 'Monthly Contribution';
+if (tenureLabel) tenureLabel.textContent = 'Tenure (months)';
+break;
+case 'PPF':
+case 'NPS':
+if (amountLabel) amountLabel.textContent = 'Annual Contribution';
+if (tenureLabel) tenureLabel.textContent = 'Tenure (years)';
+break;
+case 'TBILL':
+if (amountLabel) amountLabel.textContent = 'Investment Amount';
+if (tenureLabel) tenureLabel.textContent = 'Tenure (days)';
+break;
+default:
+if (amountLabel) amountLabel.textContent = 'Investment Amount';
+if (tenureLabel) tenureLabel.textContent = 'Tenure';
+}
+}
+
+/**
+ * Load country list from API endpoint
+ * @returns {Promise} Resolves when countries are loaded
+ */
+async function loadCountryList() {
+// Dynamic country data fetching - NO hardcoded countries
+// Matches Streamlit reference implementation pattern:
+// - Fetch country data from API
+// - Build lookup by country code
+// - Sort country names for display
+// - Use code as value, name for display
+
+const regionSelect = document.getElementById('fd_region');
+
+try {
+  const response = await fetch('/api/csc/countries/');
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  if (!data.countries || !Array.isArray(data.countries) || data.countries.length === 0) {
+    throw new Error('No countries returned from API or invalid response format');
+  }
+
+  // Transform API response to match Streamlit pattern
+  // Streamlit uses: all_countries[code] = {name, official_name, alpha_3, currency_code, currency_symbol, ddg_region}
+  // API returns: {countries: [{code, name, emoji, currency, currency_code, currency_symbol}]}
+  countryListData = {};
+  
+  data.countries.forEach(country => {
+      if (country.code && country.name) {
+          countryListData[country.code] = {
+              name: country.name,
+              official_name: country.name,
+              alpha_3: country.code, // API doesn't provide alpha-3, using code as fallback
+              currency_code: country.currency_code || country.code === 'US' ? 'USD' : (country.code === 'IN' ? 'INR' : country.currency_code || ''),
+              currency_symbol: country.currency_symbol || country.currency || getCurrencySymbol(country.code),
+              ddg_region: country.code.toLowerCase() + '-en' // Default region mapping
+          };
+      }
+  });
+
+  // Add "Worldwide" entry to match Streamlit's WW entry
+  countryListData['WW'] = {
+    name: 'Worldwide',
+    official_name: 'Worldwide',
+    alpha_3: '',
+    currency_code: '',
+    currency_symbol: '',
+    ddg_region: 'wt-wt'
+  };
+
+  console.log('Countries loaded:', Object.keys(countryListData).length, 'countries');
+  populateCountryDropdown();
+
+} catch (error) {
+  console.error('Error loading country data:', error);
+  // Show error message in dropdown
+  if (regionSelect) {
+    regionSelect.innerHTML = '<option value="">Error loading countries - ' + error.message + '</option>';
+  }
+}
+}
+
+/**
+* Auto-detect user region from /api/user-region/ endpoint
+* Matches Streamlit reference implementation pattern:
+* - Use country code to lookup country info
+* - Set the selected value to the detected code
+* @returns {Promise} Resolves when region is detected
+*/
+async function autoDetectUserRegion() {
+try {
+const response = await fetch('/api/user-region/');
+const data = await response.json();
+
+if (data.country_code) {
+const detectedCode = data.country_code.toUpperCase();
+const regionSelect = document.getElementById('fd_region');
+
+// Check if detected country is in the list (countryListData is now keyed by code)
+const countryExists = countryListData[detectedCode] !== undefined;
+
+if (countryExists && regionSelect) {
+regionSelect.value = detectedCode;
+regionAutoDetected = true;
+
+// Show auto-detected indicator
+const indicator = document.getElementById('region_auto_detected');
+if (indicator) {
+indicator.style.display = 'block';
+}
+
+const countryInfo = countryListData[detectedCode];
+console.log(`Region auto-detected: ${countryInfo.name} (${detectedCode})`);
+
+// Update currency display with detected country
+updateCurrencyDisplay(detectedCode);
+}
+}
+} catch (error) {
+console.warn('Could not auto-detect user region:', error);
+// Continue without auto-detection - user can select manually
+}
+}
+
+/**
+ * Populate country dropdown with country data
+ * Matches Streamlit reference implementation pattern:
+ * Also sets up the region change listener to update currency display
+* - Build lookup of country name -> code
+* - Sort country names alphabetically
+* - Display sorted names with code as value
+* @param {Object} countries - Country data dict keyed by ISO2 code
+*/
+function populateCountryDropdown(countries = countryListData) {
+const regionSelect = document.getElementById('fd_region');
+if (!regionSelect) return;
+
+// Clear existing options
+regionSelect.innerHTML = '';
+
+// Build lookup: country_name -> country_code (matches Streamlit's country_lookup_sb)
+const countryLookup = {};
+const countryNames = [];
+
+Object.keys(countries).forEach(code => {
+const info = countries[code];
+const name = info.name;
+if (name) {
+countryLookup[name] = code;
+countryNames.push(name);
+}
+});
+
+// Sort country names alphabetically (matches Streamlit's country_names_sb)
+countryNames.sort();
+
+// Add options in sorted order (matches Streamlit's selectbox with sorted options)
+countryNames.forEach(name => {
+const code = countryLookup[name];
+const info = countries[code];
+const option = document.createElement('option');
+option.value = code;
+
+// Display format: Country Name (Currency Symbol)
+// Similar to Streamlit which just shows country names
+option.textContent = info.currency_symbol
+? `${name} (${info.currency_symbol})`
+: name;
+regionSelect.appendChild(option);
+});
+
+// If region was auto-detected but country list wasn't loaded yet, try again
+if (regionAutoDetected && regionSelect.value === '') {
+autoDetectUserRegion();
+}
+
+// If region was auto-detected, update currency display
+if (regionAutoDetected && regionSelect.value) {
+updateCurrencyDisplay(regionSelect.value);
+}
+
+// Add region change listener to update currency display
+regionSelect.addEventListener('change', function() {
+    const selectedCountry = this.value;
+    if (selectedCountry) {
+        updateCurrencyDisplay(selectedCountry);
+    }
+});
+}
+
+// Global state for FD creation modal
+let selectedFD = {
+    bank: '',
+    rate: 0,
+    amount: 0,
+    tenure: 12
+};
+
+// Open FD creation modal
+function openFD(bankName, rate, maturityAmount) {
+    const amount = parseFloat(document.getElementById('fd_amount').value) || 0;
+    const tenure = parseInt(document.getElementById('fd_tenure').value) || 12;
+    
+    selectedFD = {
+        bank: bankName,
+        rate: rate,
+        amount: amount,
+        maturityAmount: maturityAmount,
+        tenure: tenure
+    };
+    
+    // Populate modal with FD details
+    document.getElementById('modal_bank_name').textContent = bankName;
+    document.getElementById('modal_rate').textContent = rate + '%';
+    document.getElementById('modal_amount').textContent = currentCurrencySymbol + amount.toLocaleString('en-IN');
+    document.getElementById('modal_tenure').textContent = tenure + ' months';
+    document.getElementById('modal_maturity').textContent = currentCurrencySymbol + Math.round(maturityAmount).toLocaleString('en-IN');
+    
+    // Reset form
+    document.getElementById('customer_name').value = '';
+    document.getElementById('customer_email').value = '';
+    document.getElementById('customer_phone').value = '';
+    document.getElementById('senior_citizen').checked = false;
+    document.getElementById('auto_renewal').checked = true;
+    document.getElementById('send_email_notification').checked = true;
+    document.getElementById('accept_terms').checked = false;
+    
+    // Show form, hide success message
+    document.getElementById('fd_customer_form').style.display = 'block';
+    document.getElementById('fd_success_message').classList.remove('active');
+    document.getElementById('fd_modal_footer').style.display = 'flex';
+    
+    // Show modal
+    document.getElementById('fd_creation_modal').classList.add('active');
+}
+
+// Close FD creation modal
+function closeFDModal() {
+    document.getElementById('fd_creation_modal').classList.remove('active');
+}
+
+// Confirm FD creation
+async function confirmFDCreation() {
+    const customerName = document.getElementById('customer_name').value.trim();
+    const customerEmail = document.getElementById('customer_email').value.trim();
+    const customerPhone = document.getElementById('customer_phone').value.trim();
+    const seniorCitizen = document.getElementById('senior_citizen').checked;
+    const autoRenewal = document.getElementById('auto_renewal').checked;
+    const sendEmail = document.getElementById('send_email_notification').checked;
+    const acceptTerms = document.getElementById('accept_terms').checked;
+    
+    // Validation
+    if (!customerName) {
+        alert('Please enter your full name.');
+        return;
+    }
+    if (!customerEmail || !isValidEmail(customerEmail)) {
+        alert('Please enter a valid email address.');
+        return;
+    }
+    if (!acceptTerms) {
+        alert('Please accept the Terms and Conditions to proceed.');
+        return;
+    }
+    
+    // Get today's date as start date
+    const today = new Date();
+    const startDate = today.toISOString().split('T')[0];
+    
+    // Disable button and show loading
+    const confirmBtn = document.getElementById('btn_confirm_fd');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="loading-spinner"></span>Creating FD...';
+    
+    try {
+        // Prepare request data
+        const requestData = {
+            bank_name: selectedFD.bank,
+            rate: selectedFD.rate,
+            amount: selectedFD.amount,
+            tenure_months: selectedFD.tenure,
+            start_date: startDate,
+            customer_name: customerName,
+            customer_email: customerEmail,
+            customer_phone: customerPhone,
+            senior_citizen: seniorCitizen,
+            auto_renewal: autoRenewal,
+            send_email: sendEmail,
+            region: document.getElementById('fd_region').value
+        };
+        
+        // Call API
+        const response = await fetch('/api/td-fd-creation/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to create FD');
+        }
+        
+        // Show success message
+        document.getElementById('fd_customer_form').style.display = 'none';
+        document.getElementById('fd_modal_footer').style.display = 'none';
+        document.getElementById('success_fd_id').textContent = result.fd_id;
+        document.getElementById('success_maturity_amount').textContent = currentCurrencySymbol + Math.round(result.maturity_amount).toLocaleString('en-IN');
+        
+        if (result.certificate_url) {
+            document.getElementById('download_certificate_btn').href = result.certificate_url;
+        }
+        
+        document.getElementById('fd_success_message').classList.add('active');
+        
+    } catch (error) {
+        console.error('FD creation error:', error);
+        alert('Error creating FD: ' + error.message);
+        
+        // Re-enable button
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = 'Confirm & Create FD';
+    }
+}
+
+// Email validation helper
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+// Close modal when clicking outside (must wait for DOM)
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('fd_creation_modal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeFDModal();
+            }
+        });
+    }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeFDModal();
+    }
+});
+
+/**
+ * Syncs slider value with corresponding input field and display label
+ * @param {string} inputId - ID of the number input to sync
+ * @param {string} value - New value from slider
+ */
+function syncSlider(inputId, value) {
+const input = document.getElementById(inputId);
+const display = document.getElementById(inputId + '_val');
+
+if (input && input.value !== value) {
+input.value = value;
+}
+
+// Update display label with formatted value
+if (display) {
+    if (inputId === 'fd_amount') {
+        // Currency format for FD amount
+        display.textContent = currentCurrencySymbol + parseInt(value).toLocaleString('en-IN');
+    } else if (inputId === 'fd_tenure') {
+// Tenure format: show years if >= 12 and divisible by 12, otherwise months
+const months = parseInt(value);
+if (months >= 12 && months % 12 === 0) {
+const years = months / 12;
+display.textContent = years + (years === 1 ? ' year' : ' years');
+} else {
+display.textContent = months + ' months';
+}
+}
+
+// Update tick marks active state
+updateTickMarks(inputId, value);
+}
+
+// Update CSS --pct variable for gradient fill
+const slider = document.getElementById(inputId + '_slider');
+if (slider) {
+updateSliderGradient(slider);
+}
+}
+
+/**
+ * Syncs number input value with corresponding slider
+ * @param {string} sliderId - ID of the slider to sync
+ * @param {string} value - New value from number input
+ */
+function syncInputToSlider(sliderId, value) {
+const slider = document.getElementById(sliderId);
+if (slider) {
+const min = parseFloat(slider.min) || 0;
+const max = parseFloat(slider.max) || 1000000;
+const numValue = Math.min(Math.max(parseFloat(value) || min, min), max);
+
+if (slider.value !== String(numValue)) {
+slider.value = numValue;
+updateSliderGradient(slider);
+
+// Update display label
+const inputId = sliderId.replace('_slider', '');
+const display = document.getElementById(inputId + '_val');
+if (display) {
+    if (inputId === 'fd_amount') {
+        display.textContent = currentCurrencySymbol + parseInt(numValue).toLocaleString('en-IN');
+    } else if (inputId === 'fd_tenure') {
+const months = parseInt(numValue);
+if (months >= 12 && months % 12 === 0) {
+const years = months / 12;
+display.textContent = years + (years === 1 ? ' year' : ' years');
+} else {
+display.textContent = months + ' months';
+}
+}
+}
+
+// Update tick marks
+updateTickMarks(inputId, numValue);
+}
+}
+}
+
+/**
+ * Updates the slider gradient based on current value
+ * @param {HTMLElement} slider - The range input element
+ */
+function updateSliderGradient(slider) {
+if (!slider) return;
+
+const min = parseFloat(slider.min) || 0;
+const max = parseFloat(slider.max) || 100;
+const val = parseFloat(slider.value) || 0;
+const pct = ((val - min) / (max - min)) * 100;
+
+slider.style.setProperty('--pct', pct + '%');
+}
+
+/**
+ * Updates active tick marks based on slider value
+ * @param {string} inputId - ID of the input field
+ * @param {string} value - Current slider value
+ */
+function updateTickMarks(inputId, value) {
+const slider = document.getElementById(inputId + '_slider');
+if (!slider) return;
+
+const ticksContainer = slider.nextElementSibling;
+if (!ticksContainer || !ticksContainer.classList.contains('slider-ticks')) return;
+
+const min = parseFloat(slider.min) || 0;
+const max = parseFloat(slider.max) || 100;
+const val = parseFloat(value) || 0;
+
+const tickValues = Array.from(ticksContainer.querySelectorAll('span')).map(span => {
+const text = span.textContent.replace(' years', '').replace(' months', '');
+return parseFloat(text);
+});
+
+tickValues.forEach((tickVal, index) => {
+const tickSpan = ticksContainer.querySelectorAll('span')[index];
+if (tickVal <= val) {
+tickSpan.classList.add('active');
+} else {
+tickSpan.classList.remove('active');
+}
+});
+}
+
+
+/**
+ * Ensure marked.js is loaded before rendering
+ * @returns {Promise} Resolves when marked.js is available
+ */
+function ensureMarkedLoaded() {
+    return new Promise((resolve) => {
+        if (typeof marked !== 'undefined' || typeof window.marked !== 'undefined') {
+            resolve();
+            return;
+        }
+
+        // Check if script is already loading
+        const existingScript = document.querySelector('script[src*="marked"]');
+        if (existingScript) {
+            // Wait for it to load
+            const checkInterval = setInterval(() => {
+                if (typeof marked !== 'undefined' || typeof window.marked !== 'undefined') {
+                    clearInterval(checkInterval);
+                    resolve();
+                }
+            }, 100);
+            // Timeout after 5 seconds
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                resolve();
+            }, 5000);
+            return;
+        }
+
+        // Load marked.js
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+        script.onload = () => resolve();
+        script.onerror = () => {
+            console.warn('Failed to load marked.js, will use fallback');
+            resolve();
+        };
+        document.head.appendChild(script);
+    });
+}
+
+// CSRF Token Helper with fallback mechanism
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+/**
+ * Get CSRF token with multiple fallback strategies
+ * 1. Try getCookie('csrftoken')
+ * 2. Try window.CSRF_TOKEN (set by Django template)
+ * 3. Try meta tag
+ * 4. Return empty string (let server handle it)
+ */
+function getCSRFToken() {
+  // Primary: Cookie-based
+  let token = getCookie('csrftoken');
+  if (token) {
+    return token;
+  }
+
+  // Fallback 1: Global variable set by Django
+  if (typeof window.CSRF_TOKEN !== 'undefined' && window.CSRF_TOKEN) {
+    return window.CSRF_TOKEN;
+  }
+
+  // Fallback 2: Meta tag
+  const metaTag = document.querySelector('meta[name="csrf-token"]');
+  if (metaTag && metaTag.getAttribute('content')) {
+    return metaTag.getAttribute('content');
+  }
+
+  // Fallback 3: Try to find in any csrf-related cookie
+  const allCookies = document.cookie.split(';');
+  for (const cookie of allCookies) {
+    const [name] = cookie.trim().split('=');
+    if (name.toLowerCase().includes('csrf')) {
+      return decodeURIComponent(cookie.split('=')[1]);
+    }
+  }
+
+  // Last resort: empty string (Django may still accept it in some configurations)
+  console.warn('[getCSRFToken] No CSRF token found, proceeding without one');
+  return '';
+}
+
+// Global state for FD analysis data
+let fdAnalysisData = {
+fdRates: [],
+analysisText: '',
+providerDeepDive: '',
+riskAnalysis: '',
+strategicRecommendations: '',
+chartData: null,
+riskAnalysisData: {
+has_risk_data: false,
+safety_profiles: [],
+insurance_status: [],
+risk_matrix: [],
+recent_news: [],
+overall_summary: ''
+},
+summaryHtml: '',
+fullAgentOutput: ''
+};
+
+// Compare Financial Product Rates using CrewAI API
+async function compareFDs() {
+const amount = parseFloat(document.getElementById('fd_amount').value) || 0;
+let tenure = parseInt(document.getElementById('fd_tenure').value) || 0;
+const region = document.getElementById('fd_region').value;
+const productType = currentProduct || 'FD';
+
+// Adjust tenure interpretation based on product
+let tenureUnit = 'months';
+if (productType === 'PPF' || productType === 'NPS') {
+tenureUnit = 'years';
+// Convert years to months for API (if needed)
+tenure = tenure * 12;
+} else if (productType === 'TBILL') {
+tenureUnit = 'days';
+}
+
+if (amount <= 0 || tenure <= 0) {
+alert('Please enter valid investment details.');
+return;
+}
+
+if (!region) {
+alert('Please select a region.');
+return;
+}
+
+const resultsDiv = document.getElementById('fd_results');
+const analyzeButton = document.querySelector('button[onclick="compareFDs()"]');
+
+// Disable button and show loading state
+if (analyzeButton) {
+analyzeButton.disabled = true;
+analyzeButton.innerHTML = '<span class="loading-spinner"></span>Analyzing...';
+}
+
+// Show progress indicator
+resultsDiv.innerHTML = `
+<div class="placeholder">
+<div class="placeholder-icon">⏳</div>
+<p><strong id="progress_text">Initializing analysis...</strong></p>
+<p style="font-size: 0.85rem; color: var(--dim);">This may take 10-15 seconds</p>
+<div class="loading-dots" style="margin-top: 20px;">
+<span></span><span></span><span></span>
+</div>
+</div>
+`;
+
+try {
+// Update progress
+updateProgress('Fetching ' + productType + ' rates...');
+
+// Collect product-specific parameters
+const productParams = {
+product_type: productType,
+amount: amount,
+tenure: tenure,
+tenure_unit: tenureUnit,
+region: getRegionName(region)
+};
+
+// Add product-specific fields
+if (productType === 'FD') {
+productParams.senior_citizen = document.getElementById('senior_citizen')?.checked || false;
+productParams.auto_renewal = document.getElementById('auto_renewal')?.checked || false;
+productParams.compounding_frequency = document.getElementById('compounding_freq')?.value || 'monthly';
+} else if (productType === 'RD') {
+productParams.start_date = document.getElementById('rd_start_date')?.value || null;
+} else if (productType === 'MF' || productType === 'NPS') {
+productParams.risk_level = document.getElementById('risk_level')?.value || 'moderate';
+} else if (productType === 'MF') {
+productParams.is_sip = document.getElementById('mf_sip')?.checked || true;
+} else if (productType === 'NPS') {
+productParams.age = parseInt(document.getElementById('nps_age')?.value) || null;
+productParams.risk_profile = document.getElementById('nps_risk_profile')?.value || 'moderate';
+} else if (productType === 'BOND') {
+productParams.coupon_frequency = document.getElementById('coupon_frequency')?.value || 'semi-annual';
+}
+
+// Step 1: Call the product analysis API (single unified endpoint)
+updateProgress('Fetching analysis data...');
+console.log('[compareFDs] Calling /api/product-analysis/ with params:', { productType, region, amount, tenure });
+
+const requestData = {
+product_type: productType,
+amount: amount,
+tenure: tenure,
+tenure_unit: tenureUnit,
+region: getRegionName(region)
+};
+
+// Add product-specific fields to the request
+if (productType === 'FD') {
+requestData.senior_citizen = document.getElementById('senior_citizen')?.checked || false;
+requestData.auto_renewal = document.getElementById('auto_renewal')?.checked || false;
+requestData.compounding_frequency = document.getElementById('compounding_freq')?.value || 'monthly';
+} else if (productType === 'RD') {
+requestData.start_date = document.getElementById('rd_start_date')?.value || null;
+requestData.monthly_contribution = amount;
+} else if (productType === 'MF') {
+requestData.risk_level = document.getElementById('risk_level')?.value || 'moderate';
+requestData.is_sip = document.getElementById('mf_sip')?.checked || true;
+} else if (productType === 'NPS') {
+requestData.risk_level = document.getElementById('risk_level')?.value || 'moderate';
+requestData.age = parseInt(document.getElementById('nps_age')?.value) || null;
+requestData.risk_profile = document.getElementById('nps_risk_profile')?.value || 'moderate';
+} else if (productType === 'BOND') {
+requestData.coupon_frequency = document.getElementById('coupon_frequency')?.value || 'semi-annual';
+}
+
+const csrfToken = getCSRFToken();
+const analysisResponse = await fetch('/api/product-analysis/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-CSRFToken': csrfToken
+  },
+  body: JSON.stringify(requestData)
+});
+
+// Check HTTP status before parsing JSON
+if (!analysisResponse.ok) {
+const errorText = await analysisResponse.text().catch(() => 'No error details');
+console.error('[compareFDs] Product Analysis API error:', {
+status: analysisResponse.status,
+statusText: analysisResponse.statusText,
+body: errorText
+});
+throw new Error(`Product Analysis API failed with status ${analysisResponse.status}: ${errorText.substring(0, 200)}`);
+}
+
+updateProgress('Analyzing rates...');
+const analysisData = await analysisResponse.json();
+console.log('[compareFDs] Analysis data received:', analysisData);
+
+// Parse the results from the single API call
+const rawResult = analysisData.result || 'Analysis data unavailable';
+
+// Use structured data from backend if available (for consistent ranking)
+if (analysisData.structured_data && analysisData.structured_data.all_options) {
+    // Convert structured data to fdRates format
+    fdAnalysisData.fdRates = analysisData.structured_data.all_options.map(option => ({
+        bank: option.provider,
+        rate: option.rate,
+        tenure: option.tenure,
+        min_deposit: option.min_deposit,
+        maturity_amount: option.maturity_amount,
+        interest_earned: option.interest_earned
+    }));
+    // Store the pre-rendered HTML summary
+    fdAnalysisData.summaryHtml = analysisData.summary_html || '';
+    fdAnalysisData.analysisText = rawResult; // Keep raw result for other tabs
+    fdAnalysisData.fullAgentOutput = analysisData.full_agent_output || rawResult; // Store full crew output
+} else {
+    // Fallback to parsing from raw output
+    fdAnalysisData.fdRates = parseFDRatesFromCrewOutput(rawResult, region, productType);
+    fdAnalysisData.summaryHtml = '';
+    fdAnalysisData.analysisText = rawResult;
+}
+
+fdAnalysisData.providerDeepDive = extractProviderDeepDive(rawResult);
+fdAnalysisData.riskAnalysis = extractRiskAnalysis(rawResult);
+fdAnalysisData.strategicRecommendations = extractRecommendations(rawResult);
+fdAnalysisData.chartData = prepareChartData(fdAnalysisData.fdRates, tenure, amount, productType);
+
+// Store risk analysis data from API response if available
+fdAnalysisData.riskAnalysisData = analysisData.risk_analysis_data || {
+has_risk_data: false,
+safety_profiles: [],
+insurance_status: [],
+risk_matrix: [],
+recent_news: [],
+overall_summary: ''
+};
+        
+        // Display unified results (async - await Markdown rendering)
+        await displayUnifiedResults(amount, tenure, region, productType);
+        
+        } catch (error) {
+          console.error('[compareFDs] Product Advisor error:', error);
+          
+          // Enhanced error messages based on error type
+          let errorMessage = 'An unexpected error occurred';
+          let errorDetail = 'Please try again later';
+          let errorIcon = '❌';
+          
+          if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage = 'Network Connection Error';
+            errorDetail = 'Unable to connect to the server. Please check your internet connection and try again.';
+            errorIcon = '🌐';
+          } else if (error.message.includes('403')) {
+            errorMessage = 'Authentication Error';
+            errorDetail = 'Your session may have expired. Please refresh the page and try again.';
+            errorIcon = '🔒';
+          } else if (error.message.includes('500')) {
+            errorMessage = 'Server Error';
+            errorDetail = 'The server encountered an internal error. Our team has been notified. Please try again in a few moments.';
+            errorIcon = '🔧';
+          } else if (error.message.includes('CrewAI') || error.message.includes('analysis')) {
+            errorMessage = 'Analysis Engine Error';
+            errorDetail = 'The AI analysis engine encountered an issue. Please check your API configuration and try again.';
+            errorIcon = '🤖';
+          } else if (error.message.includes('timeout')) {
+            errorMessage = 'Request Timeout';
+            errorDetail = 'The analysis took too long to complete. Please try again with smaller values or different parameters.';
+            errorIcon = '⏱️';
+          }
+          
+          resultsDiv.innerHTML = `
+            <div class="placeholder">
+              <div class="placeholder-icon">${errorIcon}</div>
+              <p><strong>${errorMessage}</strong></p>
+              <p style="font-size: 0.9rem; color: var(--dim); margin-top: 8px;">${errorDetail}</p>
+              <p style="font-size: 0.8rem; color: var(--dim); margin-top: 12px; font-family: monospace;">${error.message.substring(0, 150)}</p>
+              <button onclick="compareFDs()" style="margin-top: 16px; padding: 8px 16px; cursor: pointer;">
+                🔄 Retry Analysis
+              </button>
+            </div>
+          `;
+        } finally {
+    // Re-enable button
+    if (analyzeButton) {
+    analyzeButton.disabled = false;
+    analyzeButton.innerHTML = 'Analyze with CrewAI';
+    }
+    }
+    }
+    
+    /**
+     * Get display name for product type
+     * @param {string} productType - Product code
+     * @returns {string} Display name
+     */
+    function getProductDisplayName(productType) {
+    const names = {
+    'FD': 'Fixed Deposit',
+    'RD': 'Recurring Deposit',
+    'PPF': 'Public Provident Fund',
+    'MF': 'Mutual Fund',
+    'NPS': 'National Pension System',
+    'SGB': 'Sovereign Gold Bond',
+    'BOND': 'Corporate Bond',
+    'TBILL': 'Treasury Bill',
+    'CD': 'Certificate of Deposit'
+    };
+    return names[productType] || productType;
+    }
+
+/**
+ * Get region name from country code
+ * @param {string} code - Country code (e.g., 'IN', 'US')
+ * @returns {string} Region name (e.g., 'India', 'United States')
+ */
+function getRegionName(code) {
+    // countryListData is an object keyed by country code, not an array
+    const country = countryListData[code];
+    if (country) {
+        return country.name;
+    }
+    // Fallback for common codes
+    const fallbackNames = {
+        'IN': 'India',
+        'US': 'United States',
+        'GB': 'United Kingdom',
+        'CA': 'Canada',
+        'AU': 'Australia'
+    };
+    return fallbackNames[code] || code;
+}
+
+/**
+ * Update progress indicator text
+ * @param {string} message - Progress message to display
+ */
+function updateProgress(message) {
+    const progressText = document.getElementById('progress_text');
+    if (progressText) {
+        progressText.textContent = message;
+    }
+}
+
+// Extract provider deep-dive from analysis output
+function extractProviderDeepDive(analysisText) {
+// Simple extraction - in production, use more sophisticated NLP
+const sections = analysisText.split(/(Bank|Provider|Institution)\s*[:\-]/i);
+if (sections.length > 1) {
+return sections.slice(1).map((s, i) => {
+if (i % 2 === 0) return `<strong>${s.trim()}</strong>`;
+return s.trim();
+}).join(' ').substring(0, 500);
+}
+return 'Detailed provider analysis will be available here.';
+}
+
+// Extract risk analysis from output
+function extractRiskAnalysis(analysisText) {
+const riskKeywords = ['risk', 'safe', 'secure', 'volatility', 'guaranteed'];
+const riskSection = analysisText.split(/(Risk|Safety|Security)/i)[1];
+if (riskSection) {
+return riskSection.substring(0, 400);
+}
+return 'Low to moderate risk. FDs are generally considered safe investments with guaranteed returns.';
+}
+
+// Render risk analysis cards from agent-generated data
+function renderRiskAnalysisCards(riskData) {
+if (!riskData || !riskData.has_risk_data) {
+// Fallback to hardcoded content if no agent data available
+return `
+<div class="risk-card">
+<div class="risk-icon">🛡️</div>
+<div class="risk-info">
+<h4>Safety Rating</h4>
+<p>Fixed Deposits are among the safest investment options, typically insured up to ${currentCurrencySymbol}5 lakhs per bank in India.</p>
+</div>
+</div>
+<div class="risk-card">
+<div class="risk-icon">📉</div>
+<div class="risk-info">
+<h4>Volatility</h4>
+<p>Zero market volatility. Returns are guaranteed at the time of deposit.</p>
+</div>
+</div>
+<div class="risk-card">
+<div class="risk-icon">⚡</div>
+<div class="risk-info">
+<h4>Liquidity Risk</h4>
+<p>Early withdrawal may incur penalty (typically 0.5-1% lower interest rate).</p>
+</div>
+</div>
+<div class="risk-card">
+<div class="risk-icon">💹</div>
+<div class="risk-info">
+<h4>Inflation Risk</h4>
+<p>Real returns may be lower if inflation exceeds FD interest rate.</p>
+</div>
+</div>
+`;
+}
+
+let html = '';
+
+// Render safety profile cards
+if (riskData.safety_profiles && riskData.safety_profiles.length > 0) {
+riskData.safety_profiles.forEach(profile => {
+const safetyColor = profile.safety_level.toLowerCase().includes('highest') || profile.safety_level.toLowerCase().includes('high') ? '#2dd4bf' :
+profile.safety_level.toLowerCase().includes('moderate') ? '#fbbf24' : '#ef4444';
+html += `
+<div class="risk-card" style="border-left: 4px solid ${safetyColor};">
+<div class="risk-icon">🛡️</div>
+<div class="risk-info">
+<h4>${profile.provider}</h4>
+<p><strong>Safety Profile:</strong> ${profile.safety_level}</p>
+</div>
+</div>
+`;
+});
+}
+
+// Render insurance status cards
+if (riskData.insurance_status && riskData.insurance_status.length > 0) {
+riskData.insurance_status.forEach(status => {
+html += `
+<div class="risk-card" style="border-left: 4px solid #22c55e;">
+<div class="risk-icon">✅</div>
+<div class="risk-info">
+<h4>Insurance Coverage</h4>
+<p>${status}</p>
+</div>
+</div>
+`;
+});
+}
+
+// Render risk matrix cards
+if (riskData.risk_matrix && riskData.risk_matrix.length > 0) {
+riskData.risk_matrix.forEach(matrix => {
+const overallColor = matrix.overall_safety.toLowerCase().includes('high') ? '#ef4444' :
+matrix.overall_safety.toLowerCase().includes('moderate') ? '#fbbf24' : '#22c55e';
+html += `
+<div class="risk-card" style="border-left: 4px solid ${overallColor};">
+<div class="risk-icon">📊</div>
+<div class="risk-info">
+<h4>${matrix.provider}</h4>
+<p><strong>Credit Risk:</strong> ${matrix.credit_risk} | <strong>Liquidity Risk:</strong> ${matrix.liquidity_risk}</p>
+<p><strong>Overall Safety:</strong> ${matrix.overall_safety}</p>
+</div>
+</div>
+`;
+});
+}
+
+// Render recent news if available
+if (riskData.recent_news && riskData.recent_news.length > 0) {
+html += `<div class="risk-section-title" style="margin: 20px 0 10px 0; font-size: 18px; color: #c9a84c;">📰 Recent News Affecting Providers</div>`;
+riskData.recent_news.forEach(news => {
+html += `
+<div class="risk-card" style="border-left: 4px solid #3b82f6;">
+<div class="risk-info">
+<h4>${news.headline}</h4>
+<p>${news.summary}</p>
+</div>
+</div>
+`;
+});
+}
+
+// Render overall summary if available
+if (riskData.overall_summary) {
+html += `<div class="risk-section-title" style="margin: 20px 0 10px 0; font-size: 18px; color: #c9a84c;">📋 Overall Risk Summary</div>`;
+html += `<div class="risk-analysis-text" style="padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px;">${riskData.overall_summary}</div>`;
+}
+
+return html || `
+<div class="risk-card">
+<div class="risk-icon">🛡️</div>
+<div class="risk-info">
+<h4>Safety Rating</h4>
+<p>Fixed Deposits are among the safest investment options, typically insured up to ${currentCurrencySymbol}5 lakhs per bank in India.</p>
+</div>
+</div>
+`;
+}
+
+// Extract strategic recommendations
+function extractRecommendations(analysisText) {
+const recSection = analysisText.split(/(Recommendation|Suggestion|Advice)/i)[1];
+if (recSection) {
+return recSection.substring(0, 500);
+}
+return 'Consider comparing multiple banks, checking for senior citizen benefits, and reviewing premature withdrawal policies.';
+}
+
+// Parse rates from CrewAI output for any financial product
+function parseFDRatesFromCrewOutput(rawOutput, region, productType = 'FD') {
+const isIndia = region === 'IN';
+const productName = getProductDisplayName(productType);
+
+// Default rates based on product type
+const getDefaultRates = () => {
+if (isIndia) {
+switch(productType) {
+case 'RD':
+return [
+{ bank: 'HDFC Bank', rate: 7.25, tenure: '12-15 months', min_deposit: 1000 },
+{ bank: 'ICICI Bank', rate: 7.20, tenure: '12-18 months', min_deposit: 1000 },
+{ bank: 'SBI', rate: 7.10, tenure: '12-24 months', min_deposit: 1000 },
+{ bank: 'Axis Bank', rate: 7.25, tenure: '12-15 months', min_deposit: 1000 },
+{ bank: 'Kotak Mahindra', rate: 7.30, tenure: '12-18 months', min_deposit: 1000 },
+];
+case 'PPF':
+return [
+{ bank: 'Government of India (PPF)', rate: 7.1, tenure: '15 years', min_deposit: 500 },
+];
+case 'MF':
+return [
+{ bank: 'SBI Mutual Fund', rate: 12.5, tenure: '5+ years', min_deposit: 500 },
+{ bank: 'HDFC Mutual Fund', rate: 12.8, tenure: '5+ years', min_deposit: 500 },
+{ bank: 'ICICI Prudential', rate: 12.3, tenure: '5+ years', min_deposit: 500 },
+{ bank: 'Axis Mutual Fund', rate: 12.6, tenure: '5+ years', min_deposit: 500 },
+{ bank: 'Kotak Mahindra MF', rate: 12.4, tenure: '5+ years', min_deposit: 500 },
+];
+case 'NPS':
+return [
+{ bank: 'Government NPS', rate: 10.0, tenure: 'Until age 60', min_deposit: 500 },
+];
+case 'SGB':
+return [
+{ bank: 'Reserve Bank of India (SGB)', rate: 2.5, tenure: '8 years', min_deposit: 1000 },
+];
+case 'BOND':
+return [
+{ bank: 'HDFC Corporate Bonds', rate: 8.5, tenure: '3-5 years', min_deposit: 10000 },
+{ bank: 'ICICI Corporate Bonds', rate: 8.3, tenure: '3-5 years', min_deposit: 10000 },
+{ bank: 'SBI Corporate Bonds', rate: 8.2, tenure: '3-5 years', min_deposit: 10000 },
+{ bank: 'Axis Corporate Bonds', rate: 8.4, tenure: '3-5 years', min_deposit: 10000 },
+{ bank: 'Kotak Corporate Bonds', rate: 8.6, tenure: '3-5 years', min_deposit: 10000 },
+];
+case 'TBILL':
+return [
+{ bank: 'RBI T-Bills', rate: 6.8, tenure: '364 days', min_deposit: 25000 },
+];
+case 'CD':
+return [
+{ bank: 'HDFC Bank CD', rate: 7.3, tenure: '12-15 months', min_deposit: 10000 },
+{ bank: 'ICICI Bank CD', rate: 7.2, tenure: '12-18 months', min_deposit: 10000 },
+{ bank: 'SBI CD', rate: 7.1, tenure: '12-23 months', min_deposit: 10000 },
+{ bank: 'Axis Bank CD', rate: 7.25, tenure: '12-15 months', min_deposit: 10000 },
+{ bank: 'Kotak Mahindra CD', rate: 7.35, tenure: '12-18 months', min_deposit: 10000 },
+];
+default: // FD
+return [
+{ bank: 'HDFC Bank', rate: 7.2, tenure: '12-15 months', min_deposit: 10000 },
+{ bank: 'ICICI Bank', rate: 7.1, tenure: '12-18 months', min_deposit: 10000 },
+{ bank: 'SBI', rate: 7.0, tenure: '12-23 months', min_deposit: 1000 },
+{ bank: 'Axis Bank', rate: 7.15, tenure: '12-15 months', min_deposit: 10000 },
+{ bank: 'Kotak Mahindra', rate: 7.25, tenure: '12-18 months', min_deposit: 10000 },
+{ bank: 'IDFC First', rate: 7.4, tenure: '12-15 months', min_deposit: 1000 },
+];
+}
+} else {
+// US rates
+return [
+{ bank: 'Chase', rate: 4.5, tenure: '12 months', min_deposit: 1000 },
+{ bank: 'Bank of America', rate: 4.75, tenure: '12 months', min_deposit: 1000 },
+{ bank: 'Wells Fargo', rate: 4.6, tenure: '12 months', min_deposit: 1000 },
+{ bank: 'Citibank', rate: 4.8, tenure: '12 months', min_deposit: 1000 },
+{ bank: 'Capital One', rate: 4.9, tenure: '12 months', min_deposit: 1000 },
+{ bank: 'TD Bank', rate: 4.7, tenure: '12 months', min_deposit: 1000 },
+];
+}
+};
+
+const defaultRates = getDefaultRates();
+
+// Try to extract provider names and rates from raw output
+const bankPattern = isIndia
+? /(HDFC|ICICI|SBI|Axis|Kotak|IDFC|Bandhan|IndusInd|Government|RBI|Mutual Fund)/gi
+: /(Chase|Bank of America|Wells Fargo|Citibank|Capital One|TD Bank|PNC)/gi;
+
+const ratePattern = /(\d+\.?\d*)\s*%/g;
+
+const banks = rawOutput.match(bankPattern) || [];
+const rates = rawOutput.match(ratePattern) || [];
+
+if (banks.length > 0 && rates.length > 0) {
+const parsedRates = [];
+for (let i = 0; i < Math.min(banks.length, rates.length); i++) {
+parsedRates.push({
+bank: banks[i].trim(),
+rate: parseFloat(rates[i].replace('%', '')),
+tenure: `${parseInt(document.getElementById('fd_tenure').value)} months`,
+min_deposit: 10000
+});
+}
+if (parsedRates.length > 0) return parsedRates;
+}
+
+return defaultRates;
+}
+
+// Prepare chart data for any financial product
+function prepareChartData(fdRates, tenure, amount, productType = 'FD') {
+const sortedRates = fdRates.sort((a, b) => b.rate - a.rate);
+
+// Calculate maturity based on product type
+const calculateMaturity = (rate, tenure, product) => {
+switch(product) {
+case 'PPF':
+case 'NPS':
+// Annual compounding for annual contributions
+return amount * Math.pow(1 + rate / 100, tenure / 12);
+case 'TBILL':
+// Simple interest for T-Bills (days)
+return amount * (1 + rate / 100 * (tenure / 365));
+case 'MF':
+// Market-linked - use compound annual growth
+return amount * Math.pow(1 + rate / 100, tenure / 12);
+default:
+// Monthly compounding for FD, RD, CD, Bonds
+return amount * Math.pow(1 + rate / 100 / 12, tenure);
+}
+};
+
+return {
+banks: sortedRates.map(r => r.bank),
+rates: sortedRates.map(r => r.rate),
+maturity: sortedRates.map(r => calculateMaturity(r.rate, tenure, productType)),
+interest: sortedRates.map(r => calculateMaturity(r.rate, tenure, productType) - amount),
+productType: productType
+};
+}
+
+// Display unified results with tabs (async for Markdown rendering)
+async function displayUnifiedResults(amount, tenure, region, productType = 'FD') {
+    const resultsDiv = document.getElementById('fd_results');
+    const sortedRates = fdAnalysisData.fdRates.sort((a, b) => b.rate - a.rate);
+
+    // Show rendering state
+    showRenderingState('progress_text', 'rendering');
+
+    // Use enhanced markdown renderer with safe wrapper
+    let analysisHtml = 'Analysis data loading...';
+    let riskAnalysisHtml = '';
+    let recommendationsHtml = '';
+
+    try {
+        // Use pre-rendered HTML from backend if available (fixes raw markdown issue)
+        if (fdAnalysisData.summaryHtml) {
+            analysisHtml = fdAnalysisData.summaryHtml;
+        } else if (typeof renderMarkdownSafe === 'function') {
+            analysisHtml = renderMarkdownSafe(fdAnalysisData.analysisText || 'Analysis data unavailable');
+        } else {
+            // Fallback to async rendering if safe wrapper not available
+            analysisHtml = await renderMarkdown(fdAnalysisData.analysisText || 'Analysis data unavailable');
+        }
+        
+        // Render risk analysis and recommendations
+        if (typeof renderMarkdownSafe === 'function') {
+            riskAnalysisHtml = renderMarkdownSafe(fdAnalysisData.riskAnalysis || '');
+            recommendationsHtml = renderMarkdownSafe(fdAnalysisData.strategicRecommendations || '');
+        } else {
+            riskAnalysisHtml = await renderMarkdown(fdAnalysisData.riskAnalysis || '');
+            recommendationsHtml = await renderMarkdown(fdAnalysisData.strategicRecommendations || '');
+        }
+
+    // Apply syntax highlighting after rendering
+    if (typeof hljs !== 'undefined') {
+      setTimeout(() => {
+        resultsDiv.querySelectorAll('pre code').forEach((block) => {
+          hljs.highlightElement(block);
+        });
+      }, 0);
+    }
+  } catch (error) {
+    console.error('Error rendering markdown:', error);
+    analysisHtml = `<div class="error">Failed to render analysis. Please try again.</div>`;
+    riskAnalysisHtml = `<div class="error">Failed to render risk analysis.</div>`;
+    recommendationsHtml = `<div class="error">Failed to render recommendations.</div>`;
+  }
+  
+  let html = `
+  <div class="unified-panel">
+  <div class="panel-header">
+  <h2 class="panel-title">📊 ${getProductDisplayName(productType)} Analysis Results</h2>
+  <div class="view-toggle">
+  <button class="toggle-btn active" onclick="switchView('table')" id="table_view_btn">📋 Table</button>
+  <button class="toggle-btn" onclick="switchView('chart')" id="chart_view_btn">📈 Chart</button>
+  </div>
+  </div>
+  
+  <div class="investment-summary">
+  <div class="summary-item">
+  <span class="summary-label">Product</span>
+  <span class="summary-value">${getProductDisplayName(productType)}</span>
+  </div>
+  <div class="summary-item">
+  <span class="summary-label">Investment</span>
+  <span class="summary-value">${currentCurrencySymbol}${amount.toLocaleString('en-IN')}</span>
+  </div>
+  <div class="summary-item">
+  <span class="summary-label">Tenure</span>
+  <span class="summary-value">${tenure}${productType === 'PPF' || productType === 'NPS' ? ' years' : productType === 'TBILL' ? ' days' : ' months'}</span>
+  </div>
+  <div class="summary-item">
+  <span class="summary-label">Region</span>
+  <span class="summary-value">${region === 'IN' ? 'India' : 'United States'}</span>
+  </div>
+  <div class="summary-item highlight">
+  <span class="summary-label">Best Rate</span>
+  <span class="summary-value">${sortedRates[0]?.rate || 'N/A'}%</span>
+  </div>
+  </div>
+
+<!-- Tabs Navigation -->
+<div class="tabs-nav">
+<button class="tab-btn active" onclick="switchTab('summary')" id="tab_summary">📝 Summary</button>
+<button class="tab-btn" onclick="switchTab('provider')" id="tab_provider">🏦 Provider Deep-Dive</button>
+<button class="tab-btn" onclick="switchTab('risk')" id="tab_risk">⚠️ Risk Analysis</button>
+<button class="tab-btn" onclick="switchTab('recommendations')" id="tab_recommendations">💡 Recommendations</button>
+</div>
+
+<!-- Tab Content -->
+<div class="tab-content">
+<!-- Summary Tab -->
+<div class="tab-pane active" id="pane_summary">
+<div class="summary-content">
+<div class="summary-section">
+<h3 class="section-title">📊 Analysis Overview</h3>
+<div class="summary-card">
+${analysisHtml}
+</div>
+</div>
+</div>
+</div>
+
+<!-- Provider Deep-Dive Tab -->
+<div class="tab-pane" id="pane_provider">
+<div class="provider-grid">
+${sortedRates.map((fd, index) => {
+  const maturity = amount * Math.pow(1 + fd.rate / 100 / 12, tenure);
+  return `
+<div class="provider-card ${index === 0 ? 'best' : ''}" onclick="openFD('${fd.bank}', ${fd.rate}, ${maturity})">
+<div class="provider-header">
+<div class="provider-name">${fd.bank} ${index === 0 ? '<span class="best-badge">⭐ Best</span>' : ''}</div>
+<div class="provider-rate">${fd.rate}%</div>
+</div>
+<div class="provider-details">
+<div class="detail-row">
+<span class="detail-label">Tenure:</span>
+<span class="detail-value">${fd.tenure}</span>
+</div>
+<div class="detail-row">
+<span class="detail-label">Min Deposit:</span>
+<span class="detail-value">${currentCurrencySymbol}${fd.min_deposit?.toLocaleString() || '10,000'}</span>
+</div>
+<div class="detail-row">
+<span class="detail-label">Maturity:</span>
+<span class="detail-value">${currentCurrencySymbol}${(amount * Math.pow(1 + fd.rate / 100 / 12, tenure)).toLocaleString('en-IN', {maximumFractionDigits: 0})}</span>
+</div>
+</div>
+</div>
+`; }).join('')}
+</div>
+</div>
+
+<!-- Risk Analysis Tab -->
+<div class="tab-pane" id="pane_risk">
+<div class="risk-content">
+${renderRiskAnalysisCards(fdAnalysisData.riskAnalysisData)}
+<div class="risk-analysis-text" style="margin-top: 20px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+${riskAnalysisHtml}
+</div>
+</div>
+</div>
+
+<!-- Recommendations Tab -->
+<div class="tab-pane" id="pane_recommendations">
+  <div class="recommendations-content">
+    <div class="recommendation-list">
+      ${recommendationsHtml || `
+      <div class="recommendation-item">✓ Compare rates across multiple banks before deciding</div>
+      <div class="recommendation-item">✓ Check for senior citizen additional interest (typically 0.25-0.50%)</div>
+      <div class="recommendation-item">✓ Review premature withdrawal policies and penalties</div>
+      <div class="recommendation-item">✓ Consider laddering strategy for better liquidity</div>
+      <div class="recommendation-item">✓ Verify bank's credit rating (AAA recommended)</div>
+      `}
+    </div>
+<div class="ai-insight" style="margin-top: 20px; padding: 16px; background: linear-gradient(135deg, rgba(201,168,76,0.1), rgba(45,212,191,0.05)); border-radius: 8px; border-left: 3px solid var(--gold);">
+<strong>💡 AI Insight:</strong> Based on current market conditions, ${sortedRates[0]?.bank || 'the top-rated bank'} offers the best rate at ${sortedRates[0]?.rate || 'N/A'}%. Consider splitting your investment across 2-3 banks for diversification.
+</div>
+</div>
+</div>
+</div>
+
+<!-- View Container (Table/Chart toggle) -->
+<div class="view-container" id="view_container">
+<!-- Table View (default) -->
+<div class="table-view active" id="table_view">
+${renderTableView(sortedRates, amount, tenure)}
+</div>
+
+<!-- Chart View -->
+<div class="chart-view" id="chart_view">
+<div id="fd_chart" style="width: 100%; height: 400px;"></div>
+</div>
+</div>
+</div>
+`;
+
+resultsDiv.innerHTML = html;
+
+// Initialize chart if chart view is active
+if (document.getElementById('chart_view').classList.contains('active')) {
+setTimeout(() => renderChart(), 100);
+}
+}
+
+// Render table view
+function renderTableView(sortedRates, amount, tenure) {
+    let html = `
+    <div class="rates-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Bank</th>
+                    <th>Rate (%)</th>
+                    <th>Tenure</th>
+                    <th>Min Deposit</th>
+                    <th>Maturity Amount</th>
+                    <th>Interest Earned</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    sortedRates.forEach((fd, index) => {
+        // Use pre-calculated values from structured data if available, otherwise calculate
+        const maturity = fd.maturity_amount || (amount * Math.pow(1 + fd.rate / 100 / 12, tenure));
+        const interest = fd.interest_earned || (maturity - amount);
+        const isTop = index === 0;
+
+        html += `
+        <tr class="${isTop ? 'best-rate' : ''}">
+            <td>${index + 1}</td>
+            <td>${fd.bank} ${isTop ? '⭐' : ''}</td>
+            <td class="rate-cell ${isTop ? 'best' : ''}">${fd.rate}%</td>
+            <td>${fd.tenure}</td>
+            <td>${currentCurrencySymbol}${fd.min_deposit?.toLocaleString() || '10,000'}</td>
+            <td>${currentCurrencySymbol}${maturity.toLocaleString('en-IN', {maximumFractionDigits: 0})}</td>
+            <td>${currentCurrencySymbol}${interest.toLocaleString('en-IN', {maximumFractionDigits: 0})}</td>
+            <td>
+                <button class="btn-open-fd" onclick="openFD('${fd.bank}', ${fd.rate}, ${maturity})">
+                    Open This FD
+                </button>
+            </td>
+        </tr>
+        `;
+    });
+
+    html += `
+        </tbody>
+        </table>
+    </div>
+    `;
+
+    return html;
+}
+
+// Render ECharts chart
+function renderChart() {
+const chartDom = document.getElementById('fd_chart');
+if (!chartDom) return;
+
+const chart = echarts.init(chartDom);
+
+const option = {
+backgroundColor: 'transparent',
+title: {
+text: 'FD Rate Comparison',
+subtext: `Tenure: ${document.getElementById('fd_tenure').value} months`,
+left: 'center',
+top: 10,
+textStyle: {
+color: '#e2e8f0',
+fontSize: 16
+},
+subtextStyle: {
+color: '#7c8a9e',
+fontSize: 12
+}
+},
+tooltip: {
+trigger: 'axis',
+axisPointer: {
+type: 'shadow'
+},
+backgroundColor: 'rgba(17, 24, 39, 0.95)',
+borderColor: 'rgba(201, 168, 76, 0.3)',
+borderWidth: 1,
+textStyle: {
+color: '#e2e8f0'
+},
+formatter: function(params) {
+const data = params[0];
+const rate = data.value;
+const bank = data.name;
+const maturity = fdAnalysisData.chartData.maturity[params[0].dataIndex];
+const interest = fdAnalysisData.chartData.interest[params[0].dataIndex];
+return `
+<div style="padding: 8px;">
+<strong style="color: #c9a84c;">${bank}</strong><br/>
+Rate: <strong style="color: #2dd4bf;">${rate}%</strong><br/>
+Maturity: ${currentCurrencySymbol}${maturity.toLocaleString('en-IN', {maximumFractionDigits: 0})}<br/>
+Interest: ${currentCurrencySymbol}${interest.toLocaleString('en-IN', {maximumFractionDigits: 0})}
+</div>
+`;
+}
+},
+grid: {
+left: '3%',
+right: '4%',
+bottom: '10%',
+top: '15%',
+containLabel: true
+},
+xAxis: {
+type: 'category',
+data: fdAnalysisData.chartData.banks,
+axisLine: {
+lineStyle: {
+color: 'rgba(255,255,255,0.1)'
+}
+},
+axisLabel: {
+color: '#7c8a9e',
+interval: 0,
+rotate: 30,
+fontSize: 11
+}
+},
+yAxis: {
+type: 'value',
+name: 'Interest Rate (%)',
+axisLine: {
+show: false
+},
+axisTick: {
+show: false
+},
+splitLine: {
+lineStyle: {
+color: 'rgba(255,255,255,0.05)'
+}
+},
+axisLabel: {
+color: '#7c8a9e'
+},
+nameTextStyle: {
+color: '#7c8a9e'
+}
+},
+series: [{
+data: fdAnalysisData.chartData.rates.map((rate, index) => {
+const isBest = index === 0;
+return {
+value: rate,
+itemStyle: {
+color: isBest ? '#c9a84c' : '#2dd4bf'
+}
+};
+}),
+type: 'bar',
+barWidth: '50%',
+itemStyle: {
+borderRadius: [6, 6, 0, 0],
+},
+label: {
+show: true,
+position: 'top',
+color: '#c9a84c',
+fontSize: 12,
+formatter: '{c}%'
+}
+}]
+};
+
+chart.setOption(option);
+
+// Handle resize
+window.addEventListener('resize', function() {
+chart.resize();
+});
+}
+
+// Switch between table and chart view
+function switchView(view) {
+const tableView = document.getElementById('table_view');
+const chartView = document.getElementById('chart_view');
+const tableBtn = document.getElementById('table_view_btn');
+const chartBtn = document.getElementById('chart_view_btn');
+
+if (view === 'table') {
+tableView.classList.add('active');
+chartView.classList.remove('active');
+tableBtn.classList.add('active');
+chartBtn.classList.remove('active');
+} else {
+tableView.classList.remove('active');
+chartView.classList.add('active');
+tableBtn.classList.remove('active');
+chartBtn.classList.add('active');
+setTimeout(() => renderChart(), 50);
+}
+}
+
+// Switch between tabs
+function switchTab(tabName) {
+// Update tab buttons
+document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+document.getElementById('tab_' + tabName).classList.add('active');
+
+// Update tab panes
+document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+document.getElementById('pane_' + tabName).classList.add('active');
+}
+
+</script>
+
+<style>
+/* FD Advisor Specific Styles - UI Alignment Fixes */
+
+/* Two-column layout fix */
+.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+/* Card styling for input panel */
+.two-col > .card {
+    width: 100%;
+}
+
+/* Result panel styling */
+.result-panel {
+    width: 100%;
+    min-height: 400px;
+}
+
+/* Field alignment fix */
+.field {
+    margin-bottom: 16px;
+}
+
+.field.slider-field {
+margin-bottom: 20px;
+}
+
+/* Slider alignment with labels */
+.slider-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 8px;
+}
+
+.slider-header label {
+font-weight: 500;
+color: var(--text);
+}
+
+.slider-val {
+font-family: 'DM Mono', monospace;
+color: var(--gold);
+font-size: 0.9rem;
+font-weight: 600;
+}
+
+/* CreditWise-style Range slider styling */
+input[type="range"].slider {
+-webkit-appearance: none;
+appearance: none;
+width: 100%;
+height: 6px;
+background: linear-gradient(to right, var(--gold) var(--pct, 0%), rgba(255, 255, 255, 0.1) var(--pct, 0%));
+border-radius: 4px;
+outline: none;
+cursor: pointer;
+transition: background 0.15s ease;
+}
+
+/* WebKit thumb styling */
+input[type="range"].slider::-webkit-slider-thumb {
+-webkit-appearance: none;
+appearance: none;
+width: 20px;
+height: 20px;
+border-radius: 50%;
+background: var(--gold);
+cursor: pointer;
+box-shadow: 0 0 10px rgba(201, 168, 76, 0.5);
+transition: all 0.2s ease;
+margin-top: -7px;
+}
+
+input[type="range"].slider::-webkit-slider-thumb:hover {
+transform: scale(1.15);
+box-shadow: 0 0 15px rgba(201, 168, 76, 0.8);
+}
+
+input[type="range"].slider::-webkit-slider-thumb:active {
+transform: scale(1.25);
+box-shadow: 0 0 20px rgba(201, 168, 76, 1);
+}
+
+/* Firefox thumb styling */
+input[type="range"].slider::-moz-range-thumb {
+width: 20px;
+height: 20px;
+border-radius: 50%;
+background: var(--gold);
+cursor: pointer;
+box-shadow: 0 0 10px rgba(201, 168, 76, 0.5);
+transition: all 0.2s ease;
+border: none;
+}
+
+input[type="range"].slider::-moz-range-thumb:hover {
+transform: scale(1.15);
+box-shadow: 0 0 15px rgba(201, 168, 76, 0.8);
+}
+
+input[type="range"].slider::-moz-range-thumb:active {
+transform: scale(1.25);
+box-shadow: 0 0 20px rgba(201, 168, 76, 1);
+}
+
+/* Track styling for Firefox */
+input[type="range"].slider::-moz-range-track {
+height: 6px;
+background: rgba(255, 255, 255, 0.1);
+border-radius: 4px;
+}
+
+/* Input field alignment */
+.pfx {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pfx > span {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.pfx input[type="range"] {
+    flex: 1;
+}
+
+/* Number input alignment */
+.field input[type="number"] {
+    width: 100%;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 0.95rem;
+}
+
+/* Select field styling */
+.field select {
+    width: 100%;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 0.95rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237c8a9e' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+}
+
+.field select:focus {
+    outline: none;
+    border-color: var(--gold);
+}
+
+/* Row2 layout for tenure and region */
+.row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Field hint styling */
+.field-hint {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--dim);
+    margin-top: 4px;
+}
+
+/* Button styling */
+.btn-primary {
+    width: 100%;
+    padding: 12px 24px;
+    background: var(--gold);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #080d18;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 24px;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #d4b05c;
+    transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+    background: var(--muted);
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Placeholder styling for results panel */
+.placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    text-align: center;
+    padding: 40px 24px;
+}
+
+.placeholder-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.placeholder p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.placeholder strong {
+    color: var(--text);
+}
+
+/* Results panel tabs padding fix */
+.result-panel .unified-panel {
+    padding: 24px;
+}
+
+.result-panel .tabs-nav {
+    padding: 0 8px;
+}
+
+.result-panel .tab-content {
+    padding: 8px;
+}
+
+/* Investment summary responsive fix */
+@media (max-width: 1024px) {
+    .two-col {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .row2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .investment-summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .provider-grid,
+    .risk-content {
+        grid-template-columns: 1fr;
+    }
+
+    .tabs-nav {
+        font-size: 0.75rem;
+    }
+
+    .tab-btn {
+        padding: 8px 12px;
+    }
+
+    .panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .view-toggle {
+        width: 100%;
+    }
+
+    .view-toggle .toggle-btn {
+        flex: 1;
+    }
+}
+
+@media (max-width: 480px) {
+    .investment-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .summary-item:last-child {
+        border-bottom: none;
+    }
+}
+
+/* Unified Panel Styles */
+.unified-panel {
+background: var(--card);
+border: 1px solid var(--border);
+border-radius: var(--radius);
+padding: 24px;
+animation: fadeUp 0.5s ease both;
+}
+
+.panel-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 20px;
+flex-wrap: wrap;
+gap: 16px;
+}
+
+.panel-title {
+font-family: 'Playfair Display', serif;
+font-size: 1.25rem;
+color: #fff;
+margin: 0;
+}
+
+.view-toggle {
+display: flex;
+gap: 8px;
+}
+
+.toggle-btn {
+padding: 8px 16px;
+border: 1px solid var(--border);
+border-radius: 50px;
+background: rgba(255,255,255,0.03);
+color: var(--muted);
+cursor: pointer;
+font-size: 0.85rem;
+transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+border-color: var(--gold);
+color: var(--text);
+}
+
+.toggle-btn.active {
+background: var(--gold);
+border-color: var(--gold);
+color: #080d18;
+font-weight: 600;
+}
+
+.investment-summary {
+display: grid;
+grid-template-columns: repeat(4, 1fr);
+gap: 12px;
+margin-bottom: 24px;
+padding: 16px;
+background: rgba(255,255,255,0.02);
+border-radius: var(--radius-sm);
+}
+
+.summary-item {
+text-align: center;
+}
+
+.summary-label {
+display: block;
+font-size: 0.7rem;
+color: var(--dim);
+text-transform: uppercase;
+margin-bottom: 4px;
+}
+
+.summary-value {
+display: block;
+font-size: 1rem;
+font-weight: 600;
+color: var(--text);
+font-family: 'DM Mono', monospace;
+}
+
+.summary-item.highlight .summary-value {
+color: var(--gold);
+}
+
+/* Tabs */
+.tabs-nav {
+display: flex;
+gap: 4px;
+margin-bottom: 20px;
+border-bottom: 1px solid var(--border);
+padding-bottom: 0;
+overflow-x: auto;
+}
+
+.tab-btn {
+padding: 10px 16px;
+border: none;
+background: transparent;
+color: var(--muted);
+cursor: pointer;
+font-size: 0.85rem;
+border-bottom: 2px solid transparent;
+transition: all 0.2s;
+white-space: nowrap;
+}
+
+.tab-btn:hover {
+color: var(--text);
+}
+
+.tab-btn.active {
+color: var(--gold);
+border-bottom-color: var(--gold);
+}
+
+.tab-content {
+min-height: 200px;
+}
+
+.tab-pane {
+display: none;
+animation: fadeIn 0.3s ease;
+}
+
+.tab-pane.active {
+display: block;
+}
+
+/* Analysis Text - Enhanced for full markdown rendering */
+.analysis-text {
+    background: rgba(255,255,255,0.02);
+    padding: 20px;
+    border-radius: var(--radius-sm);
+    line-height: 1.8;
+    color: var(--text);
+    font-size: 0.95rem;
+    max-height: none; /* Allow full content display */
+    overflow-y: auto;
+    min-height: 200px;
+}
+
+/* Markdown Headings */
+.analysis-text h1, .analysis-text h2, .analysis-text h3, .analysis-text h4,
+.analysis-text h5, .analysis-text h6 {
+    color: var(--text);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.analysis-text h1 { font-size: 1.8rem; border-bottom: 2px solid var(--border); padding-bottom: 0.3em; }
+.analysis-text h2 { font-size: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+.analysis-text h3 { font-size: 1.25rem; }
+.analysis-text h4 { font-size: 1.1rem; }
+.analysis-text h5 { font-size: 1rem; }
+.analysis-text h6 { font-size: 0.85rem; color: var(--text-dim); }
+
+/* Markdown Tables */
+.analysis-text table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 0.9rem;
+    background: rgba(255,255,255,0.02);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.analysis-text th, .analysis-text td {
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    text-align: left;
+}
+
+.analysis-text th {
+    background: rgba(255,255,255,0.05);
+    font-weight: 600;
+    color: var(--text);
+}
+
+.analysis-text tr:nth-child(even) {
+    background: rgba(255,255,255,0.02);
+}
+
+.analysis-text tr:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+/* Markdown Lists */
+.analysis-text ul, .analysis-text ol {
+    margin: 1em 0;
+    padding-left: 1.5em;
+}
+
+.analysis-text li {
+    margin: 0.5em 0;
+    line-height: 1.6;
+}
+
+.analysis-text ul li { list-style-type: disc; }
+.analysis-text ul li ul li { list-style-type: circle; }
+.analysis-text ol li { list-style-type: decimal; }
+
+/* Markdown Blockquotes */
+.analysis-text blockquote {
+    border-left: 4px solid var(--gold);
+    margin: 1em 0;
+    padding: 0.5em 1em;
+    background: rgba(201, 168, 76, 0.05);
+    border-radius: 0 6px 6px 0;
+    font-style: italic;
+    color: var(--text);
+}
+
+/* Markdown Code Blocks */
+.analysis-text pre {
+    background: rgba(0,0,0,0.3);
+    padding: 1em;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 1em 0;
+}
+
+.analysis-text code {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.85em;
+    background: rgba(0,0,0,0.2);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+}
+
+.analysis-text pre code {
+    background: none;
+    padding: 0;
+    font-size: 0.85rem;
+}
+
+/* Markdown Links */
+.analysis-text a {
+    color: var(--gold);
+    text-decoration: none;
+}
+
+.analysis-text a:hover {
+    text-decoration: underline;
+}
+
+/* Markdown Bold and Italic */
+.analysis-text strong {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.analysis-text em {
+    font-style: italic;
+    color: var(--text-dim);
+}
+
+/* Paragraph spacing */
+.analysis-text p {
+    margin: 1em 0;
+    line-height: 1.7;
+}
+
+/* Remove top margin from first element */
+.analysis-text > :first-child {
+    margin-top: 0;
+}
+
+/* Remove bottom margin from last element */
+.analysis-text > :last-child {
+    margin-bottom: 0;
+}
+
+/* Provider Grid */
+.provider-grid {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+gap: 16px;
+}
+
+.provider-card {
+background: rgba(255,255,255,0.03);
+border: 1px solid var(--border);
+border-radius: var(--radius-sm);
+padding: 16px;
+transition: all 0.2s;
+cursor: pointer;
+}
+
+.provider-card:hover {
+border-color: var(--border-h);
+transform: translateY(-2px);
+background: rgba(255,255,255,0.06);
+}
+
+.provider-card.best:hover {
+background: rgba(201, 168, 76, 0.08);
+}
+
+.provider-card.best {
+border-color: var(--gold);
+background: rgba(201, 168, 76, 0.05);
+}
+
+.provider-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 12px;
+}
+
+.provider-name {
+font-weight: 600;
+color: #fff;
+font-size: 1rem;
+}
+
+.provider-rate {
+font-family: 'DM Mono', monospace;
+font-size: 1.25rem;
+font-weight: 700;
+color: var(--teal);
+}
+
+.best-badge {
+background: var(--gold);
+color: #080d18;
+font-size: 0.65rem;
+padding: 2px 6px;
+border-radius: 4px;
+margin-left: 6px;
+font-weight: 600;
+}
+
+.provider-details {
+font-size: 0.8rem;
+}
+
+.detail-row {
+display: flex;
+justify-content: space-between;
+margin-bottom: 6px;
+}
+
+.detail-label {
+color: var(--dim);
+}
+
+.detail-value {
+color: var(--text);
+font-family: 'DM Mono', monospace;
+}
+
+/* Risk Analysis */
+.risk-content {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+gap: 16px;
+}
+
+.risk-card {
+display: flex;
+gap: 12px;
+padding: 16px;
+background: rgba(255,255,255,0.02);
+border: 1px solid var(--border);
+border-radius: var(--radius-sm);
+}
+
+.risk-icon {
+font-size: 1.5rem;
+}
+
+.risk-info h4 {
+font-size: 0.9rem;
+color: var(--text);
+margin-bottom: 4px;
+}
+
+.risk-info p {
+font-size: 0.75rem;
+color: var(--muted);
+line-height: 1.5;
+}
+
+.risk-analysis-text {
+font-size: 0.85rem;
+line-height: 1.7;
+color: var(--text);
+}
+
+/* Summary Tab */
+.summary-content {
+padding: 4px;
+}
+
+.summary-section {
+margin-bottom: 0;
+}
+
+.section-title {
+font-size: 0.95rem;
+font-weight: 600;
+color: var(--gold);
+margin-bottom: 12px;
+display: flex;
+align-items: center;
+gap: 8px;
+text-transform: uppercase;
+letter-spacing: 0.5px;
+}
+
+.summary-card {
+background: rgba(255,255,255,0.03);
+border: 1px solid var(--border);
+border-radius: var(--radius-sm);
+padding: 20px;
+}
+
+/* Markdown Content Styling - Controlled Typography */
+.summary-card :deep(h1) {
+color: #fff;
+font-size: 1.5rem;
+font-weight: 700;
+margin: 0 0 16px 0;
+line-height: 1.3;
+}
+
+.summary-card :deep(h2) {
+color: var(--gold);
+font-size: 1.1rem;
+font-weight: 600;
+margin: 20px 0 12px 0;
+line-height: 1.4;
+}
+
+.summary-card :deep(h3) {
+color: var(--gold);
+font-size: 0.95rem;
+font-weight: 600;
+margin: 16px 0 10px 0;
+line-height: 1.4;
+}
+
+.summary-card :deep(p) {
+color: var(--text);
+line-height: 1.7;
+margin-bottom: 12px;
+font-size: 0.85rem;
+}
+
+.summary-card :deep(ul),
+.summary-card :deep(ol) {
+margin: 12px 0;
+padding-left: 0;
+list-style: none;
+}
+
+.summary-card :deep(ul li) {
+position: relative;
+padding-left: 18px;
+margin-bottom: 8px;
+color: var(--text);
+line-height: 1.6;
+font-size: 0.85rem;
+}
+
+.summary-card :deep(ul li::before) {
+content: "•";
+color: var(--teal);
+font-weight: bold;
+position: absolute;
+left: 0;
+font-size: 1.1em;
+}
+
+.summary-card :deep(ol) {
+padding-left: 20px;
+list-style: decimal;
+}
+
+.summary-card :deep(ol li) {
+padding-left: 4px;
+margin-bottom: 8px;
+}
+
+.summary-card :deep(strong),
+.summary-card :deep(b) {
+color: var(--text);
+font-weight: 600;
+}
+
+.summary-card :deep(code) {
+background: rgba(201, 168, 76, 0.15);
+padding: 2px 6px;
+border-radius: 4px;
+font-family: 'DM Mono', monospace;
+font-size: 0.8rem;
+color: var(--teal);
+}
+
+.summary-card :deep(pre) {
+background: rgba(0,0,0,0.3);
+padding: 12px;
+border-radius: 8px;
+overflow-x: auto;
+margin: 12px 0;
+}
+
+.summary-card :deep(pre code) {
+background: transparent;
+padding: 0;
+color: var(--teal);
+}
+
+.summary-card :deep(table) {
+width: 100%;
+border-collapse: collapse;
+margin: 16px 0;
+font-size: 0.8rem;
+}
+
+.summary-card :deep(th),
+.summary-card :deep(td) {
+border: 1px solid var(--border);
+padding: 10px 12px;
+text-align: left;
+}
+
+.summary-card :deep(th) {
+background: rgba(201, 168, 76, 0.15);
+color: var(--gold);
+font-weight: 600;
+text-transform: uppercase;
+font-size: 0.7rem;
+letter-spacing: 0.5px;
+}
+
+.summary-card :deep(tr) {
+background: transparent;
+}
+
+.summary-card :deep(tr:nth-child(even)) {
+background: rgba(255,255,255,0.02);
+}
+
+.summary-card :deep(tr:hover) {
+background: rgba(255,255,255,0.04);
+}
+
+/* Recommendations */
+.recommendations-content {
+padding: 8px;
+}
+
+.recommendation-list {
+display: flex;
+flex-direction: column;
+gap: 10px;
+}
+
+.recommendation-item {
+padding: 12px 16px;
+background: rgba(255,255,255,0.03);
+border-left: 3px solid var(--teal);
+border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+font-size: 0.85rem;
+color: var(--text);
+line-height: 1.6;
+}
+
+.ai-insight {
+font-size: 0.85rem;
+line-height: 1.7;
+color: var(--text);
+}
+
+/* Table View */
+.table-view {
+display: none;
+}
+
+.table-view.active {
+display: block;
+}
+
+.rates-table {
+overflow-x: auto;
+}
+
+.rates-table table {
+width: 100%;
+border-collapse: collapse;
+font-size: 0.85rem;
+}
+
+.rates-table th {
+text-align: left;
+padding: 12px;
+background: rgba(255,255,255,0.03);
+color: var(--muted);
+font-weight: 600;
+border-bottom: 1px solid var(--border);
+}
+
+.rates-table td {
+padding: 12px;
+border-bottom: 1px solid var(--border);
+color: var(--text);
+}
+
+.rates-table tr.best-rate {
+background: rgba(201, 168, 76, 0.05);
+}
+
+.rates-table .rate-cell.best {
+color: var(--gold);
+font-weight: 700;
+font-size: 1rem;
+}
+
+/* Chart View */
+.chart-view {
+display: none;
+}
+
+.chart-view.active {
+display: block;
+}
+
+/* Loading Dots */
+.loading-dots {
+display: flex;
+gap: 8px;
+justify-content: center;
+}
+
+.loading-dots span {
+width: 10px;
+height: 10px;
+background: var(--gold);
+border-radius: 50%;
+animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-dots span:nth-child(1) {
+animation-delay: -0.32s;
+}
+
+.loading-dots span:nth-child(2) {
+animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+0%, 80%, 100% {
+transform: scale(0);
+}
+40% {
+transform: scale(1);
+}
+}
+
+@keyframes fadeIn {
+from { opacity: 0; }
+to { opacity: 1; }
+}
+
+/* FD Creation Modal */
+.fd-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}
+
+.fd-modal-overlay.active {
+    display: flex;
+}
+
+.fd-modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.fd-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+}
+
+.fd-modal-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    color: var(--text);
+    margin: 0;
+}
+
+.fd-modal-close {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 0.2s;
+}
+
+.fd-modal-close:hover {
+    color: var(--text);
+}
+
+.fd-modal-body {
+    padding: 24px;
+}
+
+.fd-summary-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.fd-summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.fd-summary-row:last-child {
+    border-bottom: none;
+}
+
+.fd-summary-label {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.fd-summary-value {
+    color: var(--text);
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+}
+
+.fd-summary-value.highlight {
+    color: var(--gold);
+    font-size: 1.1rem;
+}
+
+.fd-form-group {
+    margin-bottom: 16px;
+}
+
+.fd-form-label {
+    display: block;
+    color: var(--text);
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+}
+
+.fd-form-input {
+    width: 100%;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 0.95rem;
+    transition: border-color 0.2s;
+}
+
+.fd-form-input:focus {
+    outline: none;
+    border-color: var(--gold);
+}
+
+.fd-checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+}
+
+.fd-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--gold);
+    cursor: pointer;
+}
+
+.fd-terms {
+    font-size: 0.8rem;
+    color: var(--muted);
+    line-height: 1.5;
+    padding: 12px;
+    background: rgba(255,255,255,0.02);
+    border-radius: var(--radius-sm);
+    margin-bottom: 16px;
+}
+
+.fd-modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+}
+
+.btn-cancel-fd {
+    padding: 10px 20px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.btn-cancel-fd:hover {
+    border-color: var(--muted);
+    color: var(--text);
+}
+
+.btn-confirm-fd {
+    padding: 10px 24px;
+    background: var(--gold);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #080d18;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.btn-confirm-fd:hover {
+    background: #d4b05c;
+    transform: translateY(-1px);
+}
+
+.btn-confirm-fd:disabled {
+    background: var(--muted);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-open-fd {
+    padding: 6px 12px;
+    background: rgba(201, 168, 76, 0.15);
+    border: 1px solid var(--gold);
+    border-radius: 4px;
+    color: var(--gold);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-open-fd:hover {
+    background: var(--gold);
+    color: #080d18;
+}
+
+/* Success Message */
+.fd-success-message {
+    display: none;
+    text-align: center;
+    padding: 40px 24px;
+}
+
+.fd-success-message.active {
+    display: block;
+}
+
+.fd-success-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+}
+
+.fd-success-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.fd-success-text {
+    color: var(--muted);
+    margin-bottom: 20px;
+}
+
+.fd-success-details {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.btn-download-cert {
+    display: inline-block;
+    padding: 10px 20px;
+    background: var(--teal);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #080d18;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.btn-download-cert:hover {
+    background: #4dd4c4;
+    transform: translateY(-1px);
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(0,0,0,0.1);
+    border-top-color: #080d18;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+
+<!-- FD Creation Modal -->
+<div class="fd-modal-overlay" id="fd_creation_modal">
+    <div class="fd-modal">
+        <div class="fd-modal-header">
+            <h3 class="fd-modal-title">Create Fixed Deposit</h3>
+            <button class="fd-modal-close" onclick="closeFDModal()">&times;</button>
+        </div>
+        <div class="fd-modal-body" id="fd_modal_body">
+            <!-- FD Summary -->
+            <div class="fd-summary-card creditwise-card">
+                <div class="fd-summary-row">
+                    <span class="fd-summary-label">Bank</span>
+                    <span class="fd-summary-value" id="modal_bank_name">-</span>
+                </div>
+                <div class="fd-summary-row">
+                    <span class="fd-summary-label">Interest Rate</span>
+                    <span class="fd-summary-value" id="modal_rate">-</span>
+                </div>
+                <div class="fd-summary-row">
+                    <span class="fd-summary-label">Investment Amount</span>
+                    <span class="fd-summary-value" id="modal_amount">-</span>
+                </div>
+                <div class="fd-summary-row">
+                    <span class="fd-summary-label">Tenure</span>
+                    <span class="fd-summary-value" id="modal_tenure">-</span>
+                </div>
+                <div class="fd-summary-row">
+                    <span class="fd-summary-label">Expected Maturity</span>
+                    <span class="fd-summary-value highlight" id="modal_maturity">-</span>
+                </div>
+            </div>
+
+            <!-- Customer Details Form -->
+            <div id="fd_customer_form">
+                <div class="fd-form-group">
+                    <label class="fd-form-label">Full Name</label>
+                    <input type="text" class="fd-form-input" id="customer_name" placeholder="Enter your full name">
+                </div>
+                <div class="fd-form-group">
+                    <label class="fd-form-label">Email Address</label>
+                    <input type="email" class="fd-form-input" id="customer_email" placeholder="Enter your email">
+                </div>
+                <div class="fd-form-group">
+                    <label class="fd-form-label">Phone Number</label>
+                    <input type="tel" class="fd-form-input" id="customer_phone" placeholder="Enter your phone number">
+                </div>
+
+                <!-- Options -->
+                <div class="fd-checkbox-group">
+                    <input type="checkbox" class="fd-checkbox" id="senior_citizen">
+                    <label for="senior_citizen" class="fd-form-label" style="margin:0;">I am a senior citizen (60+)</label>
+                </div>
+                <div class="fd-checkbox-group">
+                    <input type="checkbox" class="fd-checkbox" id="auto_renewal" checked>
+                    <label for="auto_renewal" class="fd-form-label" style="margin:0;">Auto-renewal on maturity</label>
+                </div>
+                <div class="fd-checkbox-group">
+                    <input type="checkbox" class="fd-checkbox" id="send_email_notification" checked>
+                    <label for="send_email_notification" class="fd-form-label" style="margin:0;">Send email confirmation with certificate</label>
+                </div>
+
+                <!-- Terms and Conditions -->
+                <div class="fd-terms">
+                    <input type="checkbox" id="accept_terms" style="margin-right: 8px;">
+                    <label for="accept_terms">I accept the <a href="#" style="color: var(--gold);">Terms and Conditions</a> of this Fixed Deposit</label>
+                </div>
+            </div>
+
+            <!-- Success Message (hidden by default) -->
+            <div class="fd-success-message" id="fd_success_message">
+                <div class="fd-success-icon">🎉</div>
+                <h3 class="fd-success-title">FD Created Successfully!</h3>
+                <p class="fd-success-text">Your Fixed Deposit has been created. A confirmation email has been sent.</p>
+                <div class="fd-success-details">
+                    <div class="fd-summary-row">
+                        <span class="fd-summary-label">FD Number</span>
+                        <span class="fd-summary-value" id="success_fd_id">-</span>
+                    </div>
+                    <div class="fd-summary-row">
+                        <span class="fd-summary-label">Maturity Amount</span>
+                        <span class="fd-summary-value highlight" id="success_maturity_amount">-</span>
+                    </div>
+                </div>
+                <a href="#" class="btn-download-cert" id="download_certificate_btn" download>
+                    📄 Download Certificate
+                </a>
+            </div>
+        </div>
+        <div class="fd-modal-footer" id="fd_modal_footer">
+            <button class="btn-cancel-fd" onclick="closeFDModal()">Cancel</button>
+            <button class="btn-confirm-fd" id="btn_confirm_fd" onclick="confirmFDCreation()">
+                Confirm & Create FD
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
