@@ -1,0 +1,101 @@
+{% extends 'bank_app/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Analytics{% endblock %}
+{% block page_title %}Analytics Dashboard{% endblock %}
+
+{% block content %}
+<!-- Overview Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <div class="stat-card-icon gold">📊</div>
+        </div>
+        <div class="stat-card-label">Total Loans</div>
+        <div class="stat-card-value">{{ total_loans }}</div>
+        <div class="stat-card-change">All time</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <div class="stat-card-icon teal">📈</div>
+        </div>
+        <div class="stat-card-label">Loans (7 days)</div>
+        <div class="stat-card-value">{{ loans_last_7_days }}</div>
+        <div class="stat-card-change">Last week</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <div class="stat-card-icon teal">📈</div>
+        </div>
+        <div class="stat-card-label">Loans (30 days)</div>
+        <div class="stat-card-value">{{ loans_last_30_days }}</div>
+        <div class="stat-card-change">Last month</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <div class="stat-card-icon green">✅</div>
+        </div>
+        <div class="stat-card-label">Approval Rate</div>
+        <div class="stat-card-value">{{ approval_rate }}%</div>
+        <div class="stat-card-change">Overall</div>
+    </div>
+</div>
+
+<!-- Regional Breakdown -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Loans by Region</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        {% for region in regional_loans %}
+        <div style="background: var(--bg); padding: 16px; border-radius: var(--radius-sm); text-align: center;">
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--gold);">{{ region.count }}</div>
+        <div style="font-size: 0.85rem; color: var(--muted); margin-top: 4px;">{{ region.country_code|default:'Unknown' }}</div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; color: var(--muted); padding: 20px;">No regional data available</div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Status Breakdown -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Loans by Status</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+        {% for status in status_breakdown %}
+        <div style="background: var(--bg); padding: 16px; border-radius: var(--radius-sm); text-align: center;">
+        <div style="font-size: 1.5rem; font-weight: 700; color: var(--teal);">{{ status.count }}</div>
+        <div style="font-size: 0.85rem; color: var(--muted); margin-top: 4px;">{{ status.loan_decision|default:status.status|default:'Unknown' }}</div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; color: var(--muted); padding: 20px;">No status data available</div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- FD & EMI Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <div class="stat-card-icon gold">💰</div>
+        </div>
+        <div class="stat-card-label">FD Comparisons</div>
+        <div class="stat-card-value">{{ total_fd_comparisons }}</div>
+        <div class="stat-card-change">Last 7 days: {{ fd_comparisons_last_7_days }}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-card-header">
+            <div class="stat-card-icon teal">🧮</div>
+        </div>
+        <div class="stat-card-label">EMI Calculations</div>
+        <div class="stat-card-value">{{ total_emi_calcs }}</div>
+        <div class="stat-card-change">All time</div>
+    </div>
+</div>
+{% endblock %}

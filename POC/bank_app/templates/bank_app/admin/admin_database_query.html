@@ -1,0 +1,827 @@
+{% extends 'bank_app/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Database Query Interface{% endblock %}
+{% block page_title %}Database Query Interface{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Database Query Interface Styles */
+.query-interface-container {
+    display: flex;
+    gap: 20px;
+    height: calc(100vh - 180px);
+}
+
+/* Query Input Section */
+.query-input-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.query-input-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+}
+
+.query-input-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 12px;
+    display: block;
+}
+
+.query-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9rem;
+    resize: vertical;
+}
+
+.query-textarea:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px var(--gold-glow);
+}
+
+.query-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.btn-execute {
+    flex: 1;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--gold), #b8860b);
+    color: #000;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-execute:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--gold-glow);
+}
+
+.btn-execute:disabled {
+    background: var(--dim);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-clear {
+    padding: 12px 20px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.btn-clear:hover {
+    background: var(--bg);
+    color: var(--text);
+}
+
+/* Results Section */
+.results-section {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.results-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.results-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.results-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.results-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-export {
+    padding: 6px 12px;
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.btn-export:hover {
+    background: var(--bg);
+    color: var(--gold);
+}
+
+.results-content {
+    flex: 1;
+    overflow: auto;
+    padding: 20px;
+}
+
+/* Markdown Content */
+.markdown-content {
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+    color: var(--gold);
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+.markdown-content code {
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85em;
+}
+
+.markdown-content pre {
+    background: var(--bg);
+    padding: 16px;
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+    margin: 12px 0;
+}
+
+.markdown-content pre code {
+    background: none;
+    padding: 0;
+}
+
+.markdown-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+}
+
+.markdown-content th {
+    background: var(--bg);
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 2px solid var(--border);
+    font-weight: 600;
+}
+
+.markdown-content td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.markdown-content tr:hover {
+    background: var(--bg);
+}
+
+/* Data Table */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.data-table th {
+    background: var(--bg);
+    padding: 12px;
+    text-align: left;
+    border-bottom: 2px solid var(--gold);
+    font-weight: 600;
+    color: var(--gold);
+    position: sticky;
+    top: 0;
+}
+
+.data-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.data-table tr:hover {
+    background: rgba(212, 175, 55, 0.05);
+}
+
+/* Loading State */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 16px;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 12px;
+    color: var(--muted);
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    opacity: 0.5;
+}
+
+/* Query History Sidebar */
+.history-sidebar {
+    width: 280px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.history-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.history-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.history-clear {
+    font-size: 0.7rem;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.history-clear:hover {
+    color: var(--gold);
+}
+
+.history-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.history-item {
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+}
+
+.history-item:hover {
+    background: var(--bg);
+}
+
+.history-item.active {
+    background: var(--gold-glow);
+    border-left: 3px solid var(--gold);
+}
+
+.history-query {
+    font-size: 0.8rem;
+    color: var(--text);
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--muted);
+}
+
+.history-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.status-success { color: #10b981; }
+.status-error { color: #ef4444; }
+.status-blocked { color: #f59e0b; }
+
+/* SQL Preview */
+.sql-preview {
+    background: var(--bg);
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    margin-top: 12px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.8rem;
+    color: var(--muted);
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.sql-preview-label {
+    font-size: 0.7rem;
+    color: var(--gold);
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* Error State */
+.error-state {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    color: #ef4444;
+}
+
+.error-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+/* Stats Bar */
+.stats-bar {
+    display: flex;
+    gap: 24px;
+    padding: 12px 20px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.stat-value {
+    color: var(--gold);
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .query-interface-container {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .results-section {
+        height: 500px;
+    }
+    
+    .history-sidebar {
+        width: 100%;
+        max-height: 300px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="query-interface-container">
+    <!-- Query Input Section -->
+    <div class="query-input-section">
+        <div class="query-input-card">
+            <label class="query-input-label" for="queryInput">
+                Enter your natural language query
+            </label>
+            <textarea 
+                id="queryInput" 
+                class="query-textarea" 
+                placeholder="e.g., Show me all loan applications approved in the last 30 days..."></textarea>
+            <div class="query-buttons">
+                <button id="executeBtn" class="btn-execute">
+                    <span id="executeBtnText">Execute Query</span>
+                    <span id="executeBtnLoading" style="display: none;">Executing...</span>
+                </button>
+                <button id="clearBtn" class="btn-clear">Clear</button>
+            </div>
+        </div>
+        
+        <!-- SQL Preview (shown after execution) -->
+        <div id="sqlPreviewSection" class="query-input-card" style="display: none;">
+            <span class="sql-preview-label">Generated SQL:</span>
+            <div id="sqlPreview" class="sql-preview"></div>
+        </div>
+    </div>
+    
+    <!-- Results Section -->
+    <div class="results-section">
+        <div class="results-card">
+            <div class="results-header">
+                <span class="results-title">Query Results</span>
+                <div class="results-actions">
+                    <button id="exportCsvBtn" class="btn-export" style="display: none;">Export CSV</button>
+                    <button id="exportJsonBtn" class="btn-export" style="display: none;">Export JSON</button>
+                </div>
+            </div>
+            <div id="resultsContent" class="results-content">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📊</div>
+                    <p>Enter a query and click Execute to see results</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Query History Sidebar -->
+    <div class="history-sidebar">
+        <div class="history-header">
+            <span class="history-title">Query History</span>
+            <button id="clearHistoryBtn" class="history-clear">Clear All</button>
+        </div>
+        <div id="historyList" class="history-list">
+            <!-- History items will be inserted here -->
+        </div>
+    </div>
+</div>
+
+<!-- Audit Log Modal -->
+<div id="auditModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); width: 80%; max-width: 900px; max-height: 80vh; display: flex; flex-direction: column;">
+        <div style="padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; color: var(--text);">Query Audit Log</h3>
+            <button onclick="document.getElementById('auditModal').style.display='none'" style="background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.5rem;">&times;</button>
+        </div>
+        <div id="auditContent" style="flex: 1; overflow: auto; padding: 20px;">
+            <!-- Audit log content will be inserted here -->
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Database Query Interface JavaScript
+(function() {
+    'use strict';
+    
+    // State
+    let currentResults = null;
+    let queryHistory = [];
+    
+    // DOM Elements
+    const queryInput = document.getElementById('queryInput');
+    const executeBtn = document.getElementById('executeBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const executeBtnText = document.getElementById('executeBtnText');
+    const executeBtnLoading = document.getElementById('executeBtnLoading');
+    const resultsContent = document.getElementById('resultsContent');
+    const sqlPreviewSection = document.getElementById('sqlPreviewSection');
+    const sqlPreview = document.getElementById('sqlPreview');
+    const exportCsvBtn = document.getElementById('exportCsvBtn');
+    const exportJsonBtn = document.getElementById('exportJsonBtn');
+    const historyList = document.getElementById('historyList');
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    
+    // Load history from localStorage
+    function loadHistory() {
+        try {
+            const saved = localStorage.getItem('dbQueryHistory');
+            if (saved) {
+                queryHistory = JSON.parse(saved);
+                renderHistory();
+            }
+        } catch (e) {
+            console.error('Failed to load history:', e);
+        }
+    }
+    
+    // Save history to localStorage
+    function saveHistory() {
+        try {
+            localStorage.setItem('dbQueryHistory', JSON.stringify(queryHistory));
+        } catch (e) {
+            console.error('Failed to save history:', e);
+        }
+    }
+    
+    // Render history list
+    function renderHistory() {
+        historyList.innerHTML = '';
+        queryHistory.slice(0, 50).forEach((item, index) => {
+            const div = document.createElement('div');
+            div.className = 'history-item' + (item.id === currentQueryId ? ' active' : '');
+            div.innerHTML = `
+                <div class="history-query">${escapeHtml(item.query_text)}</div>
+                <div class="history-meta">
+                    <span>${formatDate(item.executed_at)}</span>
+                    <span class="history-status ${getStatusClass(item.status)}">${item.status}</span>
+                </div>
+            `;
+            div.addEventListener('click', () => loadHistoryItem(item));
+            historyList.appendChild(div);
+        });
+    }
+    
+    // Get status class
+    function getStatusClass(status) {
+        switch(status) {
+            case 'SUCCESS': return 'status-success';
+            case 'ERROR': return 'status-error';
+            case 'BLOCKED': return 'status-blocked';
+            default: return '';
+        }
+    }
+    
+    // Format date
+    function formatDate(dateStr) {
+        const date = new Date(dateStr);
+        return date.toLocaleString();
+    }
+    
+    // Escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Load history item
+    function loadHistoryItem(item) {
+        queryInput.value = item.query_text;
+        currentQueryId = item.id;
+        renderHistory();
+    }
+    
+    // Clear history
+    clearHistoryBtn.addEventListener('click', () => {
+        if (confirm('Clear all query history?')) {
+            queryHistory = [];
+            saveHistory();
+            renderHistory();
+        }
+    });
+    
+    // Execute query
+    executeBtn.addEventListener('click', async () => {
+        const query = queryInput.value.trim();
+        if (!query) {
+            alert('Please enter a query');
+            return;
+        }
+        
+        // Show loading state
+        executeBtn.disabled = true;
+        executeBtnText.style.display = 'none';
+        executeBtnLoading.style.display = 'inline';
+        resultsContent.innerHTML = `
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Executing query...</div>
+            </div>
+        `;
+        
+        try {
+            const response = await fetch('{% url "admin_panel:admin_database_query_api" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ query_text: query })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                displayResults(data);
+                addToHistory(data.log);
+            } else {
+                displayError(data.error || 'Unknown error occurred');
+            }
+        } catch (error) {
+            displayError('Failed to execute query: ' + error.message);
+        } finally {
+            executeBtn.disabled = false;
+            executeBtnText.style.display = 'inline';
+            executeBtnLoading.style.display = 'none';
+        }
+    });
+    
+    // Display results
+    function displayResults(data) {
+        currentResults = data;
+        
+        // Show SQL preview
+        if (data.sql_generated) {
+            sqlPreview.textContent = data.sql_generated;
+            sqlPreviewSection.style.display = 'block';
+        }
+        
+        // Show export buttons
+        exportCsvBtn.style.display = 'inline-block';
+        exportJsonBtn.style.display = 'inline-block';
+        
+        // Render results
+        if (data.result_data && data.result_data.length > 0) {
+            // Render as table
+            const headers = Object.keys(data.result_data[0]);
+            let tableHtml = '<table class="data-table"><thead><tr>';
+            headers.forEach(h => {
+                tableHtml += `<th>${escapeHtml(h)}</th>`;
+            });
+            tableHtml += '</tr></thead><tbody>';
+            
+            data.result_data.forEach(row => {
+                tableHtml += '<tr>';
+                headers.forEach(h => {
+                    tableHtml += `<td>${escapeHtml(String(row[h]))}</td>`;
+                });
+                tableHtml += '</tr>';
+            });
+            tableHtml += '</tbody></table>';
+            
+            resultsContent.innerHTML = `
+                <div class="stats-bar">
+                    <div class="stat-item">Rows: <span class="stat-value">${data.result_count}</span></div>
+                    <div class="stat-item">Time: <span class="stat-value">${data.execution_time_ms || 'N/A'}ms</span></div>
+                    <div class="stat-item">Status: <span class="stat-value ${getStatusClass(data.status)}">${data.status}</span></div>
+                </div>
+                ${tableHtml}
+            `;
+        } else if (data.result_summary) {
+            // Render as markdown
+            resultsContent.innerHTML = `<div class="markdown-content">${renderMarkdown(data.result_summary)}</div>`;
+        } else {
+            resultsContent.innerHTML = '<div class="empty-state"><p>No results returned</p></div>';
+        }
+    }
+    
+    // Display error
+    function displayError(message) {
+        resultsContent.innerHTML = `
+            <div class="error-state">
+                <div class="error-title">Error</div>
+                <div>${escapeHtml(message)}</div>
+            </div>
+        `;
+        sqlPreviewSection.style.display = 'none';
+        exportCsvBtn.style.display = 'none';
+        exportJsonBtn.style.display = 'none';
+    }
+    
+    // Add to history
+    function addToHistory(log) {
+        queryHistory.unshift(log);
+        if (queryHistory.length > 100) {
+            queryHistory = queryHistory.slice(0, 100);
+        }
+        saveHistory();
+        renderHistory();
+    }
+    
+    // Simple markdown renderer
+    function renderMarkdown(text) {
+        if (!text) return '';
+        
+        let html = escapeHtml(text);
+        
+        // Headers
+        html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+        html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+        html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+        
+        // Bold and italic
+        html = html.replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>');
+        html = html.replace(/\*(.*)\*/gim, '<em>$1</em>');
+        
+        // Code blocks
+        html = html.replace(/```([\s\S]*?)```/gim, '<pre><code>$1</code></pre>');
+        
+        // Inline code
+        html = html.replace(/`(.*)`/gim, '<code>$1</code>');
+        
+        // Lists
+        html = html.replace(/^\- (.*$)/gim, '<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>');
+        
+        // Line breaks
+        html = html.replace(/\n/gim, '<br>');
+        
+        return html;
+    }
+    
+    // Export CSV
+    exportCsvBtn.addEventListener('click', () => {
+        if (!currentResults || !currentResults.result_data) return;
+        
+        const headers = Object.keys(currentResults.result_data[0]);
+        const csv = [
+            headers.join(','),
+            ...currentResults.result_data.map(row => 
+                headers.map(h => `"${String(row[h]).replace(/"/g, '""')}"`).join(',')
+            )
+        ].join('\n');
+        
+        downloadFile(csv, 'query_results.csv', 'text/csv');
+    });
+    
+    // Export JSON
+    exportJsonBtn.addEventListener('click', () => {
+        if (!currentResults || !currentResults.result_data) return;
+        
+        const json = JSON.stringify(currentResults.result_data, null, 2);
+        downloadFile(json, 'query_results.json', 'application/json');
+    });
+    
+    // Download file
+    function downloadFile(content, filename, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    
+    // Clear button
+    clearBtn.addEventListener('click', () => {
+        queryInput.value = '';
+        sqlPreviewSection.style.display = 'none';
+        resultsContent.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <p>Enter a query and click Execute to see results</p>
+            </div>
+        `;
+        exportCsvBtn.style.display = 'none';
+        exportJsonBtn.style.display = 'none';
+    });
+    
+    // Initialize
+    loadHistory();
+})();
+</script>
+{% endblock %}

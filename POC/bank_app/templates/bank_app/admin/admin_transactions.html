@@ -1,0 +1,169 @@
+{% extends 'bank_app/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Transaction Monitoring{% endblock %}
+{% block page_title %}Transaction Monitoring{% endblock %}
+
+{% block content %}
+<!-- Filters -->
+<div class="admin-filters">
+    <select class="admin-form-select admin-filter-select" name="type">
+        <option value="all" {% if type_filter == 'all' %}selected{% endif %}>All Types</option>
+        <option value="loan" {% if type_filter == 'loan' %}selected{% endif %}>Loans</option>
+        <option value="fd" {% if type_filter == 'fd' %}selected{% endif %}>Fixed Deposits</option>
+    </select>
+    <select class="admin-form-select admin-filter-select" name="status">
+        <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Status</option>
+        {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    <input type="text" class="admin-form-input admin-filter-input" placeholder="Search transactions..." value="{{ search }}" name="search">
+    <button type="submit" class="btn-admin btn-admin-primary">Filter</button>
+</div>
+
+<!-- Loan Applications -->
+{% if type_filter == 'loan' or type_filter == 'all' %}
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Loan Applications ({{ loans|length }})</h2>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Application ID</th>
+                <th>Applicant</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for loan in loans %}
+            <tr>
+            <td><code style="font-size: 0.8rem;">{{ loan.application_id }}</code></td>
+            <td>{{ loan.applicant_email }}</td>
+            <td>${{ loan.loan_amnt|floatformat:2 }}</td>
+            <td><span class="status {% if loan.loan_decision == 'APPROVED' %}approved{% elif loan.loan_decision == 'REJECTED' %}rejected{% else %}pending{% endif %}">{{ loan.loan_decision|default:'NEEDS_VERIFY' }}</span></td>
+            <td>{{ loan.created_at|date:"M d, Y" }}</td>
+            <td>
+            <a href="{% url 'admin_panel:admin_transaction_detail' loan.application_id %}" class="btn-admin btn-admin-secondary btn-admin-sm">View</a>
+            {% if loan.loan_decision == 'NEEDS_VERIFY' %}
+            <button onclick="approveLoan('{{ loan.application_id }}')" class="btn-admin btn-admin-primary btn-admin-sm">Approve</button>
+            <button onclick="rejectLoan('{{ loan.application_id }}')" class="btn-admin btn-admin-danger btn-admin-sm">Reject</button>
+            {% endif %}
+            </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: var(--muted); padding: 40px;">No loan applications found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- FD Comparisons -->
+{% if type_filter == 'fd' or type_filter == 'all' %}
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">FD Comparisons ({{ fds|length }})</h2>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Session ID</th>
+                <th>Deposit Amount</th>
+                <th>Tenure</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fd in fds %}
+            <tr>
+                <td>{{ fd.id }}</td>
+                <td><code style="font-size: 0.8rem;">{{ fd.user_session_id|truncatechars:20 }}</code></td>
+                <td>{{ fd.deposit_amount }}</td>
+                <td>{{ fd.tenure_preference_months }} months</td>
+                <td>{{ fd.created_at|date:"M d, Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center; color: var(--muted); padding: 40px;">No FD comparisons found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function approveLoan(applicationId) {
+    if (confirm('Are you sure you want to approve this loan application?')) {
+        fetch(`/admin-panel/transactions/${applicationId}/approve/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error approving loan');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error approving loan');
+        });
+    }
+}
+
+function rejectLoan(applicationId) {
+    if (confirm('Are you sure you want to reject this loan application?')) {
+        fetch(`/admin-panel/transactions/${applicationId}/reject/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error rejecting loan');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error rejecting loan');
+        });
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

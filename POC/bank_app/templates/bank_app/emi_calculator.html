@@ -1,0 +1,740 @@
+{% extends 'bank_app/base.html' %}
+{% load static %}
+
+{% block title %}EMI Calculator - Bank POC Agentic AI{% endblock %}
+
+{% block extra_css %}
+<style>
+/* CreditWise-style Slider CSS for EMI Calculator */
+.slider-field {
+    margin: 16px 0;
+}
+
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.slider-header label {
+    font-weight: 500;
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.slider-val {
+    font-family: 'DM Mono', monospace;
+    color: var(--gold);
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+/* Range slider styling */
+input[type="range"].slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(to right, var(--gold) var(--pct, 0%), rgba(255, 255, 255, 0.1) var(--pct, 0%));
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+/* WebKit thumb styling */
+input[type="range"].slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--gold);
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(201, 168, 76, 0.5);
+    transition: all 0.2s ease;
+    margin-top: -7px;
+}
+
+input[type="range"].slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 15px rgba(201, 168, 76, 0.8);
+}
+
+input[type="range"].slider::-webkit-slider-thumb:active {
+    transform: scale(1.25);
+    box-shadow: 0 0 20px rgba(201, 168, 76, 1);
+}
+
+/* Firefox thumb styling */
+input[type="range"].slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--gold);
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(201, 168, 76, 0.5);
+    transition: all 0.2s ease;
+    border: none;
+}
+
+input[type="range"].slider::-moz-range-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 0 0 15px rgba(201, 168, 76, 0.8);
+}
+
+input[type="range"].slider::-moz-range-thumb:active {
+    transform: scale(1.25);
+    box-shadow: 0 0 20px rgba(201, 168, 76, 1);
+}
+
+/* Track styling for Firefox */
+input[type="range"].slider::-moz-range-track {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+/* Tick marks below slider */
+.slider-ticks {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+    padding: 0 2px;
+}
+
+.slider-ticks span {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.65rem;
+    color: var(--dim);
+}
+
+.slider-ticks span::before {
+    content: '';
+    width: 2px;
+    height: 6px;
+    background: var(--border);
+    margin-bottom: 2px;
+}
+
+.slider-ticks span.active::before {
+    background: var(--gold);
+    height: 8px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page active" id="emi_calculator">
+    <div class="container">
+        <div class="hero" style="padding: 40px 24px 30px;">
+            <div class="badge">🧮 Loan EMI Calculator</div>
+            <h1 class="gradient-text-gold">Calculate Your <em>Monthly EMI</em></h1>
+            <p>Plan your loan with accurate EMI calculations, interest breakdown, and amortization schedule.</p>
+        </div>
+
+        <div class="two-col">
+            <!-- Left Column: EMI Form -->
+            <div>
+                <div class="creditwise-card">
+                    <div class="card-head">
+                        <div class="ic ic-gold">💰</div>
+                        <div>
+                            <h3 class="card-title">EMI Calculator</h3>
+                            <p class="card-sub">Enter your loan details below</p>
+                        </div>
+                    </div>
+
+                    <div class="section-divider">Loan Details</div>
+
+                    <div class="field slider-field">
+                    <div class="slider-header">
+                    <label for="loan_amount">Loan Amount</label>
+                    <span class="slider-val" id="loan_amount_val">₹5,00,000</span>
+                    </div>
+                    <div class="pfx">
+                    <span>₹</span>
+                    <input type="range" id="loan_amount_slider" class="slider" min="10000" max="5000000" step="10000" value="500000" oninput="syncSlider('loan_amount', this.value); updateSliderGradient(this)">
+                    </div>
+                    <input type="number" id="loan_amount" value="500000" min="10000" max="5000000" step="10000" oninput="syncInputToSlider('loan_amount_slider', this.value); updateSliderGradient(document.getElementById('loan_amount_slider'))" style="margin-top: 8px;">
+                    <span class="field-hint">Enter the principal loan amount</span>
+                    </div>
+                    
+                    <div class="field slider-field">
+                    <div class="slider-header">
+                    <label for="interest_rate">Interest Rate (% per annum)</label>
+                    <span class="slider-val" id="interest_rate_val">12.0%</span>
+                    </div>
+                    <div class="pfx">
+                    <span>%</span>
+                    <input type="range" id="interest_rate_slider" class="slider" min="1" max="36" step="0.25" value="12.0" oninput="syncSlider('interest_rate', this.value); updateSliderGradient(this)">
+                    </div>
+                    <input type="number" id="interest_rate" value="12.0" min="1" max="36" step="0.25" oninput="syncInputToSlider('interest_rate_slider', this.value); updateSliderGradient(document.getElementById('interest_rate_slider'))" style="margin-top: 8px;">
+                    <div class="slider-ticks">
+                    <span>1%</span>
+                    <span>10%</span>
+                    <span>18%</span>
+                    <span>26%</span>
+                    <span>36%</span>
+                    </div>
+                    <span class="field-hint">Annual interest rate</span>
+                    </div>
+                    
+                    <div class="field slider-field">
+                    <div class="slider-header">
+                    <label for="tenure">Loan Tenure</label>
+                    <span class="slider-val" id="tenure_val">36 months</span>
+                    </div>
+                    <input type="range" id="tenure_slider" class="slider" min="1" max="360" step="1" value="36" oninput="syncSlider('tenure', this.value); updateSliderGradient(this)">
+                    <div class="slider-ticks">
+                    <span>6m</span>
+                    <span>60m</span>
+                    <span>120m</span>
+                    <span>180m</span>
+                    <span>240m</span>
+                    <span>360m</span>
+                    </div>
+                    <div class="row2" style="margin-top: 8px;">
+                    <div>
+                    <input type="number" id="tenure" value="36" min="1" max="360" oninput="syncInputToSlider('tenure_slider', this.value); updateSliderGradient(document.getElementById('tenure_slider'))">
+                    <span class="field-hint">Months</span>
+                    </div>
+                    <div>
+                    <select id="tenure_years" onchange="convertTenure()">
+                    <option value="months" selected>Months</option>
+                    <option value="years">Years</option>
+                    </select>
+                    <span class="field-hint">Unit</span>
+                    </div>
+                    </div>
+                    </div>
+
+                    <div class="section-divider">Additional Details</div>
+
+                    <div class="field">
+                        <label for="processing_fee">Processing Fee</label>
+                        <div class="pfx">
+                            <span class="currency-symbol">₹</span>
+                            <input type="number" id="processing_fee" placeholder="e.g. 5,000" min="0" value="5000">
+                        </div>
+                        <span class="field-hint">One-time processing fee (optional)</span>
+                    </div>
+
+                    <div class="field">
+                        <label for="calculation_method">Calculation Method</label>
+                        <select id="calculation_method">
+                            <option value="reducing" selected>Reducing Balance (Recommended)</option>
+                            <option value="flat">Flat Rate</option>
+                        </select>
+                        <span class="field-hint">Reducing balance is more accurate</span>
+                    </div>
+
+                    <button class="btn-primary btn-creditwise" onclick="calculateEMI()">Calculate EMI</button>
+
+                    <div id="error_message" class="error-msg" style="display: none;"></div>
+                </div>
+
+                <!-- Info Card -->
+                <div class="creditwise-card" style="margin-top: 24px;">
+                    <div class="info-note">
+                        <strong>EMI Formula:</strong><br>
+                        EMI = [P × R × (1+R)^N] / [(1+R)^N - 1]<br><br>
+                        Where:<br>
+                        <strong>P</strong> = Principal loan amount<br>
+                        <strong>R</strong> = Monthly interest rate (Annual rate / 12 / 100)<br>
+                        <strong>N</strong> = Tenure in months
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Results -->
+            <div>
+                <div class="result-panel fadeUp" id="result_panel">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">🧮</div>
+                        <p><strong>Enter loan details</strong> and click Calculate EMI to see your monthly payment breakdown.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF Token Helper
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+    }
+    
+    // ============================================
+    // Slider Synchronization Functions (CreditWise-style)
+    // ============================================
+    
+    /**
+     * Syncs slider value with corresponding input field and display label
+     * @param {string} inputId - ID of the number input to sync
+     * @param {string} value - New value from slider
+     */
+    function syncSlider(inputId, value) {
+    const input = document.getElementById(inputId);
+    const display = document.getElementById(inputId + '_val');
+    
+    if (input && input.value !== String(value)) {
+    input.value = value;
+    }
+    
+    // Update display label with formatted value
+    if (display) {
+    const min = parseFloat(input?.min) || 0;
+    const max = parseFloat(input?.max) || 1000000;
+    
+    // Format based on value range
+    if (inputId === 'loan_amount') {
+    // Currency format for large values
+    display.textContent = '₹' + parseInt(value).toLocaleString('en-IN');
+    } else if (inputId === 'interest_rate') {
+    // Percentage format
+    display.textContent = value + '%';
+    } else if (inputId === 'tenure') {
+    // Tenure format with months label
+    const unit = document.getElementById('tenure_years')?.value || 'months';
+    if (unit === 'years') {
+    display.textContent = value + ' years';
+    } else {
+    display.textContent = value + ' months';
+    }
+    } else {
+    // Regular number format
+    display.textContent = value;
+    }
+    
+    // Update tick marks active state
+    updateTickMarks(inputId, value);
+    }
+    
+    // Update CSS --pct variable for gradient fill
+    const slider = document.getElementById(inputId + '_slider');
+    if (slider) {
+    updateSliderGradient(slider);
+    }
+    }
+    
+    /**
+     * Syncs number input value with corresponding slider
+     * @param {string} sliderId - ID of the slider to sync
+     * @param {string} value - New value from number input
+     */
+    function syncInputToSlider(sliderId, value) {
+    const slider = document.getElementById(sliderId);
+    if (slider) {
+    const min = parseFloat(slider.min) || 0;
+    const max = parseFloat(slider.max) || 1000000;
+    const numValue = Math.min(Math.max(parseFloat(value) || min, min), max);
+    
+    if (slider.value !== String(numValue)) {
+    slider.value = numValue;
+    updateSliderGradient(slider);
+    
+    // Update display label
+    const inputId = sliderId.replace('_slider', '');
+    const display = document.getElementById(inputId + '_val');
+    if (display) {
+    if (inputId === 'loan_amount') {
+    display.textContent = '₹' + parseInt(numValue).toLocaleString('en-IN');
+    } else if (inputId === 'interest_rate') {
+    display.textContent = numValue + '%';
+    } else if (inputId === 'tenure') {
+    const unit = document.getElementById('tenure_years')?.value || 'months';
+    if (unit === 'years') {
+    display.textContent = numValue + ' years';
+    } else {
+    display.textContent = numValue + ' months';
+    }
+    } else {
+    display.textContent = numValue;
+    }
+    }
+    
+    // Update tick marks
+    updateTickMarks(inputId, numValue);
+    }
+    }
+    }
+    
+    /**
+     * Updates the slider gradient based on current value
+     * @param {HTMLElement} slider - The range input element
+     */
+    function updateSliderGradient(slider) {
+        if (!slider) return;
+        
+        const min = parseFloat(slider.min) || 0;
+        const max = parseFloat(slider.max) || 100;
+        const val = parseFloat(slider.value) || 0;
+        const pct = ((val - min) / (max - min)) * 100;
+        
+        slider.style.setProperty('--pct', pct + '%');
+    }
+    
+    /**
+     * Updates active tick marks based on slider value
+     * @param {string} inputId - ID of the input field
+     * @param {string} value - Current slider value
+     */
+    function updateTickMarks(inputId, value) {
+        const slider = document.getElementById(inputId + '_slider');
+        if (!slider) return;
+        
+        const ticksContainer = slider.nextElementSibling;
+        if (!ticksContainer || !ticksContainer.classList.contains('slider-ticks')) return;
+        
+        const min = parseFloat(slider.min) || 0;
+        const max = parseFloat(slider.max) || 100;
+        const val = parseFloat(value) || 0;
+        
+        const tickValues = Array.from(ticksContainer.querySelectorAll('span')).map(span => {
+            const text = span.textContent.replace('%', '').replace('m', '');
+            return parseFloat(text);
+        });
+        
+        tickValues.forEach((tickVal, index) => {
+            const tickSpan = ticksContainer.querySelectorAll('span')[index];
+            if (tickVal <= val) {
+                tickSpan.classList.add('active');
+            } else {
+                tickSpan.classList.remove('active');
+            }
+        });
+    }
+    
+    // Initialize sliders on page load
+    document.addEventListener('DOMContentLoaded', function() {
+    // Initialize all slider gradients
+    const sliders = document.querySelectorAll('input[type="range"].slider');
+    sliders.forEach(slider => {
+    updateSliderGradient(slider);
+    
+    // Add input event listener for real-time updates
+    slider.addEventListener('input', function() {
+    const inputId = this.id.replace('_slider', '');
+    syncSlider(inputId, this.value);
+    });
+    });
+    
+    // Initialize tick marks for all sliders with ticks
+    const interestRateSlider = document.getElementById('interest_rate_slider');
+    const tenureSlider = document.getElementById('tenure_slider');
+    if (interestRateSlider) updateTickMarks('interest_rate', interestRateSlider.value);
+    if (tenureSlider) updateTickMarks('tenure', tenureSlider.value);
+    
+    // Initialize display labels from input fields
+    const loanAmountInput = document.getElementById('loan_amount');
+    const interestRateInput = document.getElementById('interest_rate');
+    const tenureInput = document.getElementById('tenure');
+    
+    if (loanAmountInput) syncSlider('loan_amount', loanAmountInput.value);
+    if (interestRateInput) syncSlider('interest_rate', interestRateInput.value);
+    if (tenureInput) syncSlider('tenure', tenureInput.value);
+    });
+    
+    // Convert tenure when unit changes
+function convertTenure() {
+    const tenureInput = document.getElementById('tenure');
+    const unit = document.getElementById('tenure_years').value;
+    let currentValue = parseInt(tenureInput.value) || 0;
+    
+    if (unit === 'years') {
+        // Convert months to years
+        tenureInput.value = Math.round(currentValue / 12);
+    } else {
+        // Convert years to months
+        tenureInput.value = currentValue * 12;
+    }
+}
+
+// Calculate EMI
+function calculateEMI() {
+    const loanAmount = parseFloat(document.getElementById('loan_amount').value) || 0;
+    const interestRate = parseFloat(document.getElementById('interest_rate').value) || 0;
+    const tenure = parseInt(document.getElementById('tenure').value) || 0;
+    const processingFee = parseFloat(document.getElementById('processing_fee').value) || 0;
+    const method = document.getElementById('calculation_method').value;
+
+    // Validate inputs
+    if (loanAmount <= 0) {
+        showError('Please enter a valid loan amount.');
+        return;
+    }
+    if (interestRate <= 0 || interestRate > 50) {
+        showError('Please enter a valid interest rate (1-50%).');
+        return;
+    }
+    if (tenure <= 0 || tenure > 360) {
+        showError('Please enter a valid tenure (1-360 months).');
+        return;
+    }
+
+    let emi, totalInterest, monthlyRate;
+
+    if (method === 'reducing') {
+        // Reducing Balance Method (most accurate)
+        monthlyRate = interestRate / 12 / 100;
+        emi = loanAmount * monthlyRate * Math.pow(1 + monthlyRate, tenure) / (Math.pow(1 + monthlyRate, tenure) - 1);
+        totalInterest = (emi * tenure) - loanAmount;
+    } else {
+        // Flat Rate Method
+        totalInterest = loanAmount * (interestRate / 100) * (tenure / 12);
+        emi = (loanAmount + totalInterest) / tenure;
+    }
+
+    const totalPayment = loanAmount + totalInterest;
+    const totalCost = totalPayment + processingFee;
+
+    // Display results
+    displayEMIResults({
+        loanAmount,
+        interestRate,
+        tenure,
+        monthlyRate,
+        emi,
+        totalInterest,
+        totalPayment,
+        processingFee,
+        totalCost,
+        method
+    });
+}
+
+// Display EMI Results
+function displayEMIResults(data) {
+    const resultPanel = document.getElementById('result_panel');
+    
+    resultPanel.innerHTML = `
+        <div class="rp-title">EMI Breakdown</div>
+        
+        <!-- Main EMI Display -->
+        <div class="ring-section">
+            <div class="ring-wrapper">
+                <svg class="ring-svg" viewBox="0 0 154 154">
+                    <circle class="ring-track" cx="77" cy="77" r="68"></circle>
+                    <circle class="ring-fill" cx="77" cy="77" r="68" style="stroke-dashoffset: ${427 - (427 * 0.7)};"></circle>
+                </svg>
+                <div class="ring-center">
+                    <div class="ring-pct" style="font-size: 1.6rem;">${formatCurrency(data.emi)}</div>
+                    <div class="ring-label">Monthly EMI</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EMI Table -->
+        <div class="section-divider">Payment Summary</div>
+        <div class="emi-table">
+            <div class="emi-row">
+                <span class="emi-label">Principal Amount</span>
+                <span class="emi-value">${formatCurrency(data.loanAmount)}</span>
+            </div>
+            <div class="emi-row">
+                <span class="emi-label">Total Interest</span>
+                <span class="emi-value red">${formatCurrency(data.totalInterest)}</span>
+            </div>
+            <div class="emi-row">
+                <span class="emi-label">Processing Fee</span>
+                <span class="emi-value">${formatCurrency(data.processingFee)}</span>
+            </div>
+            <div class="emi-row" style="border-top: 2px solid var(--border); padding-top: 16px; margin-top: 8px;">
+                <span class="emi-label" style="font-weight: 600; color: var(--text);">Total Payment</span>
+                <span class="emi-value big">${formatCurrency(data.totalPayment)}</span>
+            </div>
+            <div class="emi-row">
+                <span class="emi-label" style="font-weight: 600; color: var(--text);">Total Cost of Loan</span>
+                <span class="emi-value big gold">${formatCurrency(data.totalCost)}</span>
+            </div>
+        </div>
+
+        <!-- Donut Chart -->
+        <div class="donut-wrap">
+            <svg class="donut-svg" viewBox="0 0 120 120">
+                <circle class="donut-track" cx="60" cy="60" r="58"></circle>
+                <circle class="donut-principal" cx="60" cy="60" r="58" 
+                    style="stroke-dashoffset: ${364 - (364 * data.loanAmount / data.totalPayment)};"></circle>
+                <circle class="donut-interest" cx="60" cy="60" r="58" 
+                    style="stroke-dashoffset: ${364 - (364 * data.totalInterest / data.totalPayment)};"></circle>
+            </svg>
+            <div class="donut-legend">
+                <div class="legend-item">
+                    <div class="dot green-dot"></div>
+                    <span>Principal</span>
+                </div>
+                <div class="legend-item">
+                    <div class="dot red-dot"></div>
+                    <span>Interest</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loan Summary -->
+        <div class="section-divider" style="margin-top: 16px;">Loan Details</div>
+        <div class="emi-table">
+            <div class="emi-row">
+                <span class="emi-label">Interest Rate</span>
+                <span class="emi-value">${data.interestRate}% p.a.</span>
+            </div>
+            <div class="emi-row">
+                <span class="emi-label">Tenure</span>
+                <span class="emi-value">${data.tenure} months</span>
+            </div>
+            <div class="emi-row">
+                <span class="emi-label">Method</span>
+                <span class="emi-value">${data.method === 'reducing' ? 'Reducing Balance' : 'Flat Rate'}</span>
+            </div>
+            <div class="emi-row">
+                <span class="emi-label">Monthly Rate</span>
+                <span class="emi-value">${(data.interestRate / 12).toFixed(4)}%</span>
+            </div>
+        </div>
+
+        <!-- Amortization Schedule Toggle -->
+        <button class="btn-secondary" onclick="toggleAmortization()" style="margin-top: 16px;">
+            📊 View Amortization Schedule
+        </button>
+        
+        <div id="amortization_section" style="display: none; margin-top: 16px;">
+            <div class="section-divider">Amortization Schedule</div>
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Month</th>
+                            <th>Opening</th>
+                            <th>Principal</th>
+                            <th>Interest</th>
+                            <th>Total</th>
+                            <th>Closing</th>
+                        </tr>
+                    </thead>
+                    <tbody id="amortization_body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    // Generate first 12 months of amortization
+    generateAmortizationPreview(data);
+}
+
+// Toggle amortization schedule visibility
+function toggleAmortization() {
+    const section = document.getElementById('amortization_section');
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        event.target.textContent = '📊 Hide Amortization Schedule';
+    } else {
+        section.style.display = 'none';
+        event.target.textContent = '📊 View Amortization Schedule';
+    }
+}
+
+// Generate amortization preview (first 12 months)
+function generateAmortizationPreview(data) {
+    const tbody = document.getElementById('amortization_body');
+    tbody.innerHTML = '';
+    
+    let remainingBalance = data.loanAmount;
+    const monthlyRate = data.interestRate / 12 / 100;
+    
+    for (let month = 1; month <= Math.min(data.tenure, 12); month++) {
+        const interestPayment = remainingBalance * monthlyRate;
+        const principalPayment = data.emi - interestPayment;
+        remainingBalance -= principalPayment;
+        
+        if (remainingBalance < 0) remainingBalance = 0;
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${month}</td>
+            <td>${formatCurrency(remainingBalance + principalPayment)}</td>
+            <td class="col-green">${formatCurrency(principalPayment)}</td>
+            <td class="col-red">${formatCurrency(interestPayment)}</td>
+            <td>${formatCurrency(data.emi)}</td>
+            <td>${formatCurrency(Math.max(0, remainingBalance))}</td>
+        `;
+        tbody.appendChild(row);
+    }
+    
+    if (data.tenure > 12) {
+        const moreRow = document.createElement('tr');
+        moreRow.innerHTML = `
+            <td colspan="6" style="text-align: center; color: var(--dim); font-style: italic;">
+                ... ${data.tenure - 12} more months
+            </td>
+        `;
+        tbody.appendChild(moreRow);
+    }
+}
+
+// Format currency
+function formatCurrency(amount) {
+    return '₹' + amount.toLocaleString('en-IN', { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+    });
+}
+
+// Show error message
+function showError(message) {
+    const errorDiv = document.getElementById('error_message');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
+}
+
+// Update currency symbols based on region
+document.addEventListener('DOMContentLoaded', function() {
+    const currencySymbols = document.querySelectorAll('.currency-symbol');
+    
+    // Get currency symbol - check window.USER_REGION first (set by Django), then cookie
+    let symbol = '₹'; // Default
+    
+    if (window.USER_REGION && window.USER_REGION.currency) {
+        symbol = window.USER_REGION.currency;
+        console.log('Using currency from window.USER_REGION:', symbol);
+    } else {
+        // Fallback to cookie parsing
+        const savedRegion = document.cookie.split('; ').find(row => row.startsWith('user_region='));
+        if (savedRegion) {
+            try {
+                const region = JSON.parse(decodeURIComponent(savedRegion.split('=')[1]));
+                symbol = region.currency || '₹';
+                console.log('Using currency from cookie:', symbol);
+            } catch (e) {
+                console.warn('Could not parse saved region:', e);
+            }
+        }
+    }
+    
+    // Apply symbol to all currency elements
+    currencySymbols.forEach(span => {
+        span.textContent = symbol;
+    });
+});
+</script>
+{% endblock %}

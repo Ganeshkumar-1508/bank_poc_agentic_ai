@@ -1,0 +1,316 @@
+{% comment %}
+US Credit Risk Assessment Form
+Uses XGBoost model trained on US Lending Club data
+Credit Score Range: 300-850 (FICO)
+{% endcomment %}
+
+<div class="hero" style="padding: 40px 24px 30px;">
+    <div class="badge">🇺🇸 US Credit Risk Assessment</div>
+    <h1 class="gradient-text-gold">Know Your <em>Approval Odds</em> Before You Apply</h1>
+    <p>XGBoost model predicts credit risk using US lending criteria and FICO scores.</p>
+    <div style="margin-top: 12px; padding: 12px 16px; background: #F0FDF4; border-radius: 6px; border: 1px solid #BBF7D0; display: inline-block;">
+        <span style="color: #166534; font-size: 14px;">🇺🇸 US Region Detected -- Using US XGBoost Credit Risk Model</span>
+    </div>
+</div>
+
+<div class="two-col">
+    <!-- Left Column: Form -->
+    <div>
+        <div class="creditwise-card">
+            <div class="section-divider">Loan Details</div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="loan_amnt">Loan Amount</label>
+                        <span class="slider-val" id="loan_amnt_val">$15,000</span>
+                    </div>
+                    <div class="pfx">
+                        <span>$</span>
+                        <input type="range" id="loan_amnt_slider" class="slider" min="1000" max="500000" step="1000" value="15000" oninput="syncSlider('loan_amnt', this.value); updateSliderGradient(this)">
+                    </div>
+                    <input type="number" id="loan_amnt" value="15000" min="1000" max="500000" step="1000" oninput="syncInputToSlider('loan_amnt_slider', this.value); updateSliderGradient(document.getElementById('loan_amnt_slider'))" style="margin-top: 8px;">
+                </div>
+                <div class="field">
+                    <label for="term">Term</label>
+                    <select id="term">
+                        <option value="36" selected>36 months</option>
+                        <option value="60">60 months</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="int_rate">Interest Rate</label>
+                        <span class="slider-val" id="int_rate_val">12.5%</span>
+                    </div>
+                    <input type="range" id="int_rate_slider" class="slider" min="1.0" max="30.0" step="0.25" value="12.5" oninput="syncSlider('int_rate', this.value); updateSliderGradient(this)">
+                    <div class="slider-ticks">
+                        <span>1%</span>
+                        <span>8%</span>
+                        <span>15%</span>
+                        <span>22%</span>
+                        <span>30%</span>
+                    </div>
+                    <input type="number" id="int_rate" value="12.5" min="1.0" max="30.0" step="0.25" oninput="syncInputToSlider('int_rate_slider', this.value); updateSliderGradient(document.getElementById('int_rate_slider'))" style="margin-top: 8px;">
+                </div>
+                <div class="field">
+                    <label for="purpose">Purpose</label>
+                    <select id="purpose">
+                        <option value="debt_consolidation" selected>Debt Consolidation</option>
+                        <option value="credit_card">Credit Card</option>
+                        <option value="home_improvement">Home Improvement</option>
+                        <option value="major_purchase">Major Purchase</option>
+                        <option value="medical">Medical</option>
+                        <option value="small_business">Small Business</option>
+                        <option value="car">Car</option>
+                        <option value="moving">Moving</option>
+                        <option value="vacation">Vacation</option>
+                        <option value="house">House</option>
+                        <option value="renewable_energy">Renewable Energy</option>
+                        <option value="wedding">Wedding</option>
+                        <option value="educational">Educational</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-divider">Income & Employment</div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="annual_inc">Annual Income</label>
+                        <span class="slider-val" id="annual_inc_val">$60,000</span>
+                    </div>
+                    <div class="pfx">
+                        <span>$</span>
+                        <input type="range" id="annual_inc_slider" class="slider" min="5000" max="5000000" step="5000" value="60000" oninput="syncSlider('annual_inc', this.value); updateSliderGradient(this)">
+                    </div>
+                    <input type="number" id="annual_inc" value="60000" min="5000" max="5000000" step="5000" oninput="syncInputToSlider('annual_inc_slider', this.value); updateSliderGradient(document.getElementById('annual_inc_slider'))" style="margin-top: 8px;">
+                </div>
+                <div class="field">
+                    <label for="emp_length">Employment Length</label>
+                    <select id="emp_length">
+                        <option value="< 1 year">< 1 year</option>
+                        <option value="1 year">1 year</option>
+                        <option value="2 years">2 years</option>
+                        <option value="3 years">3 years</option>
+                        <option value="4 years">4 years</option>
+                        <option value="5 years" selected>5 years</option>
+                        <option value="6 years">6 years</option>
+                        <option value="7 years">7 years</option>
+                        <option value="8 years">8 years</option>
+                        <option value="9 years">9 years</option>
+                        <option value="10+ years">10+ years</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row2">
+                <div class="field">
+                    <label for="home_ownership">Home Ownership</label>
+                    <select id="home_ownership">
+                        <option value="RENT" selected>Rent</option>
+                        <option value="OWN">Own</option>
+                        <option value="MORTGAGE">Mortgage</option>
+                        <option value="OTHER">Other</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="verification_status">Verification Status</label>
+                    <select id="verification_status">
+                        <option value="Not Verified" selected>Not Verified</option>
+                        <option value="Source Verified">Source Verified</option>
+                        <option value="Verified">Verified</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section-divider">Credit Profile</div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="fico_score">FICO Score</label>
+                        <span class="slider-val" id="fico_score_val">680</span>
+                    </div>
+                    <input type="range" id="fico_score_slider" class="slider" min="300" max="850" step="5" value="680" oninput="syncSlider('fico_score', this.value); updateSliderGradient(this)">
+                    <div class="slider-ticks">
+                        <span>300</span>
+                        <span>450</span>
+                        <span>600</span>
+                        <span>740</span>
+                        <span>850</span>
+                    </div>
+                    <input type="number" id="fico_score" value="680" min="300" max="850" step="5" oninput="syncInputToSlider('fico_score_slider', this.value); updateSliderGradient(document.getElementById('fico_score_slider'))" style="margin-top: 8px;">
+                    <span class="field-hint">300-850 (FICO score range)</span>
+                </div>
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="dti">DTI Ratio</label>
+                        <span class="slider-val" id="dti_val">18%</span>
+                    </div>
+                    <input type="range" id="dti_slider" class="slider" min="0.0" max="100.0" step="0.5" value="18.0" oninput="syncSlider('dti', this.value); updateSliderGradient(this)">
+                    <div class="slider-ticks">
+                        <span>0%</span>
+                        <span>20%</span>
+                        <span>40%</span>
+                        <span>60%</span>
+                        <span>100%</span>
+                    </div>
+                    <input type="number" id="dti" value="18.0" min="0.0" max="100.0" step="0.5" oninput="syncInputToSlider('dti_slider', this.value); updateSliderGradient(document.getElementById('dti_slider'))" style="margin-top: 8px;">
+                </div>
+            </div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="delinq_2yrs">Delinquencies (2yr)</label>
+                        <span class="slider-val" id="delinq_2yrs_val">0</span>
+                    </div>
+                    <input type="range" id="delinq_2yrs_slider" class="slider" min="0" max="20" step="1" value="0" oninput="syncSlider('delinq_2yrs', this.value); updateSliderGradient(this)">
+                    <div class="slider-ticks">
+                        <span>0</span>
+                        <span>5</span>
+                        <span>10</span>
+                        <span>15</span>
+                        <span>20</span>
+                    </div>
+                    <input type="number" id="delinq_2yrs" value="0" min="0" max="20" step="1" oninput="syncInputToSlider('delinq_2yrs_slider', this.value); updateSliderGradient(document.getElementById('delinq_2yrs_slider'))" style="margin-top: 8px;">
+                </div>
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="inq_last_6mths">Inquiries (6mo)</label>
+                        <span class="slider-val" id="inq_last_6mths_val">1</span>
+                    </div>
+                    <input type="range" id="inq_last_6mths_slider" class="slider" min="0" max="20" step="1" value="1" oninput="syncSlider('inq_last_6mths', this.value); updateSliderGradient(this)">
+                    <div class="slider-ticks">
+                        <span>0</span>
+                        <span>5</span>
+                        <span>10</span>
+                        <span>15</span>
+                        <span>20</span>
+                    </div>
+                    <input type="number" id="inq_last_6mths" value="1" min="0" max="20" step="1" oninput="syncInputToSlider('inq_last_6mths_slider', this.value); updateSliderGradient(document.getElementById('inq_last_6mths_slider'))" style="margin-top: 8px;">
+                </div>
+            </div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="pub_rec">Public Records</label>
+                        <span class="slider-val" id="pub_rec_val">0</span>
+                    </div>
+                    <input type="range" id="pub_rec_slider" class="slider" min="0" max="20" step="1" value="0" oninput="syncSlider('pub_rec', this.value); updateSliderGradient(this)">
+                    <div class="slider-ticks">
+                        <span>0</span>
+                        <span>5</span>
+                        <span>10</span>
+                        <span>15</span>
+                        <span>20</span>
+                    </div>
+                    <input type="number" id="pub_rec" value="0" min="0" max="20" step="1" oninput="syncInputToSlider('pub_rec_slider', this.value); updateSliderGradient(document.getElementById('pub_rec_slider'))" style="margin-top: 8px;">
+                </div>
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="revol_util">Revolving Utilization</label>
+                        <span class="slider-val" id="revol_util_val">45%</span>
+                    </div>
+                    <input type="range" id="revol_util_slider" class="slider" min="0.0" max="150.0" step="1.0" value="45.0" oninput="syncSlider('revol_util', this.value); updateSliderGradient(this)">
+                    <div class="slider-ticks">
+                        <span>0%</span>
+                        <span>30%</span>
+                        <span>50%</span>
+                        <span>70%</span>
+                        <span>150%</span>
+                    </div>
+                    <input type="number" id="revol_util" value="45.0" min="0.0" max="150.0" step="1.0" oninput="syncInputToSlider('revol_util_slider', this.value); updateSliderGradient(document.getElementById('revol_util_slider'))" style="margin-top: 8px;">
+                </div>
+            </div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="revol_bal">Revolving Balance</label>
+                        <span class="slider-val" id="revol_bal_val">$5,000</span>
+                    </div>
+                    <div class="pfx">
+                        <span>$</span>
+                        <input type="range" id="revol_bal_slider" class="slider" min="0" max="500000" step="500" value="5000" oninput="syncSlider('revol_bal', this.value); updateSliderGradient(this)">
+                    </div>
+                    <input type="number" id="revol_bal" value="5000" min="0" max="500000" step="500" oninput="syncInputToSlider('revol_bal_slider', this.value); updateSliderGradient(document.getElementById('revol_bal_slider'))" style="margin-top: 8px;">
+                </div>
+                <div class="field">
+                    <label for="earliest_cr_line">Earliest Credit Line</label>
+                    <input type="text" id="earliest_cr_line" placeholder="Jan-2010" value="Jan-2010">
+                    <span class="field-hint">Format: Mon-YYYY</span>
+                </div>
+            </div>
+
+            <div class="section-divider" style="margin-top: 16px;">Advanced Options</div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="total_acc">Total Accounts</label>
+                        <span class="slider-val" id="total_acc_val">15</span>
+                    </div>
+                    <input type="range" id="total_acc_slider" class="slider" min="1" max="100" step="1" value="15" oninput="syncSlider('total_acc', this.value); updateSliderGradient(this)">
+                    <input type="number" id="total_acc" value="15" min="1" max="100" step="1" oninput="syncInputToSlider('total_acc_slider', this.value); updateSliderGradient(document.getElementById('total_acc_slider'))" style="margin-top: 8px;">
+                </div>
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="open_acc">Open Accounts</label>
+                        <span class="slider-val" id="open_acc_val">8</span>
+                    </div>
+                    <input type="range" id="open_acc_slider" class="slider" min="0" max="50" step="1" value="8" oninput="syncSlider('open_acc', this.value); updateSliderGradient(this)">
+                    <input type="number" id="open_acc" value="8" min="0" max="50" step="1" oninput="syncInputToSlider('open_acc_slider', this.value); updateSliderGradient(document.getElementById('open_acc_slider'))" style="margin-top: 8px;">
+                </div>
+            </div>
+
+            <div class="row2">
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="mths_since_last_delinq">Months Since Last Delinq</label>
+                        <span class="slider-val" id="mths_since_last_delinq_val">36</span>
+                    </div>
+                    <input type="range" id="mths_since_last_delinq_slider" class="slider" min="0" max="180" step="1" value="36" oninput="syncSlider('mths_since_last_delinq', this.value); updateSliderGradient(this)">
+                    <input type="number" id="mths_since_last_delinq" value="36" min="0" max="180" step="1" oninput="syncInputToSlider('mths_since_last_delinq_slider', this.value); updateSliderGradient(document.getElementById('mths_since_last_delinq_slider'))" style="margin-top: 8px;">
+                </div>
+                <div class="field slider-field">
+                    <div class="slider-header">
+                        <label for="total_rev_hi_lim">Total Rev High Limit</label>
+                        <span class="slider-val" id="total_rev_hi_lim_val">$20,000</span>
+                    </div>
+                    <div class="pfx">
+                        <span>$</span>
+                        <input type="range" id="total_rev_hi_lim_slider" class="slider" min="0" max="1000000" step="1000" value="20000" oninput="syncSlider('total_rev_hi_lim', this.value); updateSliderGradient(this)">
+                    </div>
+                    <input type="number" id="total_rev_hi_lim" value="20000" min="0" max="1000000" step="1000" oninput="syncInputToSlider('total_rev_hi_lim_slider', this.value); updateSliderGradient(document.getElementById('total_rev_hi_lim_slider'))" style="margin-top: 8px;">
+                </div>
+            </div>
+
+            <button class="btn-primary btn-creditwise" onclick="submitCreditRisk()">Check Approval Probability</button>
+
+            <!-- Apply for Loan Button - shown after credit risk assessment -->
+            <button id="apply_loan_btn_us" class="btn-primary btn-creditwise" onclick="openLoanModal()" style="display: none; margin-top: 12px;">
+                Apply for Loan
+            </button>
+
+            <div id="error_message_us" class="error-msg" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Right Column: Results -->
+    <div>
+        <div class="result-panel fadeUp" id="result_panel_us">
+            <div class="placeholder">
+                <div class="placeholder-icon">🔮</div>
+                <p><strong>Fill in your details</strong> and click Run Credit Risk Assessment to see your result.</p>
+            </div>
+        </div>
+    </div>
+</div>

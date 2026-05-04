@@ -1,0 +1,103 @@
+{% extends 'bank_app/admin/admin_base.html' %}
+{% load static %}
+
+{% block title %}Content Management{% endblock %}
+{% block page_title %}Content Management{% endblock %}
+
+{% block content %}
+<!-- Add FD Rate Form -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Add New FD Rate</h2>
+    </div>
+    <form method="POST" action="{% url 'admin_panel:admin_add_fd_rate' %}">
+        {% csrf_token %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+            <div>
+                <label class="admin-form-label">Bank Name</label>
+                <input type="text" name="bank_name" class="admin-form-input" required placeholder="e.g., HDFC Bank">
+            </div>
+            <div>
+                <label class="admin-form-label">Rate (%)</label>
+                <input type="number" step="0.01" name="rate" class="admin-form-input" required placeholder="e.g., 7.5">
+            </div>
+            <div>
+                <label class="admin-form-label">Min Deposit</label>
+                <input type="number" name="min_deposit" class="admin-form-input" required placeholder="e.g., 1000">
+            </div>
+            <div>
+            <label class="admin-form-label">Min Tenure (months)</label>
+            <input type="number" name="tenure_min_months" class="admin-form-input" required placeholder="e.g., 12">
+            </div>
+            <div>
+            <label class="admin-form-label">Max Tenure (months)</label>
+            <input type="number" name="tenure_max_months" class="admin-form-input" required placeholder="e.g., 24">
+            </div>
+        </div>
+        <button type="submit" class="btn-admin btn-admin-primary">Add FD Rate</button>
+    </form>
+</div>
+
+<!-- FD Rates Table -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Existing FD Rates ({{ fd_rates|length }})</h2>
+    </div>
+    <table class="admin-table">
+        <thead>
+            <tr>
+                <th>Bank</th>
+                <th>Rate (%)</th>
+                <th>Min Deposit</th>
+                <th>Tenure</th>
+                <th>Senior Citizen</th>
+                <th>Status</th>
+                <th>Effective From</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rate in fd_rates %}
+            <tr>
+                <td>{{ rate.bank_name }}</td>
+                <td><strong style="color: var(--gold);">{{ rate.general_rate }}</strong></td>
+                <td>-</td>
+                <td>{{ rate.tenure_min_months }}-{{ rate.tenure_max_months }} months</td>
+                <td>{{ rate.senior_rate|default:"-" }}</td>
+                <td>
+                    <span class="status {% if rate.is_active %}approved{% else %}rejected{% endif %}">
+                        {% if rate.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </td>
+                <td>{{ rate.effective_date|date:"M d, Y" }}</td>
+                <td>
+                    <form method="POST" action="{% url 'admin_panel:admin_update_fd_rate' rate.rate_id %}" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="rate" value="{{ rate.general_rate }}">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                            <input type="checkbox" name="is_active" {% if rate.is_active %}checked{% endif %} onchange="this.form.submit()">
+                            <span style="font-size: 0.8rem;">Toggle</span>
+                        </label>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center; color: var(--muted); padding: 40px;">No FD rates found. Add one above.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- News Sources (Placeholder for future implementation) -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">News Sources</h2>
+    </div>
+    <div style="text-align: center; padding: 20px; color: var(--muted);">
+        <p>News source management coming soon.</p>
+        <p style="font-size: 0.85rem;">Currently using: NewsAPI, GDELT, ICICI Direct</p>
+    </div>
+</div>
+{% endblock %}

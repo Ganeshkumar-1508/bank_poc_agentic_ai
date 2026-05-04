@@ -1,0 +1,324 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Bank POC Agentic AI{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'css/creditwise_components.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<nav>
+    <div class="logo">Bank<span>POC</span> Agentic AI</div>
+    
+    <!-- Main Navigation -->
+    <div class="nav-pills">
+    <a href="{% url 'home' %}" class="pill {% if request.resolver_match.url_name == 'home' %}active{% endif %}">Home</a>
+    <a href="{% url 'financial_news' %}" class="pill {% if request.resolver_match.url_name == 'financial_news' %}active{% endif %}">News</a>
+    <a href="{% url 'emi' %}" class="pill {% if request.resolver_match.url_name == 'emi' %}active{% endif %}">EMI</a>
+    <a href="{% url 'fd_advisor' %}" class="pill {% if request.resolver_match.url_name == 'fd_advisor' %}active{% endif %}">FD Advisor</a>
+    <a href="{% url 'credit_risk' %}" class="pill {% if request.resolver_match.url_name == 'credit_risk' %}active{% endif %}">Personal Loan</a>
+    <a href="{% url 'mortgage_analytics' %}" class="pill {% if request.resolver_match.url_name == 'mortgage_analytics' %}active{% endif %}">Mortgage</a>
+    <a href="{% url 'new_account' %}" class="pill {% if request.resolver_match.url_name == 'new_account' %}active{% endif %}">New Account</a>
+    <a href="{% url 'smart_assistant' %}" class="pill {% if request.resolver_match.url_name == 'smart_assistant' %}active{% endif %}">Smart Assistant</a>
+    </div>
+    
+    <!-- Compact Region Selector - Pill Style -->
+    <div class="region-selector-compact">
+        <select id="region-select" class="region-dropdown-compact" aria-label="Select region">
+            {% for code, display_name in country_list %}
+            <option value="{{ code }}" {% if request.user_region.country_code == code %}selected{% endif %}>{{ display_name }}</option>
+            {% endfor %}
+        </select>
+        <!-- Display current region name -->
+        <div class="region-info" style="margin-left: 10px; font-size: 0.9em; color: #666;">
+        {% if request.user_region %}
+        <span title="Country: {{ request.user_region.country_name|default:'Unknown' }}">
+        {{ request.user_region.country_name|default:request.user_region.country_code|default:'Worldwide' }}
+        </span>
+        {% else %}
+        <span>Worldwide</span>
+        {% endif %}
+        </div>
+    </div>
+    
+    <!-- Admin Panel Link -->
+    <a href="{% url 'admin_panel:admin_login' %}" class="pill admin-link">Admin</a>
+</nav>
+
+<main>
+    {% block content %}{% endblock %}
+</main>
+
+<script src="{% static 'js/main.js' %}"></script>
+<script>
+// Global country list data for region selector
+let countryListData = {};
+
+// Expose user region to JavaScript for currency formatting
+// Updated to match streamlit_ref format with currency_symbol
+window.USER_REGION = {
+    'code': '{{ request.user_region.country_code|default:"WW" }}',
+    'name': '{{ request.user_region.country_name|default:"Worldwide" }}',
+    'currency_symbol': '{{ request.user_region.currency_symbol|default:"$" }}',
+    'currency_code': '{{ request.user_region.currency_code|default:"USD" }}',
+    'ddg_region': '{{ request.user_region.ddg_region|default:"wt-wt" }}'
+};
+console.log('User region initialized:', window.USER_REGION);
+
+/**
+ * Load country list from API endpoint
+ * @returns {Promise} Resolves when countries are loaded
+ */
+async function loadCountryList() {
+    const regionSelect = document.getElementById('region-select');
+    if (!regionSelect) return;
+
+    try {
+        const response = await fetch('/api/csc/countries/');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.countries || !Array.isArray(data.countries) || data.countries.length === 0) {
+            throw new Error('No countries returned from API or invalid response format');
+        }
+
+        // Transform API response to match Streamlit pattern
+        countryListData = {};
+        data.countries.forEach(country => {
+            if (country.code && country.name) {
+                countryListData[country.code] = {
+                    name: country.name,
+                    official_name: country.name,
+                    alpha_3: country.code,
+                    currency_code: country.currency_code || country.code === 'US' ? 'USD' : (country.code === 'IN' ? 'INR' : country.currency_code || ''),
+                    currency_symbol: country.currency_symbol || country.currency || getCurrencySymbol(country.code),
+                    ddg_region: country.code.toLowerCase() + '-en'
+                };
+            }
+        });
+
+        // Add "Worldwide" entry
+        countryListData['WW'] = {
+            name: 'Worldwide',
+            official_name: 'Worldwide',
+            alpha_3: '',
+            currency_code: '',
+            currency_symbol: '',
+            ddg_region: 'wt-wt'
+        };
+
+        console.log('Countries loaded:', Object.keys(countryListData).length, 'countries');
+        populateCountryDropdown();
+
+    } catch (error) {
+        console.error('Error loading country data:', error);
+    }
+}
+
+/**
+ * Get currency symbol for a country code
+ * @param {string} countryCode - ISO2 country code
+ * @returns {string} Currency symbol
+ */
+function getCurrencySymbol(countryCode) {
+    if (!countryCode) return '$';
+    const currencyMap = {
+        'IN': '₹', 'US': '$', 'GB': '£', 'CA': '$', 'AU': '$',
+        'DE': '€', 'FR': '€', 'JP': '¥', 'CN': '¥', 'BR': 'R$',
+        'MX': '$', 'KR': '₩', 'RU': '₽', 'WW': ''
+    };
+    return currencyMap[countryCode.toUpperCase()] || '$';
+}
+
+/**
+ * Populate country dropdown with country data
+ */
+function populateCountryDropdown() {
+    const regionSelect = document.getElementById('region-select');
+    if (!regionSelect) return;
+
+    // Clear existing options (keep the first one if it's the default)
+    const currentValue = regionSelect.value;
+    regionSelect.innerHTML = '';
+
+    // Build lookup: country_name -> country_code
+    const countryLookup = {};
+    const countryNames = [];
+
+    Object.keys(countryListData).forEach(code => {
+        const info = countryListData[code];
+        const name = info.name;
+        if (name) {
+            countryLookup[name] = code;
+            countryNames.push(name);
+        }
+    });
+
+    // Sort country names alphabetically
+    countryNames.sort();
+
+    // Add options in sorted order
+    countryNames.forEach(name => {
+        const code = countryLookup[name];
+        const info = countryListData[code];
+        const option = document.createElement('option');
+        option.value = code;
+        option.textContent = info.currency_symbol
+            ? `${name} (${info.currency_symbol})`
+            : name;
+        regionSelect.appendChild(option);
+    });
+
+    // Restore selected value if it exists
+    if (currentValue && countryListData[currentValue]) {
+        regionSelect.value = currentValue;
+    }
+}
+
+/**
+ * Auto-detect user region from /api/user-region/ endpoint
+ * @returns {Promise} Resolves when region is detected
+ */
+async function autoDetectUserRegion() {
+    try {
+        const response = await fetch('/api/user-region/');
+        const data = await response.json();
+
+        if (data.country_code) {
+            const detectedCode = data.country_code.toUpperCase();
+            const regionSelect = document.getElementById('region-select');
+
+            // Check if detected country is in the list
+            const countryExists = countryListData[detectedCode] !== undefined;
+
+            if (countryExists && regionSelect) {
+                // Set the detected region
+                regionSelect.value = detectedCode;
+                
+                // Update window.USER_REGION
+                window.USER_REGION = {
+                    'code': detectedCode,
+                    'name': data.country_name || countryListData[detectedCode]?.name || detectedCode,
+                    'currency_symbol': data.currency_symbol || countryListData[detectedCode]?.currency_symbol || getCurrencySymbol(detectedCode),
+                    'currency_code': data.currency_code || countryListData[detectedCode]?.currency_code || 'USD',
+                    'ddg_region': data.ddg_region || countryListData[detectedCode]?.ddg_region || 'wt-wt'
+                };
+
+                console.log(`Region auto-detected: ${window.USER_REGION.name} (${detectedCode})`);
+
+                // Save to session via API
+                await fetch('/api/set-region/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ country_code: detectedCode })
+                });
+
+                // Update the region info display
+                updateRegionInfoDisplay(detectedCode);
+            }
+        }
+    } catch (error) {
+        console.warn('Could not auto-detect user region:', error);
+    }
+}
+
+/**
+ * Update the region info display in the nav bar
+ * @param {string} countryCode - The country code
+ */
+function updateRegionInfoDisplay(countryCode) {
+    const regionInfo = document.querySelector('.region-info');
+    if (!regionInfo || !countryListData[countryCode]) return;
+
+    const country = countryListData[countryCode];
+    regionInfo.innerHTML = `
+        <span title="Country: ${country.name}">${countryCode}</span>
+        ${country.currency_symbol ? `<span style="margin-left: 5px;">${country.currency_symbol}</span>` : ''}
+    `;
+}
+
+// Region selector functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const regionSelect = document.getElementById('region-select');
+    
+    // Load country list and auto-detect region on page load
+    Promise.all([
+        loadCountryList(),
+        autoDetectUserRegion()
+    ]).then(() => {
+        console.log('Region selector initialized');
+    }).catch(error => {
+        console.error('Failed to initialize region selector:', error);
+    });
+
+    if (regionSelect) {
+        regionSelect.addEventListener('change', function() {
+            const countryCode = this.value;
+            fetch('/api/set-region/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({ country_code: countryCode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Region updated to:', data);
+                // Update window.USER_REGION
+                if (countryListData[countryCode]) {
+                    const country = countryListData[countryCode];
+                    window.USER_REGION = {
+                        'code': countryCode,
+                        'name': country.name,
+                        'currency_symbol': country.currency_symbol,
+                        'currency_code': country.currency_code,
+                        'ddg_region': country.ddg_region
+                    };
+                    updateRegionInfoDisplay(countryCode);
+                }
+                // Reload page to reflect changes
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Error updating region:', error);
+                // Reload anyway to try to recover
+                window.location.reload();
+            });
+        });
+    }
+});
+
+// Helper function to get CSRF token cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Display detected region in console
+document.addEventListener('regionDetected', function(e) {
+    console.log('Region detected:', e.detail);
+});
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

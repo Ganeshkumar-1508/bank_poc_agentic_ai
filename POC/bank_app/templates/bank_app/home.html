@@ -1,0 +1,80 @@
+{% extends 'bank_app/base.html' %}
+{% load static %}
+
+{% block title %}Home - Bank POC Agentic AI{% endblock %}
+
+{% block content %}
+<div class="page active" id="home">
+    <div class="hero">
+        <div class="badge">🏦 Banking AI Platform</div>
+        <h1 class="gradient-text-gold">Intelligent <em>Banking Solutions</em></h1>
+        <p>Advanced AI-powered tools for credit risk assessment, fixed deposit optimization, mortgage analytics, and financial insights.</p>
+    </div>
+
+    <div class="container">
+        <div class="two-col">
+            <div>
+                <div class="creditwise-card">
+                    <div class="card-head">
+                        <div class="ic ic-gold">📊</div>
+                        <div>
+                            <h3 class="card-title">Credit Risk Assessment</h3>
+                            <p class="card-sub">AI-powered loan approval predictions</p>
+                        </div>
+                    </div>
+                    <p style="color: var(--muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 16px;">
+                        Get real-time loan approval probability using our advanced machine learning models. 
+                        Supports both US (FICO-based) and Indian (CIBIL-style) credit scoring systems.
+                    </p>
+                    <a href="{% url 'credit_risk' %}" class="btn-primary btn-creditwise" style="margin-top: 0;">Analyze Credit Risk</a>
+                </div>
+
+                <div class="creditwise-card" style="margin-top: 24px;">
+                    <div class="card-head">
+                        <div class="ic ic-teal">💰</div>
+                        <div>
+                            <h3 class="card-title">Fixed Deposit Advisor</h3>
+                            <p class="card-sub">Compare FD rates across banks</p>
+                        </div>
+                    </div>
+                    <p style="color: var(--muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 16px;">
+                        Find the best fixed deposit rates in your region with our intelligent comparison tool.
+                        Get personalized recommendations based on your financial profile.
+                    </p>
+                    <a href="{% url 'fd_advisor' %}" class="btn-primary btn-creditwise" style="margin-top: 0;">Compare FD Rates</a>
+                </div>
+            </div>
+
+            <div>
+                <div class="creditwise-card">
+                    <div class="card-head">
+                        <div class="ic ic-gold">🏠</div>
+                        <div>
+                            <h3 class="card-title">Mortgage Analytics</h3>
+                            <p class="card-sub">US mortgage calculations</p>
+                        </div>
+                    </div>
+                    <p style="color: var(--muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 16px;">
+                        Calculate mortgage payments, compare loan options, and understand your home financing choices.
+                    </p>
+                    <a href="{% url 'mortgage_analytics' %}" class="btn-primary btn-creditwise" style="margin-top: 0;">Calculate Mortgage</a>
+                </div>
+
+                <div class="creditwise-card" style="margin-top: 24px;">
+                    <div class="card-head">
+                        <div class="ic ic-teal">📰</div>
+                        <div>
+                            <h3 class="card-title">Financial News</h3>
+                            <p class="card-sub">Real-time market insights</p>
+                        </div>
+                    </div>
+                    <p style="color: var(--muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 16px;">
+                        Stay updated with the latest financial news and market trends from trusted sources.
+                    </p>
+                    <a href="{% url 'financial_news' %}" class="btn-primary btn-creditwise" style="margin-top: 0;">View News</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

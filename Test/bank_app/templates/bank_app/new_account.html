@@ -1,0 +1,1081 @@
+{% extends 'bank_app/base.html' %}
+{% load static %}
+
+{% block title %}New Account Application - Bank POC Agentic AI{% endblock %}
+
+{% block content %}
+<div class="page active" id="new_account">
+  <div class="container">
+    <div class="hero" style="padding: 40px 24px 30px;">
+      <div class="badge">🏦 Open an Account</div>
+      <h1 class="gradient-text-gold">Start Your <em>Banking Journey</em> Today</h1>
+      <p>Complete the application below to open a new account with our secure KYC/AML verification process.</p>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="creditwise-card" style="margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; position: relative;">
+        <div style="position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--border); z-index: 0;"></div>
+        <div class="step-indicator active" data-step="1">
+          <div class="step-circle">1</div>
+          <div class="step-label">Personal Info</div>
+        </div>
+        <div class="step-indicator" data-step="2">
+          <div class="step-circle">2</div>
+          <div class="step-label">Account Details</div>
+        </div>
+        <div class="step-indicator" data-step="3">
+          <div class="step-circle">3</div>
+          <div class="step-label">KYC/AML</div>
+        </div>
+        <div class="step-indicator" data-step="4">
+          <div class="step-circle">4</div>
+          <div class="step-label">Review</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <!-- Main Form -->
+      <div>
+        <!-- Step 1: Personal Information -->
+        <div class="creditwise-card step-content active" id="step1">
+          <div class="section-divider">Personal Information</div>
+          
+          <div class="row2">
+            <div class="field">
+              <label for="first_name">First Name *</label>
+              <input type="text" id="first_name" placeholder="Enter first name" required>
+            </div>
+            <div class="field">
+              <label for="last_name">Last Name *</label>
+              <input type="text" id="last_name" placeholder="Enter last name" required>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="email">Email Address *</label>
+            <input type="email" id="email" placeholder="your.email@example.com" required>
+          </div>
+
+          <div class="field">
+            <label for="phone">Phone Number *</label>
+            <input type="tel" id="phone" placeholder="+1 (555) 123-4567" required>
+          </div>
+
+          <div class="row2">
+          <div class="field">
+          <label for="date_of_birth">Date of Birth *</label>
+          <input type="date" id="date_of_birth" required>
+          </div>
+          <div class="field">
+          <label for="national_id">National ID *</label>
+          <input type="text" id="national_id" placeholder="Enter ID number" required>
+          <div class="field-hint" id="national_id_hint">Social Security Number (US)</div>
+          </div>
+          </div>
+
+          <div class="field">
+            <label for="address">Street Address *</label>
+            <input type="text" id="address" placeholder="123 Main Street" required>
+          </div>
+
+          <div class="row2">
+          <div class="field">
+          <label for="country">Country *</label>
+          <select id="country" required onchange="loadStates(); updateNationalIdField()">
+          <option value="">Select Country</option>
+          </select>
+          </div>
+          <div class="field">
+          <label for="state">State *</label>
+          <select id="state" required onchange="loadCities()">
+          <option value="">Select Country First</option>
+          </select>
+          </div>
+          </div>
+          
+          <div class="row2">
+          <div class="field">
+          <label for="city">City *</label>
+          <select id="city" required>
+          <option value="">Select State First</option>
+          </select>
+          </div>
+          <div class="field">
+          <label for="zip">ZIP Code *</label>
+          <input type="text" id="zip" placeholder="10001" maxlength="10" required>
+          </div>
+          </div>
+
+          <button class="btn-primary btn-creditwise" onclick="nextStep(2)">Continue to Account Details</button>
+        </div>
+
+        <!-- Step 2: Account Details -->
+        <div class="creditwise-card step-content" id="step2" style="display: none;">
+          <div class="section-divider">Account Type & Preferences</div>
+
+          <div class="field">
+            <label>Account Type *</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
+              <label class="account-type-card" onclick="selectAccountType('checking')">
+                <input type="radio" name="account_type" value="checking" checked hidden>
+                <div class="account-type-inner">
+                  <div style="font-size: 1.5rem; margin-bottom: 8px;">💳</div>
+                  <div style="font-weight: 600; color: #fff;">Checking</div>
+                  <div style="font-size: 0.7rem; color: var(--dim); margin-top: 4px;">Everyday transactions</div>
+                </div>
+              </label>
+              <label class="account-type-card" onclick="selectAccountType('savings')">
+                <input type="radio" name="account_type" value="savings" hidden>
+                <div class="account-type-inner">
+                  <div style="font-size: 1.5rem; margin-bottom: 8px;">🏦</div>
+                  <div style="font-weight: 600; color: #fff;">Savings</div>
+                  <div style="font-size: 0.7rem; color: var(--dim); margin-top: 4px;">Earn interest</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="field" style="margin-top: 20px;">
+            <label for="initial_deposit">Initial Deposit Amount *</label>
+            <div class="pfx">
+              <span>$</span>
+              <input type="number" id="initial_deposit" placeholder="1000" min="100" value="1000" required style="padding-left: 28px;">
+            </div>
+            <span class="field-hint">Minimum $100 required</span>
+          </div>
+
+          <div class="field" style="margin-top: 16px;">
+            <label for="deposit_method">Deposit Method *</label>
+            <select id="deposit_method" required>
+              <option value="">Select deposit method</option>
+              <option value="transfer">Bank Transfer</option>
+              <option value="check">Mail a Check</option>
+              <option value="wire">Wire Transfer</option>
+              <option value="cash">Visit Branch</option>
+            </select>
+          </div>
+
+          <div class="field" style="margin-top: 16px;">
+            <label>Additional Services</label>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="overdraft_protection" style="width: 18px; height: 18px;">
+                <span style="font-size: 0.85rem; color: var(--muted);">Overdraft Protection ($25/month)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="mobile_banking" style="width: 18px; height: 18px;" checked>
+                <span style="font-size: 0.85rem; color: var(--muted);">Mobile Banking (Free)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="statements" style="width: 18px; height: 18px;" checked>
+                <span style="font-size: 0.85rem; color: var(--muted);">Electronic Statements (Free)</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="alerts" style="width: 18px; height: 18px;" checked>
+                <span style="font-size: 0.85rem; color: var(--muted);">Account Alerts & Notifications</span>
+              </label>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button class="btn-secondary" onclick="prevStep(1)" style="flex: 1;">Back</button>
+            <button class="btn-primary btn-creditwise" onclick="nextStep(3)" style="flex: 1;">Continue to KYC/AML</button>
+          </div>
+        </div>
+
+        <!-- Step 3: KYC/AML Verification -->
+        <div class="creditwise-card step-content" id="step3" style="display: none;">
+          <div class="section-divider">KYC/AML Verification</div>
+
+          <div class="info-note">
+            <strong>Identity Verification Required</strong><br>
+            Please provide the following information to comply with Know Your Customer (KYC) and Anti-Money Laundering (AML) regulations.
+          </div>
+
+          <div class="field">
+            <label>Government ID Type *</label>
+            <select id="id_type" required style="margin-top: 8px;">
+              <option value="">Select ID type</option>
+              <option value="ssn">Social Security Number</option>
+              <option value="passport">Passport Number</option>
+              <option value="drivers_license">Driver's License</option>
+              <option value="national_id">National ID Card</option>
+            </select>
+          </div>
+
+          <div class="field" style="margin-top: 16px;">
+            <label for="id_number">ID Number *</label>
+            <input type="text" id="id_number" placeholder="Enter ID number" required>
+          </div>
+
+          <div class="field" style="margin-top: 16px;">
+            <label for="id_expiry">ID Expiration Date *</label>
+            <input type="date" id="id_expiry" required>
+          </div>
+
+          <div class="field" style="margin-top: 16px;">
+            <label>Upload Documents *</label>
+            <div style="border: 2px dashed var(--border); border-radius: var(--radius-sm); padding: 24px; text-align: center; margin-top: 8px; transition: border-color 0.2s;" id="upload_area">
+              <div style="font-size: 2rem; margin-bottom: 8px;">📎</div>
+              <div style="font-size: 0.85rem; color: var(--muted); margin-bottom: 12px;">Drag and drop files here or click to browse</div>
+              <div style="font-size: 0.7rem; color: var(--dim);">Accepted: PDF, JPG, PNG (Max 5MB each)</div>
+              <input type="file" id="id_document" multiple accept=".pdf,.jpg,.jpeg,.png" style="display: none;">
+              <button class="btn-secondary" onclick="document.getElementById('id_document').click()" style="margin-top: 12px;">Browse Files</button>
+            </div>
+            <div id="file_list" style="margin-top: 12px;"></div>
+          </div>
+
+          <div class="field" style="margin-top: 16px;">
+            <label>Source of Funds *</label>
+            <select id="source_of_funds" required style="margin-top: 8px;">
+              <option value="">Select source</option>
+              <option value="salary">Employment/Salary</option>
+              <option value="business">Business Income</option>
+              <option value="investments">Investments</option>
+              <option value="inheritance">Inheritance</option>
+              <option value="savings">Personal Savings</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="field" style="margin-top: 16px;">
+            <label for="occupation">Occupation *</label>
+            <input type="text" id="occupation" placeholder="Your current occupation" required>
+          </div>
+
+          <div class="field" style="margin-top: 16px;">
+            <label for="employer">Employer Name</label>
+            <input type="text" id="employer" placeholder="Company name (if applicable)">
+          </div>
+
+          <div class="field" style="margin-top: 16px;">
+            <label style="display: flex; align-items: start; gap: 10px;">
+              <input type="checkbox" id="aml_declaration" required style="width: 18px; height: 18px; margin-top: 2px;">
+              <span style="font-size: 0.78rem; color: var(--muted); line-height: 1.5;">
+                I declare that the information provided is accurate and complete. I understand that false information may result in account denial or termination. I consent to background checks for AML compliance. *
+              </span>
+            </label>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button class="btn-secondary" onclick="prevStep(2)" style="flex: 1;">Back</button>
+            <button class="btn-primary btn-creditwise" onclick="nextStep(4)" style="flex: 1;">Review Application</button>
+          </div>
+        </div>
+
+        <!-- Step 4: Review & Submit -->
+        <div class="creditwise-card step-content" id="step4" style="display: none;">
+          <div class="section-divider">Review Your Application</div>
+
+          <div id="review_content">
+            <!-- Personal Info Summary -->
+            <div class="review-section">
+              <div class="section-label">Personal Information</div>
+              <div class="review-row">
+                <span class="review-label">Name:</span>
+                <span class="review-value" id="review_name"></span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Email:</span>
+                <span class="review-value" id="review_email"></span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Phone:</span>
+                <span class="review-value" id="review_phone"></span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Address:</span>
+                <span class="review-value" id="review_address"></span>
+              </div>
+            </div>
+
+            <!-- Account Details Summary -->
+            <div class="review-section">
+              <div class="section-label">Account Details</div>
+              <div class="review-row">
+                <span class="review-label">Account Type:</span>
+                <span class="review-value" id="review_account_type"></span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Initial Deposit:</span>
+                <span class="review-value" id="review_deposit"></span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Services:</span>
+                <span class="review-value" id="review_services"></span>
+              </div>
+            </div>
+
+            <!-- KYC Summary -->
+            <div class="review-section">
+              <div class="section-label">KYC/AML Verification</div>
+              <div class="review-row">
+                <span class="review-label">ID Type:</span>
+                <span class="review-value" id="review_id_type"></span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Source of Funds:</span>
+                <span class="review-value" id="review_source"></span>
+              </div>
+              <div class="review-row">
+                <span class="review-label">Occupation:</span>
+                <span class="review-value" id="review_occupation"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="info-note" style="margin-top: 20px;">
+            <strong>Next Steps:</strong><br>
+            After submission, our KYC/AML team will review your application within 1-2 business days. You will receive an email notification once your account is approved.
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button class="btn-secondary" onclick="prevStep(3)" style="flex: 1;">Edit</button>
+            <button class="btn-primary btn-creditwise" onclick="submitApplication()" style="flex: 1;">Submit Application</button>
+          </div>
+        </div>
+
+        <!-- Success Message -->
+        <div class="creditwise-card step-content" id="success_message" style="display: none; text-align: center; padding: 48px 24px;">
+          <div style="font-size: 4rem; margin-bottom: 16px;">✅</div>
+          <h2 style="font-family: 'Playfair Display', serif; font-size: 1.8rem; color: #fff; margin-bottom: 12px;">Application Submitted!</h2>
+          <p style="color: var(--muted); line-height: 1.7; max-width: 400px; margin: 0 auto 24px;">
+            Your account application has been submitted successfully. Our team will review your information and contact you within 1-2 business days.
+          </p>
+          <div class="creditwise-card" style="background: rgba(201, 168, 76, 0.05); border-color: var(--gold); margin-bottom: 24px;">
+            <div style="font-size: 0.75rem; color: var(--dim); margin-bottom: 4px;">Application Reference</div>
+            <div style="font-family: 'DM Mono', monospace; font-size: 1.2rem; color: var(--gold);" id="reference_number"></div>
+          </div>
+          <button class="btn-primary btn-creditwise" onclick="location.reload()">Start New Application</button>
+        </div>
+      </div>
+
+      <!-- Sidebar: Requirements & Help -->
+      <div>
+        <div class="result-panel">
+          <div class="ic ic-gold" style="width: 48px; height: 48px; font-size: 1.3rem; margin-bottom: 12px;">ℹ️</div>
+          <h3 style="font-family: 'Playfair Display', serif; font-size: 1.05rem; color: #fff; margin-bottom: 12px;">Requirements</h3>
+          
+          <div class="tip" style="margin-bottom: 12px;">
+            <strong>Required Documents:</strong><br>
+            • Government-issued ID<br>
+            • Proof of address (utility bill, bank statement)<br>
+            • Social Security card (US residents)
+          </div>
+
+          <div class="tip" style="margin-bottom: 12px;">
+            <strong>Minimum Requirements:</strong><br>
+            • Must be 18 years or older<br>
+            • Valid email and phone number<br>
+            • Minimum $100 initial deposit
+          </div>
+
+          <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);">
+            <div class="section-label" style="margin-bottom: 12px;">Need Help?</div>
+            <div style="font-size: 0.8rem; color: var(--muted); line-height: 1.6;">
+              Call us at<br>
+              <strong style="color: var(--gold);">1-800-BANK-HELP</strong><br>
+              Mon-Fri, 9AM-6PM EST
+            </div>
+          </div>
+        </div>
+
+        <div class="creditwise-card" style="margin-top: 16px;">
+          <div class="section-label">Security Notice</div>
+          <div style="font-size: 0.78rem; color: var(--muted); line-height: 1.6;">
+            Your information is protected with bank-grade encryption. We comply with all federal privacy regulations and will never share your personal information without consent.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentStep = 1;
+let applicationData = {};
+
+// =============================================================================
+// Countries-States-Cities Cascading Dropdown Logic
+// =============================================================================
+
+// Load all countries on page load
+function loadCountries() {
+    const countrySelect = document.getElementById('country');
+    countrySelect.innerHTML = '<option value="">Loading countries...</option>';
+    
+    fetch('/api/csc/countries/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                countrySelect.innerHTML = '<option value="">Error loading countries</option>';
+                console.error('Error loading countries:', data.error);
+                return;
+            }
+            
+            countrySelect.innerHTML = '<option value="">Select Country</option>';
+            data.countries.forEach(country => {
+                const emoji = country.emoji || '🌐';
+                countrySelect.innerHTML += `<option value="${country.code}">${emoji} ${country.name}</option>`;
+            });
+        })
+        .catch(error => {
+            countrySelect.innerHTML = '<option value="">Error loading countries</option>';
+            console.error('Error fetching countries:', error);
+        });
+}
+
+// Load states when country is selected
+function loadStates() {
+    const countrySelect = document.getElementById('country');
+    const stateSelect = document.getElementById('state');
+    const citySelect = document.getElementById('city');
+    const countryCode = countrySelect.value;
+    
+    // Reset state and city dropdowns
+    stateSelect.innerHTML = '<option value="">Select State</option>';
+    citySelect.innerHTML = '<option value="">Select State First</option>';
+    
+    if (!countryCode) {
+        return;
+    }
+    
+    stateSelect.innerHTML = '<option value="">Loading states...</option>';
+    
+    fetch(`/api/csc/states/?country_code=${countryCode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                stateSelect.innerHTML = '<option value="">Error loading states</option>';
+                console.error('Error loading states:', data.error);
+                return;
+            }
+            
+            stateSelect.innerHTML = '<option value="">Select State</option>';
+            data.states.forEach(state => {
+                stateSelect.innerHTML += `<option value="${state.state_code}" data-id="${state.id}">${state.name}</option>`;
+            });
+        })
+        .catch(error => {
+            stateSelect.innerHTML = '<option value="">Error loading states</option>';
+            console.error('Error fetching states:', error);
+        });
+}
+
+// Load cities when state is selected
+function loadCities() {
+    const countrySelect = document.getElementById('country');
+    const stateSelect = document.getElementById('state');
+    const citySelect = document.getElementById('city');
+    const countryCode = countrySelect.value;
+    const stateCode = stateSelect.value;
+    
+    // Reset city dropdown
+    citySelect.innerHTML = '<option value="">Select City</option>';
+    
+    if (!countryCode || !stateCode) {
+        return;
+    }
+    
+    citySelect.innerHTML = '<option value="">Loading cities...</option>';
+    
+    fetch(`/api/csc/cities/?country_code=${countryCode}&state_code=${stateCode}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                citySelect.innerHTML = '<option value="">Error loading cities</option>';
+                console.error('Error loading cities:', data.error);
+                return;
+            }
+            
+            citySelect.innerHTML = '<option value="">Select City</option>';
+            data.cities.forEach(city => {
+                citySelect.innerHTML += `<option value="${city.name}" data-id="${city.id}">${city.name}</option>`;
+            });
+        })
+        .catch(error => {
+            citySelect.innerHTML = '<option value="">Error loading cities</option>';
+            console.error('Error fetching cities:', error);
+        });
+}
+
+// Update national ID field based on country selection
+function updateNationalIdField() {
+    const country = document.getElementById('country').value;
+    const nationalIdField = document.getElementById('national_id');
+    const nationalIdHint = document.getElementById('national_id_hint');
+    const nationalIdInput = document.getElementById('national_id');
+    
+    if (country === 'US') {
+        nationalIdField.parentElement.querySelector('label').textContent = 'Social Security Number *';
+        nationalIdHint.textContent = 'Format: XXX-XX-XXXX';
+        nationalIdInput.placeholder = 'XXX-XX-XXXX';
+        nationalIdInput.setAttribute('maxlength', '11');
+        // Remove old event listener and add new one
+        nationalIdInput.removeEventListener('input', formatSSN);
+        nationalIdInput.addEventListener('input', formatSSN);
+    } else if (country === 'IN') {
+        // Check if user wants PAN or Aadhaar
+        nationalIdField.parentElement.querySelector('label').textContent = 'PAN / Aadhaar *';
+        nationalIdHint.textContent = 'Enter PAN (ABCDE1234F) or Aadhaar (12 digits)';
+        nationalIdInput.placeholder = 'ABCDE1234F or 123456789012';
+        nationalIdInput.setAttribute('maxlength', '14');
+        nationalIdInput.removeEventListener('input', formatSSN);
+        nationalIdInput.addEventListener('input', formatIndianID);
+    } else {
+        // UK, CA, or other
+        nationalIdField.parentElement.querySelector('label').textContent = 'National ID *';
+        nationalIdHint.textContent = 'Enter your national identification number';
+        nationalIdInput.placeholder = 'Enter ID number';
+        nationalIdInput.setAttribute('maxlength', '20');
+        nationalIdInput.removeEventListener('input', formatSSN);
+        nationalIdInput.removeEventListener('input', formatIndianID);
+    }
+}
+
+// Format SSN as XXX-XX-XXXX
+function formatSSN(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 9) value = value.substring(0, 9);
+    
+    if (value.length > 7) {
+        value = value.substring(0, 3) + '-' + value.substring(3, 5) + '-' + value.substring(5);
+    } else if (value.length > 5) {
+        value = value.substring(0, 3) + '-' + value.substring(3, 5);
+    } else if (value.length > 3) {
+        value = value.substring(0, 3) + '-' + value.substring(3);
+    }
+    
+    e.target.value = value;
+}
+
+// Format Indian ID (PAN or Aadhaar)
+function formatIndianID(e) {
+    let value = e.target.value.replace(/\s/g, '').toUpperCase();
+    
+    // Check if it looks like Aadhaar (all digits)
+    if (/^\d+$/.test(value)) {
+        // Aadhaar format: XXXX XXXX XXXX
+        if (value.length > 12) value = value.substring(0, 12);
+        if (value.length > 8) {
+            value = value.substring(0, 4) + ' ' + value.substring(4, 8) + ' ' + value.substring(8);
+        } else if (value.length > 4) {
+            value = value.substring(0, 4) + ' ' + value.substring(4);
+        }
+    } else {
+        // PAN format: ABCDE1234F (10 characters, no spaces)
+        if (value.length > 10) value = value.substring(0, 10);
+    }
+    
+    e.target.value = value;
+}
+
+// Auto-detect region on page load and pre-select country
+document.addEventListener('DOMContentLoaded', function() {
+    // Load countries into the dropdown
+    loadCountries();
+
+    // Check for detected region from geolocation script
+    if (window.USER_REGION) {
+        const countrySelect = document.getElementById('country');
+        const detectedCode = window.USER_REGION.code;
+
+        // Pre-select detected country after countries are loaded
+        setTimeout(() => {
+            if (detectedCode && countrySelect.querySelector('option[value="' + detectedCode + '"]')) {
+                countrySelect.value = detectedCode;
+                loadStates();
+                updateNationalIdField();
+            }
+        }, 500); // Wait for countries to load
+    }
+
+    // Also check cookie directly
+    const savedRegion = document.cookie.split('; ').find(row => row.startsWith('user_region='));
+    if (savedRegion && !window.USER_REGION) {
+        try {
+            const region = JSON.parse(decodeURIComponent(savedRegion.split('=')[1]));
+            const countrySelect = document.getElementById('country');
+            setTimeout(() => {
+                if (region.code && countrySelect.querySelector('option[value="' + region.code + '"]')) {
+                    countrySelect.value = region.code;
+                    loadStates();
+                    updateNationalIdField();
+                }
+            }, 500); // Wait for countries to load
+        } catch (e) {
+            console.warn('Could not parse saved region:', e);
+        }
+    }
+});
+
+function updateStepIndicators(step) {
+  const indicators = document.querySelectorAll('.step-indicator');
+  indicators.forEach((indicator, index) => {
+    const stepNum = index + 1;
+    indicator.classList.remove('active', 'completed');
+    if (stepNum < step) {
+      indicator.classList.add('completed');
+      indicator.querySelector('.step-circle').textContent = '✓';
+    } else if (stepNum === step) {
+      indicator.classList.add('active');
+      indicator.querySelector('.step-circle').textContent = stepNum;
+    }
+  });
+}
+
+function nextStep(step) {
+  // Validate current step
+  if (!validateStep(currentStep)) {
+    return;
+  }
+
+  // Hide current step
+  document.getElementById('step' + currentStep).style.display = 'none';
+  
+  // Show next step
+  document.getElementById('step' + step).style.display = 'block';
+  
+  // Update step indicators
+  updateStepIndicators(step);
+  
+  currentStep = step;
+
+  // If moving to review step, populate review data
+  if (step === 4) {
+    populateReview();
+  }
+}
+
+function prevStep(step) {
+  document.getElementById('step' + currentStep).style.display = 'none';
+  document.getElementById('step' + step).style.display = 'block';
+  updateStepIndicators(step);
+  currentStep = step;
+}
+
+function validateStep(step) {
+  let isValid = true;
+  let errorMessage = '';
+
+  if (step === 1) {
+  const requiredFields = ['first_name', 'last_name', 'email', 'phone', 'date_of_birth', 'national_id', 'address', 'city', 'state', 'zip', 'country'];
+  for (const fieldId of requiredFields) {
+  const field = document.getElementById(fieldId);
+  if (!field.value.trim()) {
+  isValid = false;
+  errorMessage = 'Please fill in all required fields.';
+  field.style.borderColor = 'var(--red)';
+  } else {
+  field.style.borderColor = '';
+  }
+  }
+  
+  // Email validation
+  const email = document.getElementById('email').value;
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  isValid = false;
+  errorMessage = 'Please enter a valid email address.';
+  document.getElementById('email').style.borderColor = 'var(--red)';
+  }
+  
+  // Country-specific ID validation
+  const country = document.getElementById('country').value;
+  const nationalId = document.getElementById('national_id').value;
+  
+  if (country === 'US') {
+  // SSN validation
+  if (nationalId && !/^\d{3}-?\d{2}-?\d{4}$/.test(nationalId.replace(/\s/g, ''))) {
+  isValid = false;
+  errorMessage = 'Please enter a valid SSN (XXX-XX-XXXX).';
+  document.getElementById('national_id').style.borderColor = 'var(--red)';
+  }
+  } else if (country === 'IN') {
+  // PAN or Aadhaar validation
+  const isPAN = /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(nationalId);
+  const isAadhaar = /^\d{12}$/.test(nationalId.replace(/\s/g, ''));
+  if (!isPAN && !isAadhaar) {
+  isValid = false;
+  errorMessage = 'Please enter a valid PAN (ABCDE1234F) or Aadhaar (12 digits).';
+  document.getElementById('national_id').style.borderColor = 'var(--red)';
+  }
+  }
+  }
+
+  if (step === 2) {
+    const deposit = document.getElementById('initial_deposit').value;
+    if (deposit < 100) {
+      isValid = false;
+      errorMessage = 'Minimum initial deposit is $100.';
+      document.getElementById('initial_deposit').style.borderColor = 'var(--red)';
+    }
+
+    const depositMethod = document.getElementById('deposit_method').value;
+    if (!depositMethod) {
+      isValid = false;
+      errorMessage = 'Please select a deposit method.';
+      document.getElementById('deposit_method').style.borderColor = 'var(--red)';
+    }
+  }
+
+  if (step === 3) {
+    const idType = document.getElementById('id_type').value;
+    if (!idType) {
+      isValid = false;
+      errorMessage = 'Please select an ID type.';
+      document.getElementById('id_type').style.borderColor = 'var(--red)';
+    }
+
+    const idNumber = document.getElementById('id_number').value;
+    if (!idNumber) {
+      isValid = false;
+      errorMessage = 'Please enter your ID number.';
+      document.getElementById('id_number').style.borderColor = 'var(--red)';
+    }
+
+    const idExpiry = document.getElementById('id_expiry').value;
+    if (!idExpiry) {
+      isValid = false;
+      errorMessage = 'Please enter your ID expiration date.';
+      document.getElementById('id_expiry').style.borderColor = 'var(--red)';
+    }
+
+    const sourceOfFunds = document.getElementById('source_of_funds').value;
+    if (!sourceOfFunds) {
+      isValid = false;
+      errorMessage = 'Please select a source of funds.';
+      document.getElementById('source_of_funds').style.borderColor = 'var(--red)';
+    }
+
+    const occupation = document.getElementById('occupation').value;
+    if (!occupation) {
+      isValid = false;
+      errorMessage = 'Please enter your occupation.';
+      document.getElementById('occupation').style.borderColor = 'var(--red)';
+    }
+
+    const amlDeclaration = document.getElementById('aml_declaration').checked;
+    if (!amlDeclaration) {
+      isValid = false;
+      errorMessage = 'You must accept the AML declaration to continue.';
+    }
+  }
+
+  if (!isValid) {
+    alert(errorMessage);
+  }
+
+  return isValid;
+}
+
+function selectAccountType(type) {
+  document.querySelectorAll('input[name="account_type"]').forEach(radio => {
+    radio.checked = radio.value === type;
+  });
+  
+  // Update visual selection
+  document.querySelectorAll('.account-type-card').forEach(card => {
+    card.style.borderColor = '';
+    card.style.background = '';
+  });
+  
+  const selectedCard = event.currentTarget;
+  selectedCard.style.borderColor = 'var(--gold)';
+  selectedCard.style.background = 'rgba(201, 168, 76, 0.05)';
+}
+
+// Initialize account type selection styling
+document.querySelectorAll('.account-type-card').forEach(card => {
+  card.style.cssText = 'border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; cursor: pointer; transition: all 0.2s;';
+  card.querySelector('.account-type-inner').style.cssText = 'text-align: center;';
+  
+  card.addEventListener('mouseenter', () => {
+    if (!card.querySelector('input').checked) {
+      card.style.borderColor = 'var(--border-h)';
+    }
+  });
+  
+  card.addEventListener('mouseleave', () => {
+    if (!card.querySelector('input').checked) {
+      card.style.borderColor = 'var(--border)';
+    }
+  });
+});
+
+// File upload handling
+document.getElementById('upload_area').addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.currentTarget.style.borderColor = 'var(--gold)';
+});
+
+document.getElementById('upload_area').addEventListener('dragleave', (e) => {
+  e.currentTarget.style.borderColor = 'var(--border)';
+});
+
+document.getElementById('upload_area').addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.currentTarget.style.borderColor = 'var(--border)';
+  handleFiles(e.dataTransfer.files);
+});
+
+document.getElementById('id_document').addEventListener('change', (e) => {
+  handleFiles(e.target.files);
+});
+
+function handleFiles(files) {
+  const fileList = document.getElementById('file_list');
+  const filesArray = Array.from(files);
+  
+  filesArray.forEach(file => {
+    if (file.size > 5 * 1024 * 1024) {
+      alert(`${file.name} exceeds the 5MB size limit.`);
+      return;
+    }
+    
+    const fileItem = document.createElement('div');
+    fileItem.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 8px; background: rgba(255, 255, 255, 0.02); border-radius: 6px; margin-bottom: 8px;';
+    fileItem.innerHTML = `
+      <span style="font-size: 1.2rem;">📄</span>
+      <span style="flex: 1; font-size: 0.8rem; color: var(--muted);">${file.name}</span>
+      <span style="font-size: 0.7rem; color: var(--dim);">${(file.size / 1024).toFixed(1)} KB</span>
+    `;
+    fileList.appendChild(fileItem);
+  });
+}
+
+function populateReview() {
+  // Personal Info
+  const firstName = document.getElementById('first_name').value;
+  const lastName = document.getElementById('last_name').value;
+  document.getElementById('review_name').textContent = `${firstName} ${lastName}`;
+  document.getElementById('review_email').textContent = document.getElementById('email').value;
+  document.getElementById('review_phone').textContent = document.getElementById('phone').value;
+  document.getElementById('review_address').textContent = `${document.getElementById('address').value}, ${document.getElementById('city').value}, ${document.getElementById('state').value} ${document.getElementById('zip').value}`;
+
+  // Account Details
+  const accountType = document.querySelector('input[name="account_type"]:checked').value;
+  document.getElementById('review_account_type').textContent = accountType.charAt(0).toUpperCase() + accountType.slice(1);
+  document.getElementById('review_deposit').textContent = '$' + parseInt(document.getElementById('initial_deposit').value).toLocaleString();
+  
+  const services = [];
+  if (document.getElementById('overdraft_protection').checked) services.push('Overdraft Protection');
+  if (document.getElementById('mobile_banking').checked) services.push('Mobile Banking');
+  if (document.getElementById('statements').checked) services.push('E-Statements');
+  if (document.getElementById('alerts').checked) services.push('Account Alerts');
+  document.getElementById('review_services').textContent = services.join(', ');
+
+  // KYC
+  document.getElementById('review_id_type').textContent = document.getElementById('id_type').options[document.getElementById('id_type').selectedIndex].text;
+  document.getElementById('review_source').textContent = document.getElementById('source_of_funds').options[document.getElementById('source_of_funds').selectedIndex].text;
+  document.getElementById('review_occupation').textContent = document.getElementById('occupation').value;
+}
+
+function submitApplication() {
+  // Collect all application data
+  const applicationData = {
+    // Personal Info
+    client_name: document.getElementById('first_name').value + ' ' + document.getElementById('last_name').value,
+    client_id: document.getElementById('national_id').value.replace(/\s/g, '').toUpperCase(),
+    email: document.getElementById('email').value,
+    phone: document.getElementById('phone').value,
+    date_of_birth: document.getElementById('date_of_birth').value,
+    address: document.getElementById('address').value + ', ' + document.getElementById('city').value + ', ' + document.getElementById('state').value + ' ' + document.getElementById('zip').value,
+    country_of_origin: document.getElementById('country').value,
+    
+    // Account Details
+    account_type: document.querySelector('input[name="account_type"]:checked').value,
+    initial_deposit: parseFloat(document.getElementById('initial_deposit').value),
+    deposit_method: document.getElementById('deposit_method').value,
+    
+    // KYC/AML
+    id_type: document.getElementById('id_type').value,
+    id_number: document.getElementById('id_number').value,
+    source_of_funds: document.getElementById('source_of_funds').value,
+    occupation: document.getElementById('occupation').value,
+    employer: document.getElementById('employer').value
+  };
+
+  // Show loading on success message
+  const successMessage = document.getElementById('success_message');
+  successMessage.innerHTML = `
+    <div class="placeholder">
+      <div class="placeholder-icon">⏳</div>
+      <p><strong>Running AML/KYC verification with CrewAI...</strong></p>
+      <p style="font-size: 0.85rem; color: var(--dim);">This may take a few seconds</p>
+    </div>
+  `;
+  successMessage.style.display = 'block';
+  document.getElementById('step4').style.display = 'none';
+
+  // Call AML Crew API
+  runAMLVerification(applicationData);
+}
+
+async function runAMLVerification(applicationData) {
+  const successMessage = document.getElementById('success_message');
+
+  try {
+    const response = await fetch('/api/aml-crew/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({
+      client_name: applicationData.client_name,
+      client_id: applicationData.client_id,
+      email: applicationData.email,
+      transaction_amount: applicationData.initial_deposit,
+      transaction_type: 'account_opening',
+      country_of_origin: applicationData.country_of_origin,
+      date_of_birth: applicationData.date_of_birth,
+      address: applicationData.address,
+      occupation: applicationData.occupation,
+      mobile_number: applicationData.phone,
+      // FIX: Add initial_amount field to match what backend expects
+      initial_amount: applicationData.initial_deposit
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      successMessage.innerHTML = `
+        <div class="placeholder">
+          <div class="placeholder-icon">❌</div>
+          <p><strong>Verification Error:</strong> ${data.error}</p>
+          <p style="font-size: 0.85rem; color: var(--dim);">Please try again or contact support</p>
+          <button class="btn-primary btn-creditwise" onclick="location.reload()" style="margin-top: 16px;">Try Again</button>
+        </div>
+      `;
+      return;
+    }
+
+    // Check AML decision
+    const decision = data.decision || 'PASS';
+    const pdfPath = data.pdf_path;
+
+    if (decision === 'PASS') {
+      // Generate reference number
+      const refNumber = 'APP-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+
+      successMessage.innerHTML = `
+        <div class="success-icon" style="font-size: 3rem; margin-bottom: 16px;">✅</div>
+        <h3 style="font-family: 'Playfair Display', serif; color: var(--green); margin-bottom: 12px;">Application Approved!</h3>
+        <p style="color: var(--muted); margin-bottom: 24px;">Your account application has been successfully verified and approved.</p>
+        
+        <div class="review-section">
+          <div class="section-label">Application Reference</div>
+          <div class="review-row">
+            <span class="review-label">Reference Number:</span>
+            <span class="review-value" style="font-family: 'DM Mono', monospace; color: var(--gold);">${refNumber}</span>
+          </div>
+          <div class="review-row">
+            <span class="review-label">Account Type:</span>
+            <span class="review-value">${applicationData.account_type.charAt(0).toUpperCase() + applicationData.account_type.slice(1)}</span>
+          </div>
+          <div class="review-row">
+            <span class="review-label">Initial Deposit:</span>
+            <span class="review-value">$${applicationData.initial_deposit.toLocaleString()}</span>
+          </div>
+        </div>
+
+        ${pdfPath ? `
+          <div class="review-section" style="margin-top: 20px;">
+            <div class="section-label">Compliance Report</div>
+            <div class="review-row">
+              <span class="review-label">AML Report:</span>
+              <a href="/${pdfPath}" target="_blank" class="review-value" style="color: var(--gold); text-decoration: underline;">Download PDF Report</a>
+            </div>
+          </div>
+        ` : ''}
+
+        <div style="margin-top: 24px; padding: 16px; background: rgba(34, 197, 94, 0.1); border-radius: 8px; border-left: 4px solid var(--green);">
+          <div style="font-size: 0.85rem; color: var(--muted);">
+            <strong>Next Steps:</strong><br>
+            • You will receive a confirmation email at ${applicationData.email}<br>
+            • Your account details will be sent within 24 hours<br>
+            • Please keep your reference number for future inquiries
+          </div>
+        </div>
+
+        <div style="margin-top: 16px; font-size: 0.75rem; color: var(--dim);">
+          🤖 Powered by CrewAI AML Verification | ${data.timestamp ? new Date(data.timestamp).toLocaleString() : ''}
+        </div>
+      `;
+    } else {
+      successMessage.innerHTML = `
+        <div class="placeholder">
+          <div class="placeholder-icon">⚠️</div>
+          <p><strong>Application Requires Review</strong></p>
+          <p style="color: var(--muted);">Your application has been flagged for additional review. Our compliance team will contact you within 48 hours.</p>
+          
+          <div style="margin-top: 16px; padding: 12px; background: rgba(251, 146, 60, 0.1); border-radius: 8px; border-left: 4px solid var(--orange);">
+            <div style="font-size: 0.85rem; color: var(--muted);">
+              <strong>Reference Number:</strong> APP-PENDING-${Date.now()}<br>
+              Please keep this number for future inquiries.
+            </div>
+          </div>
+
+          <button class="btn-primary btn-creditwise" onclick="location.reload()" style="margin-top: 16px;">Return to Home</button>
+        </div>
+      `;
+    }
+
+  } catch (error) {
+    console.error('AML Verification error:', error);
+    
+    // Fallback: Show success without AML verification
+    const refNumber = 'APP-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    successMessage.innerHTML = `
+      <div class="success-icon" style="font-size: 3rem; margin-bottom: 16px;">✅</div>
+      <h3 style="font-family: 'Playfair Display', serif; color: var(--green); margin-bottom: 12px;">Application Submitted!</h3>
+      <p style="color: var(--muted); margin-bottom: 24px;">Your application has been received. Note: AML verification service is currently unavailable.</p>
+      
+      <div class="review-section">
+        <div class="section-label">Application Reference</div>
+        <div class="review-row">
+          <span class="review-label">Reference Number:</span>
+          <span class="review-value" style="font-family: 'DM Mono', monospace; color: var(--gold);">${refNumber}</span>
+        </div>
+      </div>
+
+      <button class="btn-primary btn-creditwise" onclick="location.reload()" style="margin-top: 16px;">Return to Home</button>
+    `;
+  }
+}
+
+// CSRF Token Helper
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+// ZIP code formatting
+document.getElementById('zip').addEventListener('input', (e) => {
+  let value = e.target.value.replace(/\D/g, '');
+  if (value.length > 10) value = value.substring(0, 10);
+  
+  if (value.length > 5) {
+    value = value.substring(0, 5) + '-' + value.substring(5);
+  }
+  
+  e.target.value = value;
+});
+</script>
+{% endblock %}

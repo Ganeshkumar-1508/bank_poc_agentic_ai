@@ -1,0 +1,38 @@
+{
+  "use_case": "credit_risk",
+  "timestamp": "2026-04-14T11:56:29.397045",
+  "mljar_success": false,
+  "gpu_success": true,
+  "mljar_metrics": {},
+  "gpu_metrics": {
+    "train_accuracy": 0.9999622222222222,
+    "train_f1": 0.9983589149531809,
+    "test_accuracy": 0.999104,
+    "test_f1": 0.9035314384151594,
+    "test_precision": 0.8521527213647441,
+    "test_recall": 0.9615032080659945,
+    "test_auc": 0.9999197156335251
+  },
+  "best_source": "gpu",
+  "best_metrics": {
+    "train_accuracy": 0.9999622222222222,
+    "train_f1": 0.9983589149531809,
+    "test_accuracy": 0.999104,
+    "test_f1": 0.9035314384151594,
+    "test_precision": 0.8521527213647441,
+    "test_recall": 0.9615032080659945,
+    "test_auc": 0.9999197156335251
+  },
+  "gpu_config": {
+    "enabled": true,
+    "device_ids": [
+      0
+    ],
+    "memory_limit_mb": 8986.4,
+    "mixed_precision": false,
+    "gpu_fraction": 0.8,
+    "xgboost_tree_method": "gpu_hist",
+    "lightgbm_device": "gpu",
+    "catboost_task_type": "GPU"
+  }
+}
